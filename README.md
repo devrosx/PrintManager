@@ -8,12 +8,12 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
 - Debug text window with informations
 - Basic printing settings (format, collating, fit to page, twosided, number of copies)
 - Basic pdf operations (split, merge, compress, view, rasterize)
-- Pdf info in table (number of pages, colors, filesize, name, size)
+- PDF info in table (number of pages, colors, filesize, name, size)
 - Convert various formats to PDF (currenty using OpenOffice convertor)
 - Basic image operation
  - OCR (thanks to pytesseract)
  - Convert to PDF
- - Resize
+ - Resize image
  - Identify images in image and extract (thanks to OpenCV)
 
 # Installation

@@ -1,39 +1,8 @@
 import numpy as np
 import cv2, os, argparse, datetime, errno, math
-# from concurrent.futures import ThreadPoolExecutor
-# debug
 DEG_TO_RAD = math.pi / 180
 MAX = 255
-inputfiles = ['/Users/jandevera/Desktop/test3.jpg']
-# inputfiles = ['/Users/jandevera/sken/03.jpg', '/Users/jandevera/sken/test1.jpg']
 
-# 					help="Specify the location of the pictures to process.")
-					
-# parser.add_argument('--odir', '-o', type=str, default="./output/",
-# 					help="Specify where to save the processed scans.")
-					
-# parser.add_argument('--num-threads', '-n', dest='threads', type=int, default=0,
-# 					help="Number of threads to use." +
-# 					"\n0 = system number of cores.")
-					
-# parser.add_argument('--pic-size-diff', '-s', type=float, dest='scale', default=0.80,
-# 					help="The approximate size difference between scanned images, as a percent." +
-# 					"\nSet lower if images are of varying sizes." +
-# 					"\nRange: [0.0,1.0]" )
-					
-# parser.add_argument('--thresh', '-t', type=int, dest='thresh', default=230,
-# 					help="Sets the threshold value when determining photo edges." +
-# 					"\nUse higher values for brighter images. Lower for tighter cropping." +
-# 					"\nRange [0,255]")
-					
-# parser.add_argument('--photos-per-scan', '-i', type=int, dest='num_scans', default=1,
-# 					help="Number of photos to look for per scanned image.")
-					
-# parser.add_argument('--blur', '-b', type=int, dest='blur', default=9,
-# 					help="How much blur to apply when processing." +
-# 					"\nDifferent values may effect how well scans are found and cropped." +
-# 					"\nMust be odd number greater than 1.")
-# THRESH = 120
 BLUR = 9
 # NUM_SCANS = 1
 IM_SCALE = 0.80

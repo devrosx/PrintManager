@@ -661,7 +661,7 @@ class Window(QMainWindow):
 		# self.qbtn_exit.clicked.connect(QCoreApplication.instance().quit)
 		# self.extra_layout.addWidget(self.qbtn_exit)
 		# # # PRINT SCRIPT
-		self.qbtn_print = QPushButton('Tisk', self)
+		self.qbtn_print = QPushButton('Print', self)
 		self.qbtn_print.clicked.connect(self.table_print)
 		self.extra_layout.addWidget(self.qbtn_print)
 

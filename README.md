@@ -11,12 +11,12 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
 - Pdf info in table (number of pages, colors, filesize, name, size)
 - Convert various formats to PDF (currenty using OpenOffice convertor)
 - Basic image operation
- - OCR (tahnks to pytesseract)
+ - OCR (thanks to pytesseract)
  - Convert to PDF
  - Resize
  - Identify images in image and extract (thanks to OpenCV)
 
-# Instalation
+# Installation
 Use Pip3 to install these libraries
 pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5
 

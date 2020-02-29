@@ -3,7 +3,6 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
 
 ![alt text](https://raw.githubusercontent.com/devrosx/PrintManager/master/wiki/screenshot.png)
 
-
 ## Features
 - Print PDF files from table (LP command)
 - Debug text window with informations
@@ -16,6 +15,10 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
  - Convert to PDF
  - Resize
  - Identify images in image and extract (thanks to OpenCV)
+
+# Instalation
+Use Pip3 to install these libraries
+pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5
 
  # Warning
  Some features are experimental and buggy

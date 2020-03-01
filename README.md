@@ -24,3 +24,15 @@ Use Brew or other installer to install Ghostscript
  # Warning
 Some features are experimental unfinished and buggy
 I'm a newbie with python and PyQt5 :)
+
+ # Todo
+- Fix bugs
+- CloudConvert api support (as alternative to OpenOffice)
+- support fileformat icons
+- better file and drag and drop highligting
+- app bundle configuration
+- drag and drop on app icon
+- More image operations
+- Finish print settings
+ - Grayscale/color switch
+ 

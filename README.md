@@ -28,6 +28,8 @@ I'm a newbie with python and PyQt5 :)
  # Todo
 - Fix bugs
 - Interface polishing
+- Preferences panel
+- Fix contextual menu bugs
 - CloudConvert api support (as alternative to OpenOffice)
 - support fileformat icons
 - better file and drag and drop highligting

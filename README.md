@@ -10,7 +10,7 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
 - Basic pdf operations (split, merge, compress, view, rasterize)
 - PDF info in table (number of pages, colors, filesize, name, size)
 - Convert various formats to PDF (currenty using OpenOffice convertor)
-- Basic image operation
+- Basic image operations
  - OCR (thanks to pytesseract)
  - Convert to PDF
  - Resize image
@@ -18,8 +18,25 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
 
 # Installation
 Use Pip3 to install these libraries
-pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5
+pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5.
+Use Brew or other installer to install Ghostscript
 
  # Warning
- Some features are experimental and buggy
+Some features are experimental unfinished and buggy
 I'm a newbie with python and PyQt5 :)
+
+ # Todo
+- Fix bugs
+- Interface polishing
+- Preferences panel
+- Fix contextual menu bugs
+- CloudConvert api support (as alternative to OpenOffice)
+- support fileformat icons
+- better file and drag and drop highligting
+- app bundle configuration
+- drag and drop on app icon
+- More image operations
+- Localizations..
+- Finish print settings
+ - Grayscale/color switch
+ 

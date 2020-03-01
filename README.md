@@ -19,6 +19,7 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
 # Installation
 Use Pip3 to install these libraries
 pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5
+Use Brew to install Ghostscript
 
  # Warning
  Some features are experimental and buggy

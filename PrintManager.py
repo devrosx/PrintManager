@@ -6,7 +6,7 @@ import json
 from PyPDF2 import PdfFileReader, PdfFileMerger, PdfFileWriter
 # from PyQt5.QtWidgets import QHBoxLayout,QTableWidget,QWidget,QApplication,QGridLayout,QGroupBox,QVBoxLayout,QListWidget,QSpinBox,QComboBox,QCheckBox,QPushButton, QTextEdit, QAbstractItemView, QTableWidgetItem
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont
+from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor
 from PyQt5.QtCore import *
 from libs.colordetector import *
 from libs.ocr_module import ocr_core
@@ -495,7 +495,7 @@ class Window(QMainWindow):
 					resize_files = []
 					percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
 					# if ok:
-     #     				self.le2.setText(str(num))
+	 #     				self.le2.setText(str(num))
 					for items in soubor:
 						command, outputfiles = resizeimage(items, percent)
 						resize_files.append(outputfiles)
@@ -608,8 +608,35 @@ class Window(QMainWindow):
 			self.table.setItem(i, 7, QTableWidgetItem(Colors))
 			self.table.setItem(i, 8, QTableWidgetItem(Filepath))
 		self.table.setColumnHidden(8, True)
+		# RIGHT CLICK MENU
+		self.setContextMenuPolicy(Qt.CustomContextMenu)
+		self.customContextMenuRequested.connect(self.context_menu)	 	
 		self.mainLayout.addWidget(self.table,1,0)
 		self.update()
+
+	def context_menu(self, pos):
+		# print('column(%d)' % self.table.horizontalHeader().logicalIndexAt(pos))
+		menu = QMenu()
+		openAction = menu.addAction('Open')
+		revealAction = menu.addAction('Reveal in finder')
+		printAction = menu.addAction('Print')
+		action = menu.exec_(QCursor.pos())
+		# action = menu.exec_(pos.globalPos())
+		if action == openAction:
+			index=(self.table.selectionModel().currentIndex())
+			row = self.table.currentRow()
+			cesta_souboru=index.sibling(row,8).data()
+			openfile(cesta_souboru)
+		if action == revealAction:
+			index=(self.table.selectionModel().currentIndex())
+			row = self.table.currentRow()
+			cesta_souboru=index.sibling(row,8).data()
+			revealfile(cesta_souboru)
+		if action == printAction:
+			index=(self.table.selectionModel().currentIndex())
+			row = self.table.currentRow()
+			cesta_souboru=index.sibling(row,8).data()
+			self.table_print()
 
 	def createDebug_layout(self):
 		self.debug_layout = QHBoxLayout()
@@ -921,37 +948,6 @@ class Window(QMainWindow):
 			self._icon = QIcon()
 			self._icon.addPixmap(QPixmap(_off))
 			name.setIcon(self._icon)
-
-	def rmenu(self, pos):
-		print ('wtf')
-		curRow = self.table.currentRow()
-		if curRow == -1:
-			return
-		self.rmenu.exec_(self.table.mapToGlobal(pos))
-
-	def generateMenu(self, pos):
-		print("pos======",pos)
-		self.menu.exec_(self.table.mapToGlobal(pos))
-
-	def contextMenuEvent(self, event):
-		menu = QMenu(self)
-		openAction = menu.addAction('Open')
-		revealAction = menu.addAction('Reveal in finder')
-
-		action = menu.exec_(event.globalPos())
-
-		if action == openAction:
-			index=(self.table.selectionModel().currentIndex())
-			row = self.table.currentRow()
-			cesta_souboru=index.sibling(row,8).data()
-			openfile(cesta_souboru)
-
-		if action == revealAction:
-			index=(self.table.selectionModel().currentIndex())
-			row = self.table.currentRow()
-			cesta_souboru=index.sibling(row,8).data()
-			revealfile(cesta_souboru)
-
 
 	def table_print(self):
 		green_ = (QColor(80, 80, 80))

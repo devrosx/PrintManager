@@ -31,8 +31,8 @@ size = []
 extension = []
 file_size = []
 pages = []
-cena = []
-barvy = []
+price = []
+colors = []
 filepath = []
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'original']
 username = os.getlogin()
@@ -222,7 +222,7 @@ def basic_parse(inputs, *args):
 			pdf_input = PdfFileReader(f)
 			if pdf_input.isEncrypted:
 				print ('encrypted...')
-				d_info = '<font color=red>Zaheslované PDF</font>'
+				d_info = '<font color=red>Encrypted PDF</font>'
 				break
 			else:
 				qsizedoc = (pdf_input.getPage(0).mediaBox)
@@ -234,15 +234,15 @@ def basic_parse(inputs, *args):
 				newfilename = ('[' + str(round(sirka)) + 'x' + str(round(vyska)) + 'mm_' + str(pdf_pages) + 'str]' + oldfilename)
 				name.append(ext_file[0])
 				size.append(size_check(page_size))
-				cena.append(price_check(pdf_pages, velikost))
+				price.append(price_check(pdf_pages, velikost))
 				file_size.append(humansize(os.path.getsize(item)))
 				pages.append(int(pdf_pages))
 				filepath.append(item)
 				info.append('')
-				barvy.append('')
+				colors.append('')
 				extension.append(ext_file[1][1:])
 				d_info = 'All ok'
-	rows = list(zip(info, name, size, extension, file_size, pages, cena, barvy, filepath))
+	rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return rows, d_info
 
 def getimageinfo (filename):
@@ -268,11 +268,11 @@ def basic_parse_image(inputs, *args):
 		extension.append(ext_file[1][1:])
 		file_size.append(humansize(os.path.getsize(item)))
 		pages.append(1)
-		cena.append('')
-		barvy.append(str(image_info[1]))
+		price.append('')
+		colors.append(str(image_info[1]))
 		filepath.append(item)
 		d_info = 'All ok'
-	rows = list(zip(info, name, size, extension, file_size, pages, cena, barvy, filepath))
+	rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return rows, d_info
 
 
@@ -295,24 +295,24 @@ def size_check(page_size):
 	return velikost
 
 def price_check(pages, velikost):
-	cena = []
+	price = []
 	if velikost == 'A4':
 		if pages >= 50:
-			cenasum = (str(pages * 1.5) + ' Kč')
+			pricesum = (str(pages * 1.5) + ' Kč')
 		elif pages >= 20:
-			cenasum = (str(pages * 2) + ' Kč')
+			pricesum = (str(pages * 2) + ' Kč')
 		elif pages >= 0:
-			cenasum = (str(pages * 3) + ' Kč')
+			pricesum = (str(pages * 3) + ' Kč')
 	elif velikost == 'A3':
 		if pages >= 50:
-			cenasum = (str(pages * 2) + ' Kč')
+			pricesum = (str(pages * 2) + ' Kč')
 		elif pages >= 20:
-			cenasum = (str(pages * 3) + ' Kč')
+			pricesum = (str(pages * 3) + ' Kč')
 		elif pages >= 0:
-			cenasum = (str(pages * 4) + ' Kč')
+			pricesum = (str(pages * 4) + ' Kč')
 	else:
-		cenasum = '/'
-	return cenasum
+		pricesum = '/'
+	return pricesum
 
 class ImgWidget1(QLabel):
 	def __init__(self, parent=None):
@@ -456,6 +456,7 @@ class Window(QMainWindow):
 					soubor.append(file)
 				files = self.external_convert(extension, soubor)
 				break
+			# for images.... 
 			elif extension in image_ext :
 				soubor = []
 				self.debuglist.setText("File:" + extension)
@@ -463,6 +464,8 @@ class Window(QMainWindow):
 					file = (url.toLocalFile())
 					soubor.append(file)
 				text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
+				if not ok:
+					break
 				if text == 'to PDF':
 					files = self.external_convert(extension, soubor)
 				if text == 'OCR':

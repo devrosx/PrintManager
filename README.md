@@ -27,12 +27,14 @@ I'm a newbie with python and PyQt5 :)
 
  # Todo
 - Fix bugs
+- Interface polishing
 - CloudConvert api support (as alternative to OpenOffice)
 - support fileformat icons
 - better file and drag and drop highligting
 - app bundle configuration
 - drag and drop on app icon
 - More image operations
+- Localizations..
 - Finish print settings
  - Grayscale/color switch
  

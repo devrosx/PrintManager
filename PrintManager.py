@@ -219,7 +219,7 @@ def basic_parse(inputs, *args):
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
 		with open(item, mode='rb') as f:
-			pdf_input = PdfFileReader(f)
+			pdf_input = PdfFileReader(f, strict=False)
 			if pdf_input.isEncrypted:
 				print ('encrypted...')
 				d_info = '<font color=red>Encrypted PDF</font>'
@@ -440,7 +440,11 @@ class Window(QMainWindow):
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
-				files, d_info = basic_parse(soubor)
+				try:	
+					files, d_info = basic_parse(soubor)
+				except:
+					QMessageBox.about(self, "Warning", "File " + str(file) + " import error")
+					break
 				self.debuglist.setText(d_info)
 				rows = files
 				Window.table_reload(self, rows)

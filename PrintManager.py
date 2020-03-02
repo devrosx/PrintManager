@@ -201,14 +201,14 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 
 # extract printer info as list for preferences only
 def load_printers(): 
-  output = (subprocess.check_output(["lpstat", "-a"]))
-  outputlist = (output.splitlines())
-  tolist = [] # novy list
-  for num in outputlist:  # prochazeni listem
-	  first, *middle, last = num.split()
-	  tiskarna = str(first.decode())
-	  tolist.append(tiskarna)
-  return (tolist)
+	output = (subprocess.check_output(["lpstat", "-a"]))
+	outputlist = (output.splitlines())
+	tolist = [] # novy list
+	for num in outputlist:  # prochazeni listem
+		first, *middle, last = num.split()
+		tiskarna = str(first.decode())
+		tolist.append(tiskarna)
+	return (tolist)
 printers = load_printers()
 
 argy = []
@@ -412,10 +412,7 @@ class Window(QMainWindow):
 		self.setFixedSize(self.size())
 		self.setWindowTitle("PrintManager " + version)
 
-	def dragEnterEvent(self, event):
-		if event.mimeData().hasUrls():
-			event.accept()
-			self.debuglist.setText('loading files, please wait....')
+
 
 	def closeEvent(self, event):
 		preferences = []
@@ -610,33 +607,44 @@ class Window(QMainWindow):
 		self.table.setColumnHidden(8, True)
 		# RIGHT CLICK MENU
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
-		self.customContextMenuRequested.connect(self.context_menu)	 	
+		self.customContextMenuRequested.connect(self.contextMenuEvent)	 	
 		self.mainLayout.addWidget(self.table,1,0)
 		self.update()
 
-	def context_menu(self, pos):
-		# print('column(%d)' % self.table.horizontalHeader().logicalIndexAt(pos))
-		menu = QMenu()
-		openAction = menu.addAction('Open')
-		revealAction = menu.addAction('Reveal in finder')
-		printAction = menu.addAction('Print')
-		action = menu.exec_(QCursor.pos())
-		# action = menu.exec_(pos.globalPos())
-		if action == openAction:
-			index=(self.table.selectionModel().currentIndex())
-			row = self.table.currentRow()
-			cesta_souboru=index.sibling(row,8).data()
-			openfile(cesta_souboru)
-		if action == revealAction:
-			index=(self.table.selectionModel().currentIndex())
-			row = self.table.currentRow()
-			cesta_souboru=index.sibling(row,8).data()
-			revealfile(cesta_souboru)
-		if action == printAction:
-			index=(self.table.selectionModel().currentIndex())
-			row = self.table.currentRow()
-			cesta_souboru=index.sibling(row,8).data()
-			self.table_print()
+	def dragEnterEvent(self, event):
+		p = self.mapFromGlobal(QCursor().pos())
+		# print (p)
+		# it = self.table(p)
+		# self.table.horizontalHeaderItem(0).setBackgroundColor(QColor(255,100,0,255))
+		print ('drag event')
+		if event.mimeData().hasUrls():
+			event.accept()
+			self.debuglist.setText('loading files, please wait....')
+
+	def contextMenuEvent(self, pos):
+			if self.table.selectionModel().selection().indexes():
+					for i in self.table.selectionModel().selection().indexes():
+							row, column = i.row(), i.column()
+					menu = QMenu()
+					openAction = menu.addAction('Open')
+					revealAction = menu.addAction('Reveal in finder')
+					printAction = menu.addAction('Print')
+					action = menu.exec_(self.mapToGlobal(pos))
+					if action == openAction:
+						index=(self.table.selectionModel().currentIndex())
+						row = self.table.currentRow()
+						cesta_souboru=index.sibling(row,8).data()
+						openfile(cesta_souboru)
+					if action == revealAction:
+						index=(self.table.selectionModel().currentIndex())
+						row = self.table.currentRow()
+						cesta_souboru=index.sibling(row,8).data()
+						revealfile(cesta_souboru)
+					if action == printAction:
+						index=(self.table.selectionModel().currentIndex())
+						row = self.table.currentRow()
+						cesta_souboru=index.sibling(row,8).data()
+						self.table_print()
 
 	def createDebug_layout(self):
 		self.debug_layout = QHBoxLayout()

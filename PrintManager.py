@@ -14,7 +14,7 @@ from libs.crop_module import processFile
 
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
 from tnefparse.mapi import TNEFMAPI_Attribute
-version = '0.20'
+version = '0.21'
 # Eng localization
 # BASIC OCR SUPPORT (jpg png tif bmp)
 # pytesseract

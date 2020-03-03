@@ -18,7 +18,7 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features)
 
 # Installation
 Use Pip3 to install these libraries
-pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5.
+pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5, tnefparse
 Use Brew or other installer to install Ghostscript
 
  # Warning
@@ -29,7 +29,6 @@ I'm a newbie with python and PyQt5 :)
 - Fix bugs
 - Interface polishing
 - Preferences panel
-- Fix contextual menu bugs
 - CloudConvert api support (as alternative to OpenOffice)
 - support fileformat icons
 - better file and drag and drop highligting
@@ -39,4 +38,9 @@ I'm a newbie with python and PyQt5 :)
 - Localizations..
 - Finish print settings
  - Grayscale/color switch
+
+# Updates:
+0.21
+- contextual menu fix
+- added support for winmail dat encoding (tnefparse)
  

@@ -12,6 +12,8 @@ from libs.colordetector import *
 from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
 
+from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
+from tnefparse.mapi import TNEFMAPI_Attribute
 version = '0.20'
 # Eng localization
 # BASIC OCR SUPPORT (jpg png tif bmp)
@@ -443,11 +445,23 @@ class Window(QMainWindow):
 				try:	
 					files, d_info = basic_parse(soubor)
 				except:
-					QMessageBox.about(self, "Warning", "File " + str(file) + " import error")
+					QMessageBox.about(self, "Warning", "File " + str(file) + " import error.")
 					break
 				self.debuglist.setText(d_info)
 				rows = files
 				Window.table_reload(self, rows)
+				break
+			if extension == 'dat':
+				for url in event.mimeData().urls():
+					file = (url.toLocalFile())
+				dirname = (os.path.dirname(file) + '/')
+				dirname = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+				with open(file, "rb") as tneffile:
+					t = TNEF(tneffile.read())
+					for a in t.attachments:
+						with open(os.path.join(dirname,a.name.decode("utf-8")), "wb") as afp:
+							afp.write(a.data)
+					self.update_Debug_list("Successfully wrote %i files" % len(t.attachments) + ' to: ' + dirname)
 				break
 			elif extension in office_ext:
 				soubor = []
@@ -1018,26 +1032,19 @@ class Window(QMainWindow):
 				print ('row is' + str(row))
 				print (str(argy))
 				self.table.removeRow(row)
-				# self.table.updateTable()
-				# vymyslet líp
-				# print ('mazu radek' + str(row))
-				# rows.pop(row)
-				# print (rows)
-	# @QtCore.pyqtSlot()
+
 	def deleteClicked(self):
 		row = self.table.currentRow()
 		self.table.removeRow(row)
 
 	def openFileNamesDialog(self):
 		options = QFileDialog.Options()
-		# options |= QFileDialog.DontUseNativeDialog
 		soubor, _ = QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "",";Pdf Files (*.pdf)", options=options)
 		if soubor:
 			print (soubor)
 			files, d_info = basic_parse(soubor)
 			self.debuglist.setText(d_info)
 			print (files)
-			# rows2 = combine_lists(rows, files)
 			rows = files
 			print (rows)
 			self.table_reload(rows)

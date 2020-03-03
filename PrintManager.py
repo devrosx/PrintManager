@@ -8,19 +8,16 @@ from PyPDF2 import PdfFileReader, PdfFileMerger, PdfFileWriter
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor
 from PyQt5.QtCore import *
+from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
+from tnefparse.mapi import TNEFMAPI_Attribute
+
 from libs.colordetector import *
 from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
+from libs.pdfextract_module import extractfiles
 
-from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
-from tnefparse.mapi import TNEFMAPI_Attribute
+
 version = '0.21'
-# Eng localization
-# BASIC OCR SUPPORT (jpg png tif bmp)
-# pytesseract
-# resize
-# smart cut for images
-# https://github.com/mstamy2/PyPDF2/issues/51
 import time
 start_time = time.time()
 
@@ -253,7 +250,7 @@ def getimageinfo (filename):
 	getimageinfo = []
 	for num in outputlist:  # prochazeni listem
 		first, *middle, last = num.split()
-		getimageinfo.append(str(middle[1].decode()) + ' pixels')
+		getimageinfo.append(str(middle[1].decode()) + ' px')
 		getimageinfo.append(str(middle[4].decode()))
 	return getimageinfo
 	
@@ -276,7 +273,6 @@ def basic_parse_image(inputs, *args):
 		d_info = 'All ok'
 	rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return rows, d_info
-
 
 def size_check(page_size):
 	velikost = 0
@@ -413,8 +409,6 @@ class Window(QMainWindow):
 		self.resize(638, 600)
 		self.setFixedSize(self.size())
 		self.setWindowTitle("PrintManager " + version)
-
-
 
 	def closeEvent(self, event):
 		preferences = []
@@ -576,15 +570,11 @@ class Window(QMainWindow):
 	def icon_row(self, nameicon, colum_number, row):
 		self.table.setCellWidget(row, colum_number, ImgWidget1(self))
 
-
-
-
 # FIX THIS
 	def insert_icon(self, nameicon, colum_number, row):
 			print ('eeeekl')
 			desktop_icon = QIcon(QApplication.style().standardIcon(nameicon))
 			# print (rows)
-
 
 	def table_reload(self, inputfile):
 		# if debug == 1:
@@ -700,17 +690,21 @@ class Window(QMainWindow):
 		self.raster_b = QPushButton('Rastering', self)
 		self.raster_b.clicked.connect(self.rasterize_pdf)
 		self.extra_layout.addWidget(self.raster_b)
+		# EXTRACT IMAGES
+		self.extract_b = QPushButton('Extract', self)
+		self.extract_b.clicked.connect(self.extract_pdf)
+		self.extra_layout.addWidget(self.extract_b)
 		# POCITANI TABULKY PDF
 		self.count_b = QPushButton('Count', self)
 		self.count_b.clicked.connect(self.count_table)
 		self.extra_layout.addWidget(self.count_b)
 
-		# # SPACE
-		self.labl = QLabel()
-		self.labl.setText(version)
-		self.labl.setAlignment(Qt.AlignCenter)
-		self.labl.setFixedSize(50, 10)
-		self.extra_layout.addWidget(self.labl)
+		# # # SPACE
+		# self.labl = QLabel()
+		# self.labl.setText(version)
+		# self.labl.setAlignment(Qt.AlignCenter)
+		# self.labl.setFixedSize(50, 10)
+		# self.extra_layout.addWidget(self.labl)
 
 		# # EXIT SCRIPT
 		# self.qbtn_exit = QPushButton('Konec', self)
@@ -754,21 +748,36 @@ class Window(QMainWindow):
 			QMessageBox.information(self, 'Error', 'No files selected', QMessageBox.Ok)
 			return
 		for items in sorted(self.table.selectionModel().selectedRows()):
-			# self.table.setItemDelegateForColumn(0, self.delegate)
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			cesta_souboru=index.sibling(items.row(),8).data()
 			outputfiles.append(cesta_souboru)
-			# print ('toto je row:' + str(row))
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-			# self.table.item(0, row).setIcon(desktop_icon)
-			# self.insert_icon(QStyle.SP_DialogResetButton, 0, row)
-		# print (outputfiles)
 		debugstring, outputfiles = raster_this_file(cesta_souboru)
 		files, d_info = basic_parse(outputfiles)
 		rows = files
 		Window.table_reload(self, rows)
 		self.update_Debug_list(str(debugstring))
+
+	def extract_pdf(self):
+		print ('PDF extractor WIP')
+		outputfiles = []
+		if self.table.currentItem() == None:
+			QMessageBox.information(self, 'Error', 'No files selected', QMessageBox.Ok)
+			return
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			cesta_souboru=index.sibling(items.row(),8).data()
+			outputfiles.append(cesta_souboru)
+			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
+		outputfiles = extractfiles(cesta_souboru)
+		print (outputfiles)
+		files, d_info = basic_parse_image(outputfiles)
+		rows = files
+		Window.table_reload(self, rows)
+		self.update_Debug_list(str(outputfiles))
+
 
 	def count_table(self):
 		print ('PDF counting')

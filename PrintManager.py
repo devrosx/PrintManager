@@ -16,8 +16,10 @@ from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
 
-
-version = '0.21'
+# TODO
+# autodetect portrait, landscape
+# ctrl-
+version = '0.22'
 import time
 start_time = time.time()
 
@@ -240,7 +242,7 @@ def basic_parse(inputs, *args):
 				info.append('')
 				colors.append('')
 				extension.append(ext_file[1][1:])
-				d_info = 'All ok'
+				d_info = ''
 	rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return rows, d_info
 
@@ -327,6 +329,8 @@ class Customdialog(QDialog):
 # GUISTUFF
 def darkmode():
 	app.setStyle("Fusion")
+	app.setStyleSheet('QPushButton:disabled {color: #696969;background-color:#272727;}')
+	# app.setStyleSheet('QGroupBox:disabled {;color:#272727;}')
 	palette = QPalette()
 	palette.setColor(QPalette.Window, QColor(53, 53, 53))
 	palette.setColor(QPalette.WindowText, Qt.white)
@@ -377,44 +381,65 @@ class Window(QMainWindow):
 		super().__init__(parent)
 		# Create menu options
 		menubar = self.menuBar()
-		menu = QMenu('File', self) # title and parent
+		file_menu = QMenu('File', self) # title and parent
+		win_menu = QMenu('Windows', self) # title and parent
 		open_action = QAction("Open file", self) # title and parent
+		printing_setting_menu  = QAction("Printers", self) # title and parent
+		printing_setting_menu.setShortcut('Ctrl+P')
+		printing_setting_menu.setCheckable(True)
+		printing_setting_menu.setChecked(True)
+		printing_setting_menu.triggered.connect(self.togglePrintWidget)
+		win_menu.addAction(printing_setting_menu)
+
+		debug_setting_menu  = QAction("Debug", self) # title and parent
+		debug_setting_menu.setShortcut('Ctrl+D')
+		debug_setting_menu.setCheckable(True)
+		debug_setting_menu.setChecked(True)
+		debug_setting_menu.triggered.connect(self.toggleDebugWidget)
+		win_menu.addAction(debug_setting_menu)
+
 		open_action.triggered.connect(self.openFileNamesDialog)
 		open_action.setShortcut('Ctrl+O')
+		file_menu.addAction(open_action)
 		close_action = QAction(' &Exit', self)
 		close_action.triggered.connect(self.close)
-		menu.addAction(open_action)
-		menu.addAction(close_action)
-		menubar.addMenu(menu)
+		file_menu.addAction(close_action)
+		menubar.addMenu(file_menu)
+		menubar.addMenu(win_menu)
 
 		self.central_widget = QWidget()               # define central widget
 		self.setCentralWidget(self.central_widget)    # set QMainWindow.centralWidget
 		self.mainLayout = QGridLayout()
 		self.centralWidget().setLayout(self.mainLayout)
-		self.createTop_layout()
+		self.createPrinter_layout()
 		self.createDebug_layout()
-		self.createExtra_layout()
+		self.createButtons_layout()
 		# load files to tab...
 		# rows = basic_parse(argy)
 		rows = []
 		# print (rows)
 		# print (type(rows))
-		self.table_reload(rows)
-
-		self.mainLayout.addLayout(self.top_layout, 0,0)
+		self.table_reload(rows,1)
+		self.mainLayout.addLayout(self.printer_layout, 0,0)
 		self.mainLayout.addLayout(self.debug_layout, 2, 0)
-		self.mainLayout.addLayout(self.extra_layout, 3, 0)
-
+		self.mainLayout.addLayout(self.buttons_layout, 3, 0)
 		self.setAcceptDrops(True)
-		self.resize(638, 600)
-		self.setFixedSize(self.size())
+		self.setFixedWidth(self.sizeHint().width())
 		self.setWindowTitle("PrintManager " + version)
+
+	def sizeHint(self):
+		return QSize(620, 650)
 
 	def closeEvent(self, event):
 		preferences = []
-		if self.printer_table.currentItem() != None:
+		if self.printer_tb.currentItem() != None:
 			preferences.append('tiskarna')
-			preferences.append(self.printer_table.currentRow())
+			preferences.append(self.printer_tb.currentRow())
+			preferences.append('printer_window')
+			preferences.append(self.gb_printers.isHidden())
+			preferences.append('debug_window')
+			preferences.append(self.gb_debug.isHidden())
+
 		save_preferences(preferences)
 		close = QMessageBox()
 		close.setText("You sure?")
@@ -424,6 +449,13 @@ class Window(QMainWindow):
 			event.accept()
 		else:
 			event.ignore()
+
+	def dragEnterEvent(self, event):
+		p = self.mapFromGlobal(QCursor().pos())
+		if event.mimeData().hasUrls():
+			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c;")
+			event.accept()
+			self.debuglist.setText('loading files, please wait....')
 
 	def dropEvent(self, event):
 		items = ["to PDF", "SmartCut", "OCR", "Resize"]
@@ -443,7 +475,7 @@ class Window(QMainWindow):
 					break
 				self.debuglist.setText(d_info)
 				rows = files
-				Window.table_reload(self, rows)
+				Window.table_reload(self, rows,0)
 				break
 			if extension == 'dat':
 				for url in event.mimeData().urls():
@@ -498,19 +530,17 @@ class Window(QMainWindow):
 					smartcut_files = [j for i in smartcut_files for j in i]
 					files, d_info = basic_parse_image(smartcut_files)
 					rows = files
-					Window.table_reload(self, rows)
+					Window.table_reload(self, rows,0)
 					self.update_Debug_list(str(smartcut_files))
 				if text == 'Resize':
 					resize_files = []
 					percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
-					# if ok:
-	 #     				self.le2.setText(str(num))
 					for items in soubor:
 						command, outputfiles = resizeimage(items, percent)
 						resize_files.append(outputfiles)
 					files, d_info = basic_parse_image(resize_files)
 					rows = files
-					Window.table_reload(self, rows)
+					Window.table_reload(self, rows,0)
 					self.update_Debug_list(str(resize_files))
 				break
 			else:
@@ -565,7 +595,7 @@ class Window(QMainWindow):
 		# for i in range(if_fixed,len(rows)-if_fixed,-1):
 		# 	print (i)
 		# 	self.icon_row(QStyle.SP_FileIcon, 0, i)
-		Window.table_reload(self, rows)
+		Window.table_reload(self, rows,0)
 
 	def icon_row(self, nameicon, colum_number, row):
 		self.table.setCellWidget(row, colum_number, ImgWidget1(self))
@@ -576,16 +606,18 @@ class Window(QMainWindow):
 			desktop_icon = QIcon(QApplication.style().standardIcon(nameicon))
 			# print (rows)
 
-	def table_reload(self, inputfile):
+	def table_reload(self, inputfile,boot):
 		# if debug == 1:
 		# print ('Tabulka=' + str(inputfile))
 		# print (len(inputfile))
 		# self.table.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.table = TableWidgetDragRows()
+		if boot == 1:
+			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #191919;")
 		headers = ["Info", "File", "Size", "Kind", "Filesize", "Pages", "Price", "Colors", 'Filepath']
 		self.table.setColumnCount(len(headers))
 		self.table.setHorizontalHeaderLabels(headers)
-		self.table.doubleClicked.connect(self.open_table)
+		self.table.doubleClicked.connect(self.open_tb)
 		self.table.setColumnWidth(0, 25)
 		self.table.setColumnWidth(1, 230)
 		self.table.setColumnWidth(3, 35)
@@ -593,6 +625,7 @@ class Window(QMainWindow):
 		self.table.setColumnWidth(5, 35)
 		self.table.setColumnWidth(6, 55)
 		self.table.setColumnWidth(7, 64)
+		# self.table.resizeColumnsToContents()
 		self.table.verticalHeader().setVisible(False)
 		self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 		# icon wip
@@ -613,21 +646,48 @@ class Window(QMainWindow):
 			self.table.setItem(i, 7, QTableWidgetItem(Colors))
 			self.table.setItem(i, 8, QTableWidgetItem(Filepath))
 		self.table.setColumnHidden(8, True)
+		# BUTTONS disable enable
+		self.table.selectionModel().selectionChanged.connect(
+			self.on_selection_changed
+		)
 		# RIGHT CLICK MENU
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.customContextMenuRequested.connect(self.contextMenuEvent)	 	
 		self.mainLayout.addWidget(self.table,1,0)
 		self.update()
 
-	def dragEnterEvent(self, event):
-		p = self.mapFromGlobal(QCursor().pos())
-		# print (p)
-		# it = self.table(p)
-		# self.table.horizontalHeaderItem(0).setBackgroundColor(QColor(255,100,0,255))
-		print ('drag event')
-		if event.mimeData().hasUrls():
-			event.accept()
-			self.debuglist.setText('loading files, please wait....')
+	@pyqtSlot()
+	def on_selection_changed(self):
+		self.print_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.color_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.combine_pdf_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.split_pdf_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.compres_pdf_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.raster_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.extract_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.split_pdf_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.count_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
+		self.gb_setting.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
 
 	def contextMenuEvent(self, pos):
 			if self.table.selectionModel().selection().indexes():
@@ -654,66 +714,105 @@ class Window(QMainWindow):
 						cesta_souboru=index.sibling(row,8).data()
 						self.table_print()
 
+	def togglePrintWidget(self):
+		print (self.gb_printers.isHidden())
+		self.gb_printers.setHidden(not self.gb_printers.isHidden())
+		self.gb_setting.setHidden(not self.gb_setting.isHidden())
+		return True
+
+	def toggleDebugWidget(self):
+		self.gb_debug.setHidden(not self.gb_debug.isHidden())
+
 	def createDebug_layout(self):
 		self.debug_layout = QHBoxLayout()
+		# load setting	 
+		gb_debug_visible_state = (json_pref[0][5]) 
+		print (gb_debug_visible_state)
+		self.gb_debug = QGroupBox("Debug")
+		self.gb_debug.setVisible(not gb_debug_visible_state)
+		self.gb_debug.setChecked(True)
+		self.gb_debug.setTitle('')
+		self.gb_debug.setFixedHeight(91)
+		self.gb_debug.setContentsMargins(0, 0, 0, 0)
+		self.gb_debug.setStyleSheet("border: 0px; border-radius: 0px; padding: 0px 0px 0px 0px;")
+		dbox = QVBoxLayout()
+		dbox.setContentsMargins(0, 0, 0, 0);
+		self.gb_debug.setLayout(dbox)
 		# debug
 		self.debuglist = QTextEdit("<b>Debug:</b>", self)
 		self.debuglist.setAlignment(Qt.AlignJustify)
 		self.debuglist.acceptRichText()
-		self.debuglist.setReadOnly(1)
+		self.debuglist.setReadOnly(True)
 		self.debuglist.setFixedHeight(90)
-		self.debug_layout.addWidget(self.debuglist)
+		dbox.addWidget(self.debuglist)
+		self.gb_debug.toggled.connect(self.toggleDebugWidget)
 
-	def createExtra_layout(self):
-		self.extra_layout = QHBoxLayout()
-		# OPEN FILES
-		self.qbtn_open = QPushButton('Open', self)
-		self.qbtn_open.clicked.connect(self.openFileNamesDialog)
-		self.extra_layout.addWidget(self.qbtn_open)
+		self.debug_layout.addWidget(self.gb_debug)
+
+	def createButtons_layout(self):
+		self.buttons_layout = QHBoxLayout()
+		# # OPEN FILES
+		# self.open_b = QPushButton('Open', self)
+		# self.open_b.clicked.connect(self.openFileNamesDialog)
+		# self.buttons_layout.addWidget(self.open_b)
 		# LOAD COLORS INFO
-		self.qbtn_color = QPushButton('Colors', self)
-		self.qbtn_color.clicked.connect(self.loadcolors)
-		self.extra_layout.addWidget(self.qbtn_color)
+		self.color_b = QPushButton('Colors', self)
+		self.color_b.clicked.connect(self.loadcolors)
+		self.buttons_layout.addWidget(self.color_b)
+		self.color_b.setDisabled(True)
+
 		# SPOJ PDF
 		self.combine_pdf_b = QPushButton('Join', self)
 		self.combine_pdf_b.clicked.connect(self.combine_pdf)
-		self.extra_layout.addWidget(self.combine_pdf_b)
+		self.buttons_layout.addWidget(self.combine_pdf_b)
+		self.combine_pdf_b.setDisabled(True)
+
 		# ROZDEL PDF
 		self.split_pdf_b = QPushButton('Split', self)
 		self.split_pdf_b.clicked.connect(self.split_pdf)
-		self.extra_layout.addWidget(self.split_pdf_b)
+		self.buttons_layout.addWidget(self.split_pdf_b)
+		self.split_pdf_b.setDisabled(True)
+
 		# COMPRES PDF
 		self.compres_pdf_b = QPushButton('Compres', self)
 		self.compres_pdf_b.clicked.connect(self.compres_pdf)
-		self.extra_layout.addWidget(self.compres_pdf_b)
+		self.buttons_layout.addWidget(self.compres_pdf_b)
+		self.compres_pdf_b.setDisabled(True)
+
 		# RASTROVANI PDF
-		self.raster_b = QPushButton('Rastering', self)
+		self.raster_b = QPushButton('Rasterize', self)
 		self.raster_b.clicked.connect(self.rasterize_pdf)
-		self.extra_layout.addWidget(self.raster_b)
+		self.buttons_layout.addWidget(self.raster_b)
+		self.raster_b.setDisabled(True)
+
 		# EXTRACT IMAGES
 		self.extract_b = QPushButton('Extract', self)
 		self.extract_b.clicked.connect(self.extract_pdf)
-		self.extra_layout.addWidget(self.extract_b)
+		self.buttons_layout.addWidget(self.extract_b)
+		self.extract_b.setDisabled(True)
+
 		# POCITANI TABULKY PDF
 		self.count_b = QPushButton('Count', self)
-		self.count_b.clicked.connect(self.count_table)
-		self.extra_layout.addWidget(self.count_b)
+		self.count_b.clicked.connect(self.count_tb)
+		self.buttons_layout.addWidget(self.count_b)
+		self.count_b.setDisabled(True)
 
 		# # # SPACE
 		# self.labl = QLabel()
 		# self.labl.setText(version)
 		# self.labl.setAlignment(Qt.AlignCenter)
 		# self.labl.setFixedSize(50, 10)
-		# self.extra_layout.addWidget(self.labl)
+		# self.buttons_layout.addWidget(self.labl)
 
 		# # EXIT SCRIPT
 		# self.qbtn_exit = QPushButton('Konec', self)
 		# self.qbtn_exit.clicked.connect(QCoreApplication.instance().quit)
-		# self.extra_layout.addWidget(self.qbtn_exit)
+		# self.buttons_layout.addWidget(self.qbtn_exit)
 		# # # PRINT SCRIPT
-		self.qbtn_print = QPushButton('Print', self)
-		self.qbtn_print.clicked.connect(self.table_print)
-		self.extra_layout.addWidget(self.qbtn_print)
+		self.print_b = QPushButton('Print', self)
+		self.print_b.clicked.connect(self.table_print)
+		self.print_b.setDisabled(True)
+		self.buttons_layout.addWidget(self.print_b)
 
 	def compres_pdf(self):
 		print ('PDF compress WIP')
@@ -737,7 +836,7 @@ class Window(QMainWindow):
 		debugstring, outputfiles = compres_this_file(cesta_souboru)
 		files, d_info = basic_parse(outputfiles)
 		rows = files
-		Window.table_reload(self, rows)
+		Window.table_reload(self, rows,0)
 		# print (debugstring)
 		self.update_Debug_list(debugstring)
 
@@ -756,7 +855,7 @@ class Window(QMainWindow):
 		debugstring, outputfiles = raster_this_file(cesta_souboru)
 		files, d_info = basic_parse(outputfiles)
 		rows = files
-		Window.table_reload(self, rows)
+		Window.table_reload(self, rows,0)
 		self.update_Debug_list(str(debugstring))
 
 	def extract_pdf(self):
@@ -771,15 +870,17 @@ class Window(QMainWindow):
 			cesta_souboru=index.sibling(items.row(),8).data()
 			outputfiles.append(cesta_souboru)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		outputfiles = extractfiles(cesta_souboru)
-		print (outputfiles)
+		try:
+			outputfiles = extractfiles(cesta_souboru)
+		except Exception as e:
+			QMessageBox.information(self, 'Error', 'Importing error', QMessageBox.Ok)
+			return
 		files, d_info = basic_parse_image(outputfiles)
 		rows = files
-		Window.table_reload(self, rows)
+		Window.table_reload(self, rows,0)
 		self.update_Debug_list(str(outputfiles))
 
-
-	def count_table(self):
+	def count_tb(self):
 		print ('PDF counting')
 		soucet = []
 		stranky = []
@@ -793,7 +894,7 @@ class Window(QMainWindow):
 			# outputfiles.append(cesta_souboru)
 			# print ('toto je row:' + str(row))
 			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		celkem = (str(len(soucet)) + '  PDF files, number of pages ' + str(sum(stranky)))
+		celkem = (str(len(soucet)) + '  PDF files, ' + str(sum(stranky)) + ' pages')
 		self.update_Debug_list(celkem)
 
 	def split_pdf(self):
@@ -813,7 +914,7 @@ class Window(QMainWindow):
 				files, d_info = basic_parse(split_pdf)
 				self.update_Debug_list(split_pdf)
 				rows = files
-				Window.table_reload(self, rows)
+				Window.table_reload(self, rows,0)
 				# self.table.item((len(rows)-1), 1).setForeground(green_)
 				# self.insert_icon(QStyle.SP_DialogOpenButton, 0, (len(rows)-1))
 
@@ -835,7 +936,7 @@ class Window(QMainWindow):
 			merged_pdf_list.append(merged_pdf)
 			files, d_info = basic_parse(merged_pdf_list)
 			rows = files
-			Window.table_reload(self, rows)
+			Window.table_reload(self, rows,0)
 			# self.table.item((len(rows)-1), 1).setForeground(green_)
 			# self.insert_icon(QStyle.SP_DialogOpenButton, 0, (len(rows)-1))
 
@@ -849,57 +950,72 @@ class Window(QMainWindow):
 		if self.table.currentItem() == None:
 			QMessageBox.information(self, 'Error', 'Choose files to convert', QMessageBox.Ok)
 			return
+		indexes = self.table.selectionModel().selectedRows()
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
-			cesta_souboru=index.sibling(items.row(),8).data()
-			outputfiles.append(cesta_souboru)
-			 # self.debuglist.setText(str(outputfiles))
-			for items in outputfiles:
-				nc = count_page_types(items)
-				if not nc:
-					print ('gray')
-					self.table.item(row, 7).setText('BLACK')
-					self.table.item(row, 7).setForeground(black_)
-					self.debuglist.setText('Document is in grayscale')
-					self.table.item(row, 7).setFont(font)
-					self.table.clearSelection()
-				else:
-					self.table.item(row, 7).setText('CMYK')
-					self.table.item(row, 7).setForeground(green_)
-					self.table.item(row, 7).setFont(font)
-					self.update_Debug_list('Color pages: ' +  ', '.join(map(str, nc)))
-					self.table.clearSelection()
+			druh=index.sibling(items.row(),3).data()
+		print (druh)
+		# if self.table.currentItem() == None:
+		# 	QMessageBox.information(self, 'Error', 'Choose files to convert', QMessageBox.Ok)
+		# 	return
+		if druh == 'pdf':
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				row = items.row()
+				index=(self.table.selectionModel().currentIndex())
+				cesta_souboru=index.sibling(items.row(),8).data()
+				outputfiles.append(cesta_souboru)
+				 # self.debuglist.setText(str(outputfiles))
+				for items in outputfiles:
+					nc = count_page_types(items)
+					if not nc:
+						print ('gray')
+						self.table.item(row, 7).setText('BLACK')
+						self.table.item(row, 7).setForeground(black_)
+						self.debuglist.setText('Document is in grayscale')
+						self.table.item(row, 7).setFont(font)
+						self.table.clearSelection()
+					else:
+						self.table.item(row, 7).setText('CMYK')
+						self.table.item(row, 7).setForeground(green_)
+						self.table.item(row, 7).setFont(font)
+						self.update_Debug_list('Color pages: ' +  ', '.join(map(str, nc)))
+						self.table.clearSelection()
+		else:
+			QMessageBox.information(self, 'Error', 'Not supported', QMessageBox.Ok)
+			return			
 
-	def createTop_layout(self):
-		self.top_layout = QHBoxLayout()
-		json_pref = load_preferences()
+	def createPrinter_layout(self):
+		self.printer_layout = QHBoxLayout()
+		# load setting
+		gb_printers_visible_state = 0
 		last_printer = (json_pref[0][1])
+		gb_printers_visible_state = (json_pref[0][3]) 
 		# PRINTERS GROUPBOX
-		groupbox_printers = QGroupBox("Printes")
+		self.gb_printers = QGroupBox("Printes")
 		vbox = QVBoxLayout()
-		groupbox_printers.setLayout(vbox)
-		groupbox_printers.setFixedHeight(150)
-		groupbox_printers.setFixedWidth(250)
-
-		self.printer_table = QListWidget()
-		self.printer_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-		# self.printer_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-		# self.printer_table.insertItem(0, "Red")
-		self.printer_table.clear()
-		self.printer_table.setFixedHeight(106)
-		self.printer_table.doubleClicked.connect(self.open_printer_table)
-		self.printer_table.addItems(printers)
-		self.printer_table.setCurrentRow(last_printer);
-		vbox.addWidget(self.printer_table)
-		self.top_layout.addWidget(groupbox_printers)
-		self.top_layout.addStretch()
+		self.gb_printers.setLayout(vbox)
+		self.gb_printers.setFixedHeight(150)
+		self.gb_printers.setFixedWidth(250)
+		self.gb_printers.setVisible(not gb_printers_visible_state)
+		self.printer_tb = QListWidget()
+		self.printer_tb.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+		self.printer_tb.clear()
+		self.printer_tb.setFixedHeight(106)
+		self.printer_tb.doubleClicked.connect(self.open_printer_tb)
+		self.printer_tb.addItems(printers)
+		self.printer_tb.setCurrentRow(last_printer);
+		vbox.addWidget(self.printer_tb)
+		self.printer_layout.addWidget(self.gb_printers)
+		self.printer_layout.addStretch()
 
 		# SETTINGS GROUPBOX
-		groupbox_setting = QGroupBox("Printer setting")
+		self.gb_setting = QGroupBox("Printer setting")
 		vbox2 = QGridLayout()
-		groupbox_setting.setFixedHeight(150)
-		groupbox_setting.setFixedWidth(350)
+		self.gb_setting.setFixedHeight(150)
+		self.gb_setting.setFixedWidth(350)
+		self.gb_setting.setVisible(not gb_printers_visible_state)
+		self.gb_setting.setDisabled(True)
 
 		# # POČET KOPII
 		self.copies = QSpinBox()
@@ -907,16 +1023,12 @@ class Window(QMainWindow):
 		self.copies.setMinimum(1)
 		self.copies.setMaximum(999)
 		self.copies.setFixedSize(60, 25)
-		groupbox_setting.setLayout(vbox2)
+		self.gb_setting.setLayout(vbox2)
 		# PAPERFORMAT
 		self.papersize = QComboBox(self)
 		self.papersize.clear()
 		for items in papers:
 			self.papersize.addItem(items)
-		# self.papersize.addItem("A3")
-		# self.papersize.addItem("A5")
-		# self.papersize.addItem("450x320")
-		# self.papersize.addItem("480x325")
 		self.papersize.activated[str].connect(self.papersize_box_change) 
 		# # SIDES
 		self.lp_two_sided = QCheckBox('two-sided', self)
@@ -956,9 +1068,8 @@ class Window(QMainWindow):
 		vbox2.addWidget(self.btn_orientation, 1,1)
 		vbox2.addWidget(self.btn_collate, 1,2)
 
-		self.top_layout.addWidget(groupbox_setting)
-		self.top_layout.addStretch()
-
+		self.printer_layout.addWidget(self.gb_setting)
+		self.printer_layout.addStretch()
 
 	def papersize_box_change(self, text):
 			self.update_Debug_list(text)
@@ -969,17 +1080,14 @@ class Window(QMainWindow):
 			self.btn_orientation.setVisible(True)
 		else:
 			self.btn_orientation.setVisible(False)
-	#TODO def icon_change(self, on_, off_):
 
 	def icon_change(self, _on, _off, name):
 		print (name.isChecked())
 		if name.isChecked():
-			# print ('long')
 			self._icon = QIcon()
 			self._icon.addPixmap(QPixmap(_on))
 			name.setIcon(self._icon)
 		else:
-			# print ('short')
 			self._icon = QIcon()
 			self._icon.addPixmap(QPixmap(_off))
 			name.setIcon(self._icon)
@@ -991,7 +1099,7 @@ class Window(QMainWindow):
 		if self.table.currentItem() == None:
 			QMessageBox.information(self, 'Error', 'Choose file to print', QMessageBox.Ok)
 			return
-		if self.printer_table.currentItem() == None:
+		if self.printer_tb.currentItem() == None:
 			QMessageBox.information(self, 'Error', 'Choose printer!', QMessageBox.Ok)
 			return
 		for items in sorted(self.table.selectionModel().selectedRows()):
@@ -1003,7 +1111,7 @@ class Window(QMainWindow):
 			# self.insert_icon(QStyle.SP_DialogApplyButton, 0, row)
 			# self.setColortoRow(self.table, row, green_, black_)
 			# WOP
-			tiskarna_ok = self.printer_table.currentItem()
+			tiskarna_ok = self.printer_tb.currentItem()
 			tiskarna_ok = (tiskarna_ok.text())
 			# print ('INFOJE:' + str(self.lp_two_sided.isChecked()))
 			# print (debugstring)
@@ -1012,7 +1120,7 @@ class Window(QMainWindow):
 		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked())
 		self.update_Debug_list(debugstring)
 
-	def open_table(self):
+	def open_tb(self):
 		green_ = (QColor(80, 80, 80))
 		black_ = (QBrush(QColor(0, 0, 0)))
 		outputfiles = []
@@ -1026,8 +1134,8 @@ class Window(QMainWindow):
 		openfile(outputfiles)
 		self.update_Debug_list(str(cesta_souboru))
 
-	def open_printer_table(self):
-		for items in sorted(self.printer_table.selectionModel().selectedRows()):
+	def open_printer_tb(self):
+		for items in sorted(self.printer_tb.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			tiskarna = (printers[row])
@@ -1056,9 +1164,11 @@ class Window(QMainWindow):
 			print (files)
 			rows = files
 			print (rows)
-			self.table_reload(rows)
+			self.table_reload(rows,0)
 
 if __name__ == '__main__':
+	# load config firts
+	json_pref = load_preferences()
 	app = QApplication(sys.argv)
 	path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')
 	app.setWindowIcon(QIcon(path))

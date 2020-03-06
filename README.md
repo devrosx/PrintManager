@@ -44,6 +44,9 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.21
+- New Drag and drop indicators
+- New function to extract individual images from PDF file
+- Adeded simple resize function for images
 - Contextual menu fix
 - Added support for winmail dat encoding (tnefparse)
 - Added pdfextract module for extracting images from PDF (untested, more https://stackoverflow.com/questions/2693820/extract-images-from-pdf-without-resampling-in-python)

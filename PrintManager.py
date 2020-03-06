@@ -123,6 +123,14 @@ def resizeimage(original_file, percent):
 	# outputfiles.append(outputfile)
 	return command, outputfile
 
+def previewimage(original_file):
+	# outputfiles = []
+	command = ["qlmanage", "-p", original_file]
+	subprocess.run(command)
+	# outputfiles.append(outputfile)
+	return command
+
+
 def compres_this_file(original_file):
 	outputfiles = []
 	head, ext = os.path.splitext(original_file)
@@ -697,6 +705,7 @@ class Window(QMainWindow):
 					openAction = menu.addAction('Open')
 					revealAction = menu.addAction('Reveal in finder')
 					printAction = menu.addAction('Print')
+					previewAction = menu.addAction('Preview')
 					action = menu.exec_(self.mapToGlobal(pos))
 					if action == openAction:
 						index=(self.table.selectionModel().currentIndex())
@@ -713,6 +722,8 @@ class Window(QMainWindow):
 						row = self.table.currentRow()
 						cesta_souboru=index.sibling(row,8).data()
 						self.table_print()
+					if action == previewAction:
+						self.preview()
 
 	def togglePrintWidget(self):
 		print (self.gb_printers.isHidden())
@@ -751,10 +762,10 @@ class Window(QMainWindow):
 
 	def createButtons_layout(self):
 		self.buttons_layout = QHBoxLayout()
-		# # OPEN FILES
-		# self.open_b = QPushButton('Open', self)
-		# self.open_b.clicked.connect(self.openFileNamesDialog)
-		# self.buttons_layout.addWidget(self.open_b)
+		# OPEN FILES
+		# self.preview_b = QPushButton('Preview', self)
+		# self.preview_b.clicked.connect(self.preview)
+		# self.buttons_layout.addWidget(self.preview_b)
 		# LOAD COLORS INFO
 		self.color_b = QPushButton('Colors', self)
 		self.color_b.clicked.connect(self.loadcolors)
@@ -1120,6 +1131,20 @@ class Window(QMainWindow):
 		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked())
 		self.update_Debug_list(debugstring)
 
+
+	def preview(self):
+		outputfiles = []
+		self.table.setCellWidget(0, 0, ImgWidget1(self))
+		try:
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				row = items.row()
+				index=(self.table.selectionModel().currentIndex())
+				cesta_souboru=index.sibling(items.row(),8).data()
+				outputfiles.append(cesta_souboru)
+			previewimage(cesta_souboru)
+		except Exception as e:
+			return
+
 	def open_tb(self):
 		green_ = (QColor(80, 80, 80))
 		black_ = (QBrush(QColor(0, 0, 0)))
@@ -1149,6 +1174,8 @@ class Window(QMainWindow):
 				print ('row is' + str(row))
 				print (str(argy))
 				self.table.removeRow(row)
+		if e.key() == Qt.Key_F1:
+			self.preview()
 
 	def deleteClicked(self):
 		row = self.table.currentRow()

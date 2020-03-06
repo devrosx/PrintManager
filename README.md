@@ -44,6 +44,8 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.21
+- Debug box (Command+D) and print setting box (Command+P) can be set hiden now...
+- Added preview fucntion (F1 key) and contextual menu
 - New Drag and drop indicators
 - New function to extract individual images from PDF file
 - Adeded simple resize function for images

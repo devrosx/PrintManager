@@ -463,7 +463,7 @@ class Window(QMainWindow):
 			self.debuglist.setText('loading files, please wait....')
 
 	def dropEvent(self, event):
-		items = ["to PDF", "SmartCut", "OCR", "Resize"]
+		items = ["to PDF", "SmartCut", "OCR", "Resize", "Parse"]
 		# print ('Drop event')
 		for url in event.mimeData().urls():
 			soubor = (url.toLocalFile())
@@ -537,6 +537,13 @@ class Window(QMainWindow):
 					rows = files
 					Window.table_reload(self, rows)
 					self.update_Debug_list(str(smartcut_files))
+				if text == 'Parse':
+					parse_files = []
+					print (type(soubor))
+					files, d_info = basic_parse_image(soubor)
+					rows = files
+					Window.table_reload(self, rows)
+					self.update_Debug_list('imported:' + str(soubor))
 				if text == 'Resize':
 					resize_files = []
 					percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
@@ -1169,7 +1176,7 @@ class Window(QMainWindow):
 		if e.key() == Qt.Key_Delete:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
-				print ('row is' + str(row))
+				# print ('row is' + str(row))
 				print (str(argy))
 				self.table.removeRow(row)
 		if e.key() == Qt.Key_F1:

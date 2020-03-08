@@ -36,7 +36,7 @@ price = []
 colors = []
 filepath = []
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'original']
-username = os.getlogin()
+username = os.path.expanduser("~")
 
 # PREFERENCES BASIC
 def save_preferences(*settings):
@@ -155,7 +155,7 @@ def raster_this_file(original_file):
 	outputfiles.append(outputfile)
 	return command, outputfiles
 
-def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate):
+def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate, colors):
 	# https://www.cups.org/doc/options.html
 	# COLATE
 	if collate == 1:
@@ -164,6 +164,15 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 	else: 
 		print ('collate OFF')
 		_collate = ('-o collate=false')
+	# COLORS 
+	if colors == 'Auto':
+		_colors =  ('-oColorModel=')
+	if colors == 'Color':
+		_colors =  ('-OColorMode=Color')
+	if colors == 'Gray':
+		_colors =  ('-OColorMode=GrayScale')
+		# _colors =  ('-oColorModel=KGray')
+
 	# PAPER SHRINK
 	if fit_to_size == 1:
 		# print ('fit_to_size ON')
@@ -198,12 +207,12 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 	# if isinstance (print_file, list):
 	for printitems in print_file:
 		# subprocess.run("lp", "-d", printer + str(print_file[0]) + lp_two_sided_ + p_size_ + fit_to_size + _collate + "-n=" + copies)
-		command = ["lp", "-d", printer, printitems, "-n" + copies, lp_two_sided_, p_size_, fit_to_size, _collate]
+		command = ["lp", printitems, "-d", printer, "-n" + copies, lp_two_sided_, p_size_, fit_to_size, _collate]
 		subprocess.run(command)
 		print (username)
 		# window.update_Debug_list(str(debugstring))
 	try:
-		subprocess.run(["open", "/Users/" + username + "/Library/Printers/" + str(printer) + ".app"])
+		subprocess.run(["open", username + "/Library/Printers/" + str(printer) + ".app"])
 	except:
 		print ('printer not found')
 	return command
@@ -1075,11 +1084,26 @@ class Window(QMainWindow):
 		self._icon_collate = QIcon()
 		self._icon_collate.addPixmap(QPixmap('icons/collate_on.png'))
 		self.btn_collate.setIcon(self._icon_collate)
-
 		self.btn_collate.setCheckable(True)
 		self.btn_collate.setIconSize(QSize(23,38))
 		self.btn_collate.setChecked(True)
 		self.btn_collate.toggled.connect(lambda: self.icon_change('icons/collate_on.png','icons/collate_off.png',self.btn_collate))
+
+		# COLORS
+		self.btn_colors = QComboBox(self)
+		self.btn_colors.addItem('Auto')
+		self.btn_colors.addItem('Color')
+		self.btn_colors.addItem('Gray')
+		self.btn_colors.activated[str].connect(self.color_box_change)
+		# self.btn_colors= QPushButton()
+		# self._icon_colors = QIcon()
+		# self._icon_colors.addPixmap(QPixmap('icons/colors_auto.png'))
+		# self.btn_colors.setIcon(self._icon_colors)
+		# self.btn_colors.setCheckable(True)
+		# self.btn_colors.setIconSize(QSize(23,38))
+		# self.btn_colors.setChecked(True)
+		# self.btn_colors.toggled.connect(lambda: self.icon_change('icons/colors_on.png','icons/colors_off.png',self.btn_colors))
+
 
 		vbox2.addWidget(self.copies, 0,0)
 		vbox2.addWidget(self.papersize, 0,1)
@@ -1087,11 +1111,17 @@ class Window(QMainWindow):
 		vbox2.addWidget(self.lp_two_sided, 1,0)
 		vbox2.addWidget(self.btn_orientation, 1,1)
 		vbox2.addWidget(self.btn_collate, 1,2)
+		vbox2.addWidget(self.btn_colors, 2,0)
+
 
 		self.printer_layout.addWidget(self.gb_setting)
 		self.printer_layout.addStretch()
 
 	def papersize_box_change(self, text):
+			self.update_Debug_list(text)
+			return text
+
+	def color_box_change(self, text):
 			self.update_Debug_list(text)
 			return text
 
@@ -1136,7 +1166,7 @@ class Window(QMainWindow):
 			# print (debugstring)
 			# self.update_Debug_list(str(debugstring))
 		# print (outputfiles)
-		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked())
+		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked(), self.btn_colors.currentText())
 		self.update_Debug_list(debugstring)
 
 	def preview(self):

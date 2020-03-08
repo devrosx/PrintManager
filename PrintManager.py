@@ -322,19 +322,11 @@ def price_check(pages, velikost):
 		pricesum = '/'
 	return pricesum
 
-class ImgWidget1(QLabel):
-	def __init__(self, parent=None):
-		super(ImgWidget1, self).__init__(parent)
-		imagePath = "icons/pdf.png"
-		pic = QPixmap(imagePath)
-		self.setPixmap(pic)
-
 class Customdialog(QDialog):
 	def __init__(self):
 		super(RegisterPage, self).__init__()
 		loadUi('RegisterPage.ui', self)
 
-# GUISTUFF
 def darkmode():
 	app.setStyle("Fusion")
 	app.setStyleSheet('QPushButton:disabled {color: #696969;background-color:#272727;}')
@@ -363,6 +355,15 @@ class TableWidgetDragRows(QTableWidget):
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSelectionBehavior(QAbstractItemView.SelectRows)
 		self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+# for icons
+class IconDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super(IconDelegate, self).initStyleOption(option, index)
+        if option.features & QStyleOptionViewItem.HasDecoration:
+            s = option.decorationSize
+            # print (option.rect.width())
+            s.setWidth(option.rect.width())
+            option.decorationSize = s
 
 class InputDialog(QDialog):
 	def __init__(self, parent=None):
@@ -422,12 +423,8 @@ class Window(QMainWindow):
 		self.createPrinter_layout()
 		self.createDebug_layout()
 		self.createButtons_layout()
-		# load files to tab...
-		# rows = basic_parse(argy)
 		rows = []
-		# print (rows)
-		# print (type(rows))
-		self.table_reload(rows,1)
+		self.table_reload(rows)
 		self.mainLayout.addLayout(self.printer_layout, 0,0)
 		self.mainLayout.addLayout(self.debug_layout, 2, 0)
 		self.mainLayout.addLayout(self.buttons_layout, 3, 0)
@@ -483,7 +480,7 @@ class Window(QMainWindow):
 					break
 				self.debuglist.setText(d_info)
 				rows = files
-				Window.table_reload(self, rows,0)
+				Window.table_reload(self, rows)
 				break
 			if extension == 'dat':
 				for url in event.mimeData().urls():
@@ -538,7 +535,7 @@ class Window(QMainWindow):
 					smartcut_files = [j for i in smartcut_files for j in i]
 					files, d_info = basic_parse_image(smartcut_files)
 					rows = files
-					Window.table_reload(self, rows,0)
+					Window.table_reload(self, rows)
 					self.update_Debug_list(str(smartcut_files))
 				if text == 'Resize':
 					resize_files = []
@@ -548,7 +545,7 @@ class Window(QMainWindow):
 						resize_files.append(outputfiles)
 					files, d_info = basic_parse_image(resize_files)
 					rows = files
-					Window.table_reload(self, rows,0)
+					Window.table_reload(self, rows)
 					self.update_Debug_list(str(resize_files))
 				break
 			else:
@@ -590,61 +587,48 @@ class Window(QMainWindow):
 			# import converted
 		files, d_info = basic_parse(converts)
 		rows = files
-		# print (rows)
-		self.table.setCellWidget(0, 0, ImgWidget1(self))
-		# if_fixed = len(inputfile)+1
-		# HACK FOR NEW FILES LIST ICONS
-		# if_fixed = len(inputfile)+1
-		# # print ('if:' + str(len(inputfile)))
-		# # print ('rows:' + str(len(rows)))
-		# for i in range(if_fixed,len(rows)-if_fixed,-1):
-		# 	self.insert_icon(QStyle.SP_FileIcon, 0, i)
-		# Window.table_reload(self, rows)
-		# for i in range(if_fixed,len(rows)-if_fixed,-1):
-		# 	print (i)
-		# 	self.icon_row(QStyle.SP_FileIcon, 0, i)
-		Window.table_reload(self, rows,0)
+		Window.table_reload(self, rows)
 
-	def icon_row(self, nameicon, colum_number, row):
-		self.table.setCellWidget(row, colum_number, ImgWidget1(self))
-
-# FIX THIS
-	def insert_icon(self, nameicon, colum_number, row):
-			print ('eeeekl')
-			desktop_icon = QIcon(QApplication.style().standardIcon(nameicon))
-			# print (rows)
-
-	def table_reload(self, inputfile,boot):
+	def table_reload(self, inputfile):
 		# if debug == 1:
 		# print ('Tabulka=' + str(inputfile))
 		# print (len(inputfile))
 		# self.table.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.table = TableWidgetDragRows()
-		if boot == 1:
-			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #191919;")
-		headers = ["Info", "File", "Size", "Kind", "Filesize", "Pages", "Price", "Colors", 'Filepath']
+		headers = ["", "File", "Size", "Kind", "Filesize", "Pages", "Price", "Colors", 'Filepath']
 		self.table.setColumnCount(len(headers))
 		self.table.setHorizontalHeaderLabels(headers)
+		# better is preview (printig etc)
+		# self.table.doubleClicked.connect(self.preview)
 		self.table.doubleClicked.connect(self.open_tb)
-		self.table.setColumnWidth(0, 25)
+		self.table.verticalHeader().setDefaultSectionSize(35)
+		self.table.setColumnWidth(0, 35)
 		self.table.setColumnWidth(1, 230)
-		self.table.setColumnWidth(3, 35)
-		self.table.setColumnWidth(4, 70)
-		self.table.setColumnWidth(5, 35)
-		self.table.setColumnWidth(6, 55)
-		self.table.setColumnWidth(7, 64)
-		# self.table.resizeColumnsToContents()
+		self.table.setColumnWidth(3, 34)
+		self.table.setColumnWidth(4, 67)
+		self.table.setColumnWidth(5, 34)
+		self.table.setColumnWidth(6, 50)
+		self.table.setColumnWidth(7, 52)
 		self.table.verticalHeader().setVisible(False)
 		self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 		# icon wip
-		pic = QPixmap("icons/pdf.png")
-		self.label = QLabel()
-		self.label.setPixmap(pic)
+		self.table.setIconSize(QSize(32, 32))
+		delegate = IconDelegate(self.table) 
+		self.table.setItemDelegate(delegate)
+		pdf_file = "icons/pdf.png"
+		pdf_item = QTableWidgetItem()
+		pdf_icon = QIcon()
+		pdf_icon.addPixmap(QPixmap(pdf_file))
+		# pixmap = pdf_icon.pixmap(QSize(50, 50))
+		pdf_item.setIcon(pdf_icon)
+		jpg_file = "icons/jpg.png"
+		jpg_item = QTableWidgetItem()
+		jpg_icon = QIcon()
+		jpg_icon.addPixmap(QPixmap(jpg_file))
+		jpg_item.setIcon(jpg_icon)
 
 		self.table.setRowCount(len(inputfile))
 		for i, (Info, File, Size, Kind, Filesize, Pages, Price, Colors, Filepath) in enumerate(inputfile):
-			# print (i)
-			# self.table.setCellWidget(i, 0, self.label)
 			self.table.setItem(i, 1, QTableWidgetItem(File))
 			self.table.setItem(i, 2, QTableWidgetItem(Size))
 			self.table.setItem(i, 3, QTableWidgetItem(Kind))
@@ -654,7 +638,28 @@ class Window(QMainWindow):
 			self.table.setItem(i, 7, QTableWidgetItem(Colors))
 			self.table.setItem(i, 8, QTableWidgetItem(Filepath))
 		self.table.setColumnHidden(8, True)
-		# BUTTONS disable enable
+		# print ('rowcount je:' + str(self.table.rowCount()))
+		if self.table.rowCount() == 0:
+			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #191919;")
+		# icons 
+		for row in range(0,self.table.rowCount()):
+			item = self.table.item(row, 3)
+			print (item.text())
+			if item.text() == 'pdf':
+				self.table.item(row, 2).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 3).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 4).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 5).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 6).setTextAlignment(Qt.AlignCenter)
+				self.table.setItem(row,0, QTableWidgetItem(pdf_item))
+			else:
+				self.table.item(row, 2).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 3).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 4).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 5).setTextAlignment(Qt.AlignCenter)
+				self.table.item(row, 6).setTextAlignment(Qt.AlignCenter)
+				self.table.setItem(row,0, QTableWidgetItem(jpg_item))
+
 		self.table.selectionModel().selectionChanged.connect(
 			self.on_selection_changed
 		)
@@ -842,12 +847,11 @@ class Window(QMainWindow):
 			# print ('toto je row:' + str(row))
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 			# self.table.item(0, row).setIcon(desktop_icon)
-			# self.insert_icon(QStyle.SP_DialogResetButton, 0, row)
 		# print (outputfiles)
 		debugstring, outputfiles = compres_this_file(cesta_souboru)
 		files, d_info = basic_parse(outputfiles)
 		rows = files
-		Window.table_reload(self, rows,0)
+		Window.table_reload(self, rows)
 		# print (debugstring)
 		self.update_Debug_list(debugstring)
 
@@ -866,7 +870,7 @@ class Window(QMainWindow):
 		debugstring, outputfiles = raster_this_file(cesta_souboru)
 		files, d_info = basic_parse(outputfiles)
 		rows = files
-		Window.table_reload(self, rows,0)
+		Window.table_reload(self, rows)
 		self.update_Debug_list(str(debugstring))
 
 	def extract_pdf(self):
@@ -888,7 +892,7 @@ class Window(QMainWindow):
 			return
 		files, d_info = basic_parse_image(outputfiles)
 		rows = files
-		Window.table_reload(self, rows,0)
+		Window.table_reload(self, rows)
 		self.update_Debug_list(str(outputfiles))
 
 	def count_tb(self):
@@ -925,9 +929,8 @@ class Window(QMainWindow):
 				files, d_info = basic_parse(split_pdf)
 				self.update_Debug_list(split_pdf)
 				rows = files
-				Window.table_reload(self, rows,0)
+				Window.table_reload(self, rows)
 				# self.table.item((len(rows)-1), 1).setForeground(green_)
-				# self.insert_icon(QStyle.SP_DialogOpenButton, 0, (len(rows)-1))
 
 	def combine_pdf(self):
 		green_ = (QColor(10, 200, 50))
@@ -947,9 +950,8 @@ class Window(QMainWindow):
 			merged_pdf_list.append(merged_pdf)
 			files, d_info = basic_parse(merged_pdf_list)
 			rows = files
-			Window.table_reload(self, rows,0)
+			Window.table_reload(self, rows)
 			# self.table.item((len(rows)-1), 1).setForeground(green_)
-			# self.insert_icon(QStyle.SP_DialogOpenButton, 0, (len(rows)-1))
 
 	def loadcolors(self):
 		green_ = (QColor(10, 200, 50))
@@ -1119,7 +1121,6 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			cesta_souboru=index.sibling(items.row(),8).data()
 			outputfiles.append(cesta_souboru)
-			# self.insert_icon(QStyle.SP_DialogApplyButton, 0, row)
 			# self.setColortoRow(self.table, row, green_, black_)
 			# WOP
 			tiskarna_ok = self.printer_tb.currentItem()
@@ -1131,10 +1132,8 @@ class Window(QMainWindow):
 		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked())
 		self.update_Debug_list(debugstring)
 
-
 	def preview(self):
 		outputfiles = []
-		self.table.setCellWidget(0, 0, ImgWidget1(self))
 		try:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
@@ -1150,7 +1149,6 @@ class Window(QMainWindow):
 		black_ = (QBrush(QColor(0, 0, 0)))
 		outputfiles = []
 		# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_FileIcon))
-		self.table.setCellWidget(0, 0, ImgWidget1(self))
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
@@ -1191,7 +1189,7 @@ class Window(QMainWindow):
 			print (files)
 			rows = files
 			print (rows)
-			self.table_reload(rows,0)
+			self.table_reload(rows)
 
 if __name__ == '__main__':
 	# load config firts

@@ -32,7 +32,7 @@ I'm a newbie with python and PyQt5 :)
 - Interface polishing
 - Preferences panel
 - CloudConvert api support (as alternative to OpenOffice)
-- support fileformat icons
+~~- support fileformat icons~~
 - better file and drag and drop highligting
 - app bundle configuration
 - drag and drop on app icon
@@ -44,6 +44,7 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.21
+- Fixed icons (pdf and image files) and better text aling in table
 - Debug box (Command+D) and print setting box (Command+P) can be set hiden now...
 - Added preview fucntion (F1 key) and contextual menu
 - New Drag and drop indicators

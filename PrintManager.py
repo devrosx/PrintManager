@@ -19,7 +19,7 @@ from libs.pdfextract_module import extractfiles
 # TODO
 # autodetect portrait, landscape
 # ctrl-
-version = '0.22'
+version = '0.23'
 import time
 start_time = time.time()
 
@@ -38,6 +38,19 @@ filepath = []
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'original']
 username = os.path.expanduser("~")
 
+# extract printer info as list for preferences only
+def load_printers():
+	print ('load printer list')
+	output = (subprocess.check_output(["lpstat", "-a"]))
+	outputlist = (output.splitlines())
+	tolist = [] # novy list
+	for num in outputlist:  # prochazeni listem
+		first, *middle, last = num.split()
+		tiskarna = str(first.decode())
+		tolist.append(tiskarna)
+	return (tolist)
+
+
 # PREFERENCES BASIC
 def save_preferences(*settings):
 	print ('JSON save on exit')
@@ -54,11 +67,17 @@ def load_preferences():
 	try:
 		with open('config.json', encoding='utf-8') as data_file:
 			json_pref = json.loads(data_file.read())
+		if json_pref[0][6] == username:
+			print ('preferences OK - using saved printers')
+			printers = json_pref[0][7]
+		else: 
+			print ('other machine loading printers')
+			printers = load_printers()
 	except:
 		print ('json loading error')
-		json_pref = [["tiskarna", 1]]
-		print (type(json_pref))
-	return json_pref
+		printers = load_printers()
+		json_pref = [0,0,0,0,0,0]
+	return json_pref, printers
 
 def humansize(size):
 	filesize = ('%.1f' % float(size/1000000) + 'MB')
@@ -216,18 +235,6 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 	except:
 		print ('printer not found')
 	return command
-
-# extract printer info as list for preferences only
-def load_printers(): 
-	output = (subprocess.check_output(["lpstat", "-a"]))
-	outputlist = (output.splitlines())
-	tolist = [] # novy list
-	for num in outputlist:  # prochazeni listem
-		first, *middle, last = num.split()
-		tiskarna = str(first.decode())
-		tolist.append(tiskarna)
-	return (tolist)
-printers = load_printers()
 
 argy = []
 def basic_parse(inputs, *args):
@@ -453,6 +460,9 @@ class Window(QMainWindow):
 			preferences.append(self.gb_printers.isHidden())
 			preferences.append('debug_window')
 			preferences.append(self.gb_debug.isHidden())
+			preferences.append(username)
+			preferences.append(printers)
+
 
 		save_preferences(preferences)
 		close = QMessageBox()
@@ -514,7 +524,6 @@ class Window(QMainWindow):
 			# for images.... 
 			elif extension in image_ext :
 				soubor = []
-				self.debuglist.setText("File:" + extension)
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
@@ -530,7 +539,7 @@ class Window(QMainWindow):
 						ocr_output.append(ocr)
 					# print ('pocet je' + str(len(ocr_output)))
 					ocr_output =  ''.join(ocr_output)
-					self.update_Debug_list(ocr_output)
+					self.update_Debug_list(str(ocr_output))
 				if text == 'SmartCut':
 					smartcut_files = []
 					dialog = InputDialog()
@@ -757,11 +766,13 @@ class Window(QMainWindow):
 
 	def createDebug_layout(self):
 		self.debug_layout = QHBoxLayout()
-		# load setting	 
-		gb_debug_visible_state = (json_pref[0][5]) 
-		print (gb_debug_visible_state)
+		# load setting
+		try:
+			pref_debug_state = (json_pref[0][5])
+		except Exception as e:
+			pref_debug_state = 0
 		self.gb_debug = QGroupBox("Debug")
-		self.gb_debug.setVisible(not gb_debug_visible_state)
+		self.gb_debug.setVisible(not pref_debug_state)
 		self.gb_debug.setChecked(True)
 		self.gb_debug.setTitle('')
 		self.gb_debug.setFixedHeight(91)
@@ -1016,24 +1027,26 @@ class Window(QMainWindow):
 
 	def createPrinter_layout(self):
 		self.printer_layout = QHBoxLayout()
-		# load setting
-		gb_printers_visible_state = 0
-		last_printer = (json_pref[0][1])
-		gb_printers_visible_state = (json_pref[0][3]) 
+		try:
+			pref_l_printer = (json_pref[0][1])
+			pref_printers_state = (json_pref[0][3])
+		except Exception as e:
+			pref_l_printer = 0
+			pref_printers_state = 0
 		# PRINTERS GROUPBOX
-		self.gb_printers = QGroupBox("Printes")
+		self.gb_printers = QGroupBox("Printers")
 		vbox = QVBoxLayout()
 		self.gb_printers.setLayout(vbox)
 		self.gb_printers.setFixedHeight(150)
 		self.gb_printers.setFixedWidth(250)
-		self.gb_printers.setVisible(not gb_printers_visible_state)
+		self.gb_printers.setVisible(not pref_printers_state)
 		self.printer_tb = QListWidget()
 		self.printer_tb.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 		self.printer_tb.clear()
 		self.printer_tb.setFixedHeight(106)
 		self.printer_tb.doubleClicked.connect(self.open_printer_tb)
 		self.printer_tb.addItems(printers)
-		self.printer_tb.setCurrentRow(last_printer);
+		self.printer_tb.setCurrentRow(pref_l_printer);
 		vbox.addWidget(self.printer_tb)
 		self.printer_layout.addWidget(self.gb_printers)
 		self.printer_layout.addStretch()
@@ -1043,7 +1056,7 @@ class Window(QMainWindow):
 		vbox2 = QGridLayout()
 		self.gb_setting.setFixedHeight(150)
 		self.gb_setting.setFixedWidth(350)
-		self.gb_setting.setVisible(not gb_printers_visible_state)
+		self.gb_setting.setVisible(not pref_printers_state)
 		self.gb_setting.setDisabled(True)
 
 		# # POČET KOPII
@@ -1230,7 +1243,8 @@ class Window(QMainWindow):
 
 if __name__ == '__main__':
 	# load config firts
-	json_pref = load_preferences()
+	json_pref, printers = load_preferences()
+	print (printers)
 	app = QApplication(sys.argv)
 	path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')
 	app.setWindowIcon(QIcon(path))

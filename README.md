@@ -44,6 +44,7 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.21
+- Improved preferences JSON handling
 - Fixed icons (pdf and image files) and better text aling in table
 - Debug box (Command+D) and print setting box (Command+P) can be set hiden now...
 - Added preview fucntion (F1 key) and contextual menu

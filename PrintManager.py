@@ -4,10 +4,10 @@ import os
 import subprocess
 import json
 from PyPDF2 import PdfFileReader, PdfFileMerger, PdfFileWriter
-# from PyQt5.QtWidgets import QHBoxLayout,QTableWidget,QWidget,QApplication,QGridLayout,QGroupBox,QVBoxLayout,QListWidget,QSpinBox,QComboBox,QCheckBox,QPushButton, QTextEdit, QAbstractItemView, QTableWidgetItem
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor
 from PyQt5.QtCore import *
+
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
 from tnefparse.mapi import TNEFMAPI_Attribute
 
@@ -16,10 +16,7 @@ from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
 
-# TODO
-# autodetect portrait, landscape
-# ctrl-
-version = '0.23'
+version = '0.24'
 import time
 start_time = time.time()
 
@@ -40,7 +37,7 @@ username = os.path.expanduser("~")
 
 # extract printer info as list for preferences only
 def load_printers():
-	print ('load printer list')
+	# print ('load printer list')
 	output = (subprocess.check_output(["lpstat", "-a"]))
 	outputlist = (output.splitlines())
 	tolist = [] # novy list
@@ -50,8 +47,26 @@ def load_printers():
 		tolist.append(tiskarna)
 	return (tolist)
 
-
 # PREFERENCES BASIC
+def load_preferences():
+	print ('JSON load on boot')
+	try:
+		with open('config.json', encoding='utf-8') as data_file:
+			json_pref = json.loads(data_file.read())
+		if json_pref[0][6] == username:
+			print ('preferences OK - using saved printers')
+			printers = json_pref[0][7]
+			default_pref = [json_pref[0][8],json_pref[0][9]]
+		else: 
+			print ('other machine loading printers')
+			printers = load_printers()
+	except:
+		print ('json loading error')
+		printers = load_printers()
+		json_pref = [0,0,0,0,0,0]
+		default_pref = ['eng',300]
+	return json_pref, printers, default_pref
+
 def save_preferences(*settings):
 	print ('JSON save on exit')
 	preferences = []
@@ -62,22 +77,6 @@ def save_preferences(*settings):
 	startup = 1
 	return startup
 
-def load_preferences():
-	print ('JSON load on boot')
-	try:
-		with open('config.json', encoding='utf-8') as data_file:
-			json_pref = json.loads(data_file.read())
-		if json_pref[0][6] == username:
-			print ('preferences OK - using saved printers')
-			printers = json_pref[0][7]
-		else: 
-			print ('other machine loading printers')
-			printers = load_printers()
-	except:
-		print ('json loading error')
-		printers = load_printers()
-		json_pref = [0,0,0,0,0,0]
-	return json_pref, printers
 
 def humansize(size):
 	filesize = ('%.1f' % float(size/1000000) + 'MB')
@@ -149,7 +148,6 @@ def previewimage(original_file):
 	# outputfiles.append(outputfile)
 	return command
 
-
 def compres_this_file(original_file):
 	outputfiles = []
 	head, ext = os.path.splitext(original_file)
@@ -159,12 +157,12 @@ def compres_this_file(original_file):
 	outputfiles.append(outputfile)
 	return command, outputfiles
 
-def raster_this_file(original_file):
+def raster_this_file(original_file,resolution):
 	outputfiles = []
 	head, ext = os.path.splitext(original_file)
 	outputfile = head + '_raster' + ext
 	command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-sColorConversionStrategy=/LeaveColorUnchanged", "-dAutoFilterColorImages=true", "-dAutoFilterGrayImages=true", "-dDownsampleMonoImages=true", "-dDownsampleGrayImages=true", "-dDownsampleColorImages=true", "-sOutputFile="+outputfile, original_file]
-	command = ["convert", "-density",  "300", "+antialias", str(original_file), str(outputfile)]
+	command = ["convert", "-density", str(resolution), "+antialias", str(original_file), str(outputfile)]
 	# command = ["pdf2ps", original_file]
 	# cmd = "pdf2ps " +  str(original_file) + " - | ps2pdf - " + str(outputfile)
 	# ps = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
@@ -226,7 +224,7 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 	# if isinstance (print_file, list):
 	for printitems in print_file:
 		# subprocess.run("lp", "-d", printer + str(print_file[0]) + lp_two_sided_ + p_size_ + fit_to_size + _collate + "-n=" + copies)
-		command = ["lp", printitems, "-d", printer, "-n" + copies, lp_two_sided_, p_size_, fit_to_size, _collate]
+		command = ["lp", "-d", printer, printitems,  "-n" + copies, lp_two_sided_, p_size_, fit_to_size, _collate]
 		subprocess.run(command)
 		print (username)
 		# window.update_Debug_list(str(debugstring))
@@ -346,7 +344,6 @@ class Customdialog(QDialog):
 def darkmode():
 	app.setStyle("Fusion")
 	app.setStyleSheet('QPushButton:disabled {color: #696969;background-color:#272727;}')
-	# app.setStyleSheet('QGroupBox:disabled {;color:#272727;}')
 	palette = QPalette()
 	palette.setColor(QPalette.Window, QColor(53, 53, 53))
 	palette.setColor(QPalette.WindowText, Qt.white)
@@ -373,13 +370,12 @@ class TableWidgetDragRows(QTableWidget):
 		self.setEditTriggers(QAbstractItemView.NoEditTriggers)
 # for icons
 class IconDelegate(QStyledItemDelegate):
-    def initStyleOption(self, option, index):
-        super(IconDelegate, self).initStyleOption(option, index)
-        if option.features & QStyleOptionViewItem.HasDecoration:
-            s = option.decorationSize
-            # print (option.rect.width())
-            s.setWidth(option.rect.width())
-            option.decorationSize = s
+	def initStyleOption(self, option, index):
+		super(IconDelegate, self).initStyleOption(option, index)
+		if option.features & QStyleOptionViewItem.HasDecoration:
+			s = option.decorationSize
+			s.setWidth(option.rect.width())
+			option.decorationSize = s
 
 class InputDialog(QDialog):
 	def __init__(self, parent=None):
@@ -396,10 +392,48 @@ class InputDialog(QDialog):
 		layout.addRow("Treshold", self.second)
 		layout.addWidget(buttonBox)
 		buttonBox.accepted.connect(self.accept)
-		buttonBox.rejected.connect(self.reject)
+		buttonBox.rejected.connect(self.exit_dialog)
 
 	def getInputs(self):
 		return (self.first.text(), self.second.text())
+	def exit_dialog(self):
+		self.destroy()
+
+class PrefDialog(QDialog):
+	def __init__(self, prefs, parent=None):
+		super().__init__(parent)
+		self.setObjectName("Preferences")
+		print ('default_pref' + str(prefs))
+		self.layout = QFormLayout(self)
+		self.text_link = QLineEdit(prefs[0], self)
+		self.text_link.setMaxLength(3)
+		self.text_link.setObjectName("text_lang")
+		# resolution rasterubg
+		self.res_box = QSpinBox(self)
+		self.res_box.setRange(50, 1200)
+		self.res_box.setValue(prefs[1])
+		self.res_box.setObjectName("text_res")
+
+		# file parser
+		self.btn_convertor = QComboBox(self)
+		self.btn_convertor.addItem('OpenOffice')
+		self.btn_convertor.addItem('CloudConvert')
+		self.btn_convertor.setObjectName("btn_conv")
+		# self.btn_convertor.activated[str].connect(self.color_box_change) 
+
+		self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self);
+		self.layout.addRow("OCR language", self.text_link)
+		self.layout.addRow("File convertor", self.btn_convertor)
+		self.layout.addRow("Rastering resolution (DPI)", self.res_box)
+		self.layout.addWidget(self.buttonBox)
+
+		self.buttonBox.accepted.connect(self.accept)
+		self.buttonBox.rejected.connect(self.reject)
+		self.resize(50, 200)
+
+	def getInputs(self):
+		self.destroy()
+		return self.text_link.text(), self.res_box.value()	
 
 class Window(QMainWindow):
 	def __init__(self, parent=None):
@@ -422,6 +456,12 @@ class Window(QMainWindow):
 		debug_setting_menu.setChecked(True)
 		debug_setting_menu.triggered.connect(self.toggleDebugWidget)
 		win_menu.addAction(debug_setting_menu)
+
+		# PREFERENCES
+		pref_action = QAction("Preferences", self) # title and parent
+		pref_action.triggered.connect(self.open_dialog)
+		pref_action.setShortcut('Ctrl+W')
+		file_menu.addAction(pref_action)
 
 		open_action.triggered.connect(self.openFileNamesDialog)
 		open_action.setShortcut('Ctrl+O')
@@ -451,7 +491,27 @@ class Window(QMainWindow):
 	def sizeHint(self):
 		return QSize(620, 650)
 
-	def closeEvent(self, event):
+	def open_dialog(self):
+		# load setting first
+		json_pref,printers,default_pref = load_preferences()
+		print ('Default_pref:' + default_pref[0])
+		form = PrefDialog(default_pref)
+		try:
+			if form.exec():
+				self.localization, self.resolution = form.getInputs()
+				# save and reload config 
+				preferences = self.pref_generator()
+				save_preferences(preferences)
+				json_pref,printers,default_pref = load_preferences()
+		except:
+			print ('pref canceled')
+
+	def pref_generator(self):
+		try:
+			print ('loc je:' + self.localization)
+		except:
+			self.localization = default_pref[0]
+			self.resolution = default_pref[1]
 		preferences = []
 		if self.printer_tb.currentItem() != None:
 			preferences.append('tiskarna')
@@ -462,8 +522,12 @@ class Window(QMainWindow):
 			preferences.append(self.gb_debug.isHidden())
 			preferences.append(username)
 			preferences.append(printers)
+			preferences.append(self.localization)
+			preferences.append(self.resolution)
+		return preferences
 
-
+	def closeEvent(self, event):
+		preferences = self.pref_generator()
 		save_preferences(preferences)
 		close = QMessageBox()
 		close.setText("You sure?")
@@ -482,6 +546,11 @@ class Window(QMainWindow):
 			self.debuglist.setText('loading files, please wait....')
 
 	def dropEvent(self, event):
+		# hack to update saved value....
+		try:
+			print ('loc je:' + self.localization)
+		except:
+			self.localization = default_pref[0]
 		items = ["to PDF", "SmartCut", "OCR", "Resize", "Parse"]
 		# print ('Drop event')
 		for url in event.mimeData().urls():
@@ -519,6 +588,7 @@ class Window(QMainWindow):
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
+				self.splitlinesdebug('converting:' + str(len(soubor)) + ' file(s)')
 				files = self.external_convert(extension, soubor)
 				break
 			# for images.... 
@@ -535,10 +605,12 @@ class Window(QMainWindow):
 				if text == 'OCR':
 					ocr_output = []
 					for items in soubor:
-						ocr = ocr_core(items, 'ces')
+						ocr = ocr_core(items, self.localization)
+						print (ocr)
 						ocr_output.append(ocr)
 					# print ('pocet je' + str(len(ocr_output)))
 					ocr_output =  ''.join(ocr_output)
+					self.debuglist.clear()
 					self.update_Debug_list(str(ocr_output))
 				if text == 'SmartCut':
 					smartcut_files = []
@@ -602,17 +674,41 @@ class Window(QMainWindow):
 	def external_convert(self, ext, inputfile):
 		outputdir = "/Users/jandevera/pc/"
 		converts = []
+		# QProcess object for external app
+		self.process = QProcess(self)
+		# self.process.readyRead.connect(self.dataReady)
 		for items in inputfile:
-			conv_output = (subprocess.check_output(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]))
-			self.splitlinesdebug(conv_output)
+			# self.process.start("/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir)
+			# self.process.setProgram("/Applications/LibreOffice.app/Contents/MacOS/soffice")
+			# self.process.setArguments("--headless", "--convert-to", "pdf", items,"--outdir", outputdir)
+			self.process.setProcessChannelMode(QProcess.MergedChannels)
+			# self.process.readyReadStandardOutput.connect(self.readStdOutput)
+			self.process.start("/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to pdf" + items + "--outdir" + outputdir)
+			# self.process.start(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir])
+			# conv_output = (subprocess.check_output()
+			# self.splitlinesdebug(conv_output)
 			base = os.path.basename(items)
 			base = os.path.splitext(base)[0]
 			new_file = outputdir + base + '.pdf'
 			converts.append(new_file)
+			self.update_Debug_list(str(new_file))
 			# import converted
 		files, d_info = basic_parse(converts)
 		rows = files
 		Window.table_reload(self, rows)
+
+#		# for items in inputfile:
+		# 	conv_output = (subprocess.check_output()
+		# 	self.splitlinesdebug(conv_output)
+		# 	base = os.path.basename(items)
+		# 	base = os.path.splitext(base)[0]
+		# 	new_file = outputdir + base + '.pdf'
+		# 	converts.append(new_file)
+		# 	self.update_Debug_list(str(new_file))
+		# 	# import converted
+		# files, d_info = basic_parse(converts)
+		# rows = files
+		# Window.table_reload(self, rows)
 
 	def table_reload(self, inputfile):
 		# if debug == 1:
@@ -894,7 +990,7 @@ class Window(QMainWindow):
 			cesta_souboru=index.sibling(items.row(),8).data()
 			outputfiles.append(cesta_souboru)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		debugstring, outputfiles = raster_this_file(cesta_souboru)
+		debugstring, outputfiles = raster_this_file(cesta_souboru, self.resolution)
 		files, d_info = basic_parse(outputfiles)
 		rows = files
 		Window.table_reload(self, rows)
@@ -1243,14 +1339,13 @@ class Window(QMainWindow):
 
 if __name__ == '__main__':
 	# load config firts
-	json_pref, printers = load_preferences()
-	print (printers)
+	json_pref, printers,default_pref = load_preferences()
 	app = QApplication(sys.argv)
 	path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')
 	app.setWindowIcon(QIcon(path))
 	form = Window()
 	darkmode()
-	time_boot = (str((time.time() - start_time))[:5] + ' seconds')
-	form.update_Debug_list(time_boot)
+	# time_boot = (str((time.time() - start_time))[:5] + ' seconds')
+	# form.update_Debug_list(time_boot)
 	form.show()
 	sys.exit(app.exec_())

@@ -1,5 +1,5 @@
 # PrintManager
-PrintManager for Macosx (written in Python and Pyqt5, with some handy features).  My goal is to create tool with usefull graphic/printing comandline functions. Patches and ideas are weclomed.
+PrintManager for Macosx (written in Python and Pyqt5, with some handy features).  My goal is to create tool with usefull graphic/printing comandline functions. Patches and ideas are welcomed.
 
 ![alt text](https://raw.githubusercontent.com/devrosx/PrintManager/master/wiki/screenshot.png)
 
@@ -43,8 +43,7 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
-0.24
-- new preferences panel (curently you can change OCR language and rastering resoltion, cloudconvert it WIP)
+
 0.21
 - Fixed icons (pdf and image files) and better text aling in table
 - Debug box (Command+D) and print setting box (Command+P) can be set hiden now...

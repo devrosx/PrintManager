@@ -46,6 +46,7 @@ I'm a newbie with python and PyQt5 :)
 0.24
 - new preferences panel (curently you can change OCR language and rastering resoltion, cloudconvert it WIP)
 - minor fixes
+
 0.21
 - Fixed icons (pdf and image files) and better text aling in table
 - Debug box (Command+D) and print setting box (Command+P) can be set hiden now...

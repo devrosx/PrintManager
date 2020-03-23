@@ -15,7 +15,7 @@ from libs.colordetector import *
 from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
-
+from libs.cc_module import cc_convert
 version = '0.24'
 import time
 start_time = time.time()
@@ -56,7 +56,7 @@ def load_preferences():
 		if json_pref[0][6] == username:
 			print ('preferences OK - using saved printers')
 			printers = json_pref[0][7]
-			default_pref = [json_pref[0][8],json_pref[0][9]]
+			default_pref = [json_pref[0][8],json_pref[0][9],json_pref[0][10]]
 		else: 
 			print ('other machine loading printers')
 			printers = load_printers()
@@ -64,7 +64,7 @@ def load_preferences():
 		print ('json loading error')
 		printers = load_printers()
 		json_pref = [0,0,0,0,0,0]
-		default_pref = ['eng',300]
+		default_pref = ['eng',300,'OpenOffice']
 	return json_pref, printers, default_pref
 
 def save_preferences(*settings):
@@ -407,18 +407,19 @@ class PrefDialog(QDialog):
 		self.layout = QFormLayout(self)
 		self.text_link = QLineEdit(prefs[0], self)
 		self.text_link.setMaxLength(3)
-		self.text_link.setObjectName("text_lang")
+		# self.text_link.setObjectName("text_lang")
 		# resolution rasterubg
 		self.res_box = QSpinBox(self)
 		self.res_box.setRange(50, 1200)
 		self.res_box.setValue(prefs[1])
-		self.res_box.setObjectName("text_res")
+		# self.res_box.setObjectName("text_res")
 
 		# file parser
 		self.btn_convertor = QComboBox(self)
 		self.btn_convertor.addItem('OpenOffice')
 		self.btn_convertor.addItem('CloudConvert')
-		self.btn_convertor.setObjectName("btn_conv")
+		self.btn_convertor.setCurrentText(prefs[2])
+		# self.btn_convertor.setObjectName("btn_conv")
 		# self.btn_convertor.activated[str].connect(self.color_box_change) 
 
 		self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self);
@@ -433,7 +434,7 @@ class PrefDialog(QDialog):
 
 	def getInputs(self):
 		self.destroy()
-		return self.text_link.text(), self.res_box.value()	
+		return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText()		
 
 class Window(QMainWindow):
 	def __init__(self, parent=None):
@@ -498,7 +499,8 @@ class Window(QMainWindow):
 		form = PrefDialog(default_pref)
 		try:
 			if form.exec():
-				self.localization, self.resolution = form.getInputs()
+				self.localization, self.resolution, self.convertor = form.getInputs()
+				print (self.convertor)
 				# save and reload config 
 				preferences = self.pref_generator()
 				save_preferences(preferences)
@@ -508,10 +510,11 @@ class Window(QMainWindow):
 
 	def pref_generator(self):
 		try:
-			print ('loc je:' + self.localization)
+			print ('loc je:' + self.localization + self.resolution)
 		except:
 			self.localization = default_pref[0]
 			self.resolution = default_pref[1]
+			self.convertor = default_pref[2]
 		preferences = []
 		if self.printer_tb.currentItem() != None:
 			preferences.append('tiskarna')
@@ -524,6 +527,7 @@ class Window(QMainWindow):
 			preferences.append(printers)
 			preferences.append(self.localization)
 			preferences.append(self.resolution)
+			preferences.append(self.convertor)
 		return preferences
 
 	def closeEvent(self, event):
@@ -546,17 +550,18 @@ class Window(QMainWindow):
 			self.debuglist.setText('loading files, please wait....')
 
 	def dropEvent(self, event):
-		# hack to update saved value....
+		# hack to update saved value.... fix later
 		try:
 			print ('loc je:' + self.localization)
 		except:
 			self.localization = default_pref[0]
+			self.convertor = default_pref[2]
 		items = ["to PDF", "SmartCut", "OCR", "Resize", "Parse"]
-		# print ('Drop event')
 		for url in event.mimeData().urls():
 			soubor = (url.toLocalFile())
 			extension = os.path.splitext(soubor)[1][1:].lower()
 			if extension == 'pdf':
+				self.debuglist.setText('loading PDF files, please wait....')
 				soubor = []
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
@@ -584,7 +589,7 @@ class Window(QMainWindow):
 				break
 			elif extension in office_ext:
 				soubor = []
-				self.debuglist.setText("Converting to PDF:" + extension)
+				self.debuglist.setText("Converting to PDF (" + self.convertor + '): ' + extension)
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
@@ -606,12 +611,12 @@ class Window(QMainWindow):
 					ocr_output = []
 					for items in soubor:
 						ocr = ocr_core(items, self.localization)
-						print (ocr)
 						ocr_output.append(ocr)
-					# print ('pocet je' + str(len(ocr_output)))
 					ocr_output =  ''.join(ocr_output)
 					self.debuglist.clear()
 					self.update_Debug_list(str(ocr_output))
+					if self.gb_debug.isHidden():
+						self.toggleDebugWidget()
 				if text == 'SmartCut':
 					smartcut_files = []
 					dialog = InputDialog()
@@ -674,41 +679,37 @@ class Window(QMainWindow):
 	def external_convert(self, ext, inputfile):
 		outputdir = "/Users/jandevera/pc/"
 		converts = []
-		# QProcess object for external app
-		self.process = QProcess(self)
+		
+		# self.process = QProcess(self)
+		if self.convertor == 'OpenOffice':
+			print ('OpenOffice')
 		# self.process.readyRead.connect(self.dataReady)
-		for items in inputfile:
-			# self.process.start("/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir)
-			# self.process.setProgram("/Applications/LibreOffice.app/Contents/MacOS/soffice")
-			# self.process.setArguments("--headless", "--convert-to", "pdf", items,"--outdir", outputdir)
-			self.process.setProcessChannelMode(QProcess.MergedChannels)
-			# self.process.readyReadStandardOutput.connect(self.readStdOutput)
-			self.process.start("/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to pdf" + items + "--outdir" + outputdir)
-			# self.process.start(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir])
-			# conv_output = (subprocess.check_output()
-			# self.splitlinesdebug(conv_output)
-			base = os.path.basename(items)
-			base = os.path.splitext(base)[0]
-			new_file = outputdir + base + '.pdf'
-			converts.append(new_file)
-			self.update_Debug_list(str(new_file))
-			# import converted
+			for items in inputfile:
+				command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]
+				# self.process.setProcessChannelMode(QProcess.MergedChannels)
+				# self.process.readyReadStandardOutput.connect(self.readStdOutput)
+				# self.process.start("/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to pdf" + items + "--outdir" + outputdir)
+				# self.process.start(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir])
+				# conv_output = (subprocess.check_output()
+				# self.splitlinesdebug(conv_output)
+				conv_output = (subprocess.check_output(command))
+				self.splitlinesdebug(conv_output)
+				base = os.path.basename(items)
+				base = os.path.splitext(base)[0]
+				new_file = outputdir + base + '.pdf'
+				converts.append(new_file)
+				self.update_Debug_list(str(new_file))
+				# import converted
+		elif self.convertor == 'CloudConvert':
+			print ('CloudConvert WIP')
+			for items in inputfile:
+				print (items)
+				new_file = cc_convert(items)
+				converts.append(new_file)
+				self.update_Debug_list(str(new_file))
 		files, d_info = basic_parse(converts)
 		rows = files
 		Window.table_reload(self, rows)
-
-#		# for items in inputfile:
-		# 	conv_output = (subprocess.check_output()
-		# 	self.splitlinesdebug(conv_output)
-		# 	base = os.path.basename(items)
-		# 	base = os.path.splitext(base)[0]
-		# 	new_file = outputdir + base + '.pdf'
-		# 	converts.append(new_file)
-		# 	self.update_Debug_list(str(new_file))
-		# 	# import converted
-		# files, d_info = basic_parse(converts)
-		# rows = files
-		# Window.table_reload(self, rows)
 
 	def table_reload(self, inputfile):
 		# if debug == 1:

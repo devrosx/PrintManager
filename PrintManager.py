@@ -511,6 +511,7 @@ class Window(QMainWindow):
 	def pref_generator(self):
 		try:
 			print ('loc je:' + self.localization)
+			print (self.resolution)
 		except:
 			self.localization = default_pref[0]
 			self.resolution = default_pref[1]
@@ -699,25 +700,37 @@ class Window(QMainWindow):
 				new_file = outputdir + base + '.pdf'
 				converts.append(new_file)
 				self.update_Debug_list(str(new_file))
+				files, d_info = basic_parse(converts)
+				rows = files
+				Window.table_reload(self, rows)
 				# import converted
 		elif self.convertor == 'CloudConvert':
-			print ('CloudConvert WIP')
+			print ('CloudConvert')
 			for items in inputfile:
-				print (items)
-				new_file = cc_convert(items)
-				converts.append(new_file)
-				self.update_Debug_list(str(new_file))
-		files, d_info = basic_parse(converts)
-		rows = files
-		Window.table_reload(self, rows)
+				# print (items)
+				new_file, warning = cc_convert(items)
+				print (warning)
+				print (new_file)
+				if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
+					self.update_Debug_list('missing API_KEY')
+					API_KEY,ok = QInputDialog.getText(self,"Warning ","Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
+					with open("cc.json", "w") as text_file:
+						text_file.write(API_KEY)
+					self.update_Debug_list('API_KEY saved - Try import again')
+				elif new_file == None:
+					print ('convert error')
+					print (warning)
+					QMessageBox.about(self, "Warning", warning)
+				elif new_file != None:
+					print ('converting...')
+					converts.append(new_file)
+					files, d_info = basic_parse(converts)
+					rows = files
+					Window.table_reload(self, rows)
 
 	def table_reload(self, inputfile):
-		# if debug == 1:
-		# print ('Tabulka=' + str(inputfile))
-		# print (len(inputfile))
-		# self.table.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.table = TableWidgetDragRows()
-		headers = ["", "File", "Size", "Kind", "Filesize", "Pages", "Price", "Colors", 'Filepath']
+		headers = ["", "File", "Size", "Kind", "File size", "Pages", "Price", "Colors", 'Filepath']
 		self.table.setColumnCount(len(headers))
 		self.table.setHorizontalHeaderLabels(headers)
 		# better is preview (printig etc)

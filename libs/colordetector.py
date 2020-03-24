@@ -1,6 +1,6 @@
 import subprocess
 import re
-path = '/Users/jandevera/Documents/cmyk_A4.pdf'
+# path = '/Users/jandevera/Documents/cmyk_A4.pdf'
 
 RE_FLOAT = re.compile("[01].[0-9]+")
 CMYK_NCOLORS = 4

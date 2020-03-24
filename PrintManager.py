@@ -10,7 +10,7 @@ from PyQt5.QtCore import *
 
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
 from tnefparse.mapi import TNEFMAPI_Attribute
-
+# my modules import
 from libs.colordetector import *
 from libs.ocr_module import ocr_core
 from libs.crop_module import processFile

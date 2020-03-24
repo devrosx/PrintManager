@@ -9,7 +9,7 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features).
 - Basic printing settings (format, collating, fit to page, twosided, number of copies)
 - Basic pdf operations (split, merge, compress, view, rasterize)
 - PDF info in table (number of pages, colors, filesize, name, size)
-- Convert various formats to PDF (currenty using OpenOffice convertor)
+- Convert various formats to PDF (OpenOffice and Clouconvert supported)
 - Extract images from PDF without resampling
 - Simple winmail dat extraction
 - Basic image operations
@@ -49,6 +49,7 @@ I'm a newbie with python and PyQt5 :)
 - new preferences panel (curently you can change OCR language and rastering resoltion, cloudconvert it WIP)
 - Cloudconvert support
 - Added API_KEY and error handling for cloudconvert
+
 0.21
 - Fixed icons (pdf and image files) and better text aling in table
 - Debug box (Command+D) and print setting box (Command+P) can be set hiden now...

@@ -500,7 +500,7 @@ class Window(QMainWindow):
 		try:
 			if form.exec():
 				self.localization, self.resolution, self.convertor = form.getInputs()
-				print (self.convertor)
+				# print (self.convertor)
 				# save and reload config 
 				preferences = self.pref_generator()
 				save_preferences(preferences)
@@ -510,14 +510,14 @@ class Window(QMainWindow):
 
 	def pref_generator(self):
 		try:
-			print ('loc je:' + self.localization + self.resolution)
+			print ('loc je:' + self.localization)
 		except:
 			self.localization = default_pref[0]
 			self.resolution = default_pref[1]
 			self.convertor = default_pref[2]
 		preferences = []
 		if self.printer_tb.currentItem() != None:
-			preferences.append('tiskarna')
+			preferences.append('printer')
 			preferences.append(self.printer_tb.currentRow())
 			preferences.append('printer_window')
 			preferences.append(self.gb_printers.isHidden())

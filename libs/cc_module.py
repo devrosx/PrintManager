@@ -3,9 +3,9 @@ import cloudconvert
 import os
 # FIX for ssl bug...
 import ssl
-_create_default_https_context = ssl._create_unverified_context
+ssl._create_default_https_context = ssl._create_unverified_context
 
-# test = '/Users/jandevera/Desktop/1.docx'
+test = '/Users/jandevera/Desktop/1.docx'
 def cc_convert(file):
 	try:
 		f = open("cc.json","r")

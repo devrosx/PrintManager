@@ -1,5 +1,5 @@
 # PrintManager
-PrintManager for Macosx (written in Python and Pyqt5, with some handy features).  My goal is to create tool with usefull graphic/printing comandline functions. Patches and ideas are welcomed.
+PrintManager for Macosx (written in Python and PyQt5, with some handy features).  My goal is to create tool with usefull graphic/printing comandline functions. Patches and ideas are welcomed.
 
 ![alt text](https://raw.githubusercontent.com/devrosx/PrintManager/master/wiki/screenshot.png)
 
@@ -9,7 +9,7 @@ PrintManager for Macosx (written in Python and Pyqt5, with some handy features).
 - Basic printing settings (format, collating, fit to page, twosided, number of copies)
 - Basic pdf operations (split, merge, compress, view, rasterize)
 - PDF info in table (number of pages, colors, filesize, name, size)
-- Convert various formats to PDF (OpenOffice and Clouconvert supported)
+- Convert various formats to PDF (OpenOffice and Cloudconvert supported)
 - Extract images from PDF without resampling
 - Simple winmail dat extraction
 - Basic image operations
@@ -48,7 +48,7 @@ I'm a newbie with python and PyQt5 :)
 0.24
 - new preferences panel (curently you can change OCR language and rastering resoltion, cloudconvert it WIP)
 - Cloudconvert support
-- Added API_KEY and error handling for cloudconvert
+- Added API_KEY and error handling for Cloudconvert
 
 0.21
 - Fixed icons (pdf and image files) and better text aling in table

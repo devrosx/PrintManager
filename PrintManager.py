@@ -458,6 +458,12 @@ class Window(QMainWindow):
 		debug_setting_menu.triggered.connect(self.toggleDebugWidget)
 		win_menu.addAction(debug_setting_menu)
 
+		# PREVIEW
+		preview_menu  = QAction("Preview", self) # title and parent
+		preview_menu.setShortcut('F1')
+		preview_menu.triggered.connect(self.preview)
+		win_menu.addAction(preview_menu)
+
 		# PREFERENCES
 		pref_action = QAction("Preferences", self) # title and parent
 		pref_action.triggered.connect(self.open_dialog)

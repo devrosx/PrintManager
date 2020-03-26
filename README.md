@@ -46,6 +46,7 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.24
+- Rewrited debug output, red color errors, green main info...
 - new preferences panel (curently you can change OCR language and rastering resoltion, cloudconvert it WIP)
 - Cloudconvert support
 - Added API_KEY and error handling for Cloudconvert

@@ -5,7 +5,7 @@ import subprocess
 import json
 from PyPDF2 import PdfFileReader, PdfFileMerger, PdfFileWriter
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor
+from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor, QTextCursor
 from PyQt5.QtCore import *
 
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
@@ -554,7 +554,8 @@ class Window(QMainWindow):
 		if event.mimeData().hasUrls():
 			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c;")
 			event.accept()
-			self.debuglist.setText('loading files, please wait....')
+			self.d_writer('loading files, please wait....', 1)
+			# self.debuglist.setText('loading files, please wait....')
 
 	def dropEvent(self, event):
 		# hack to update saved value.... fix later
@@ -568,7 +569,6 @@ class Window(QMainWindow):
 			soubor = (url.toLocalFile())
 			extension = os.path.splitext(soubor)[1][1:].lower()
 			if extension == 'pdf':
-				self.debuglist.setText('loading PDF files, please wait....')
 				soubor = []
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
@@ -576,9 +576,10 @@ class Window(QMainWindow):
 				try:	
 					files, d_info = basic_parse(soubor)
 				except:
-					QMessageBox.about(self, "Warning", "File " + str(file) + " import error.")
+					self.d_writer("Warning - File " + str(file) + " import error.", 0, 'red')
+					# QMessageBox.about(self, "Warning", "File " + str(file) + " import error.")
 					break
-				self.debuglist.setText(d_info)
+				self.d_writer(d_info, 0, 'red')
 				rows = files
 				Window.table_reload(self, rows)
 				break
@@ -592,15 +593,15 @@ class Window(QMainWindow):
 					for a in t.attachments:
 						with open(os.path.join(dirname,a.name.decode("utf-8")), "wb") as afp:
 							afp.write(a.data)
-					self.update_Debug_list("Successfully wrote %i files" % len(t.attachments) + ' to: ' + dirname)
+					self.d_writer("Successfully wrote %i files" % len(t.attachments) + ' to: ' + dirname, 0)
 				break
 			elif extension in office_ext:
 				soubor = []
-				self.debuglist.setText("Converting to PDF (" + self.convertor + '): ' + extension)
+				self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
-				self.splitlinesdebug('converting:' + str(len(soubor)) + ' file(s)')
+				# self.splitlinesdebug('converting:' + str(len(soubor)) + ' file(s)')
 				files = self.external_convert(extension, soubor)
 				break
 			# for images.... 
@@ -620,8 +621,7 @@ class Window(QMainWindow):
 						ocr = ocr_core(items, self.localization)
 						ocr_output.append(ocr)
 					ocr_output =  ''.join(ocr_output)
-					self.debuglist.clear()
-					self.update_Debug_list(str(ocr_output))
+					self.d_writer(str(ocr_output), 0)
 					if self.gb_debug.isHidden():
 						self.toggleDebugWidget()
 				if text == 'SmartCut':
@@ -631,21 +631,20 @@ class Window(QMainWindow):
 						n_images, tresh = dialog.getInputs()
 					for items in soubor:
 						outputfiles = processFile(items, n_images, tresh)
-						# print ('takle to vypada outputfiles' + str(outputfiles))
 						smartcut_files.append(outputfiles)
 					# merge lists inside lists 
 					smartcut_files = [j for i in smartcut_files for j in i]
 					files, d_info = basic_parse_image(smartcut_files)
 					rows = files
 					Window.table_reload(self, rows)
-					self.update_Debug_list(str(smartcut_files))
+					self.d_writer(str(smartcut_files), 0)
 				if text == 'Parse':
 					parse_files = []
 					print (type(soubor))
 					files, d_info = basic_parse_image(soubor)
 					rows = files
 					Window.table_reload(self, rows)
-					self.update_Debug_list('imported:' + str(soubor))
+					self.d_writer('imported:' + str(soubor), 0)
 				if text == 'Resize':
 					resize_files = []
 					percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
@@ -655,10 +654,11 @@ class Window(QMainWindow):
 					files, d_info = basic_parse_image(resize_files)
 					rows = files
 					Window.table_reload(self, rows)
-					self.update_Debug_list(str(resize_files))
+					self.d_writer(str(resize_files), 0)
 				break
 			else:
-				QMessageBox.about(self, "Warning", "One of files isnt supported:" + extension)
+				self.d_writer("Warning One of files isnt supported:" + extension, 0, 'red')
+				# QMessageBox.about(self, "Warning", "One of files isnt supported:" + extension)
 				break
 
 	def update_Debug_list(self, command):
@@ -683,13 +683,34 @@ class Window(QMainWindow):
 					outputlist = outputlist.replace(char,'')
 		self.update_Debug_list(str(outputlist))
 
+	def d_writer(self, message, append, *args):
+	# fix list input
+		if isinstance (message, list):
+			message = ('\n'.join(message))
+		for ar in args:
+			if ar == 'red':
+				message = '<font color=red><b>' + message + '</b></font> '
+			if ar == 'white':
+				message = '<font color=white><b>' + message + '</b></font> '
+			if ar == 'green':
+				message = '<font color=green><b>' + message + '</b></font> '
+
+		if append == 1:
+			self.debuglist.append(message)
+			# self.debuglist.moveCursor(QTextCursor.End, mode=QTextCursor.MoveAnchor)
+			# self.debuglist.moveCursor(QTextCursor.StartOfLine, mode=QTextCursor.MoveAnchor)
+			# self.debuglist.moveCursor(QTextCursor.End,mode=QTextCursor.KeepAnchor)
+			# self.debuglist.textCursor().removeSelectedText()
+			# self.debuglist.setText(self.debuglist.toPlainText() + message)
+		if append == 0:
+			self.debuglist.setText(message)
+
 	def external_convert(self, ext, inputfile):
 		outputdir = "/Users/jandevera/pc/"
 		converts = []
 		
 		# self.process = QProcess(self)
 		if self.convertor == 'OpenOffice':
-			print ('OpenOffice')
 		# self.process.readyRead.connect(self.dataReady)
 			for items in inputfile:
 				command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]
@@ -698,14 +719,14 @@ class Window(QMainWindow):
 				# self.process.start("/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to pdf" + items + "--outdir" + outputdir)
 				# self.process.start(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir])
 				# conv_output = (subprocess.check_output()
-				# self.splitlinesdebug(conv_output)
 				conv_output = (subprocess.check_output(command))
 				self.splitlinesdebug(conv_output)
 				base = os.path.basename(items)
 				base = os.path.splitext(base)[0]
 				new_file = outputdir + base + '.pdf'
 				converts.append(new_file)
-				self.update_Debug_list(str(new_file))
+				self.d_writer('OpenOffice converted files:', 0, 'green')
+				self.d_writer(converts, 1)
 				files, d_info = basic_parse(converts)
 				rows = files
 				Window.table_reload(self, rows)
@@ -722,7 +743,7 @@ class Window(QMainWindow):
 					API_KEY,ok = QInputDialog.getText(self,"Warning ","Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
 					with open("cc.json", "w") as text_file:
 						text_file.write(API_KEY)
-					self.update_Debug_list('API_KEY saved - Try import again')
+					self.d_writer('API_KEY saved - Try import again', 0, 'red')
 				elif new_file == None:
 					print ('convert error')
 					print (warning)
@@ -818,7 +839,7 @@ class Window(QMainWindow):
 		self.color_b.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
-		self.combine_pdf_b.setEnabled(
+		self.merge_pdf_b.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
 		self.split_pdf_b.setEnabled(
@@ -856,17 +877,17 @@ class Window(QMainWindow):
 					if action == openAction:
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
-						cesta_souboru=index.sibling(row,8).data()
-						openfile(cesta_souboru)
+						file_path=index.sibling(row,8).data()
+						openfile(file_path)
 					if action == revealAction:
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
-						cesta_souboru=index.sibling(row,8).data()
-						revealfile(cesta_souboru)
+						file_path=index.sibling(row,8).data()
+						revealfile(file_path)
 					if action == printAction:
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
-						cesta_souboru=index.sibling(row,8).data()
+						file_path=index.sibling(row,8).data()
 						self.table_print()
 					if action == previewAction:
 						self.preview()
@@ -898,7 +919,8 @@ class Window(QMainWindow):
 		dbox.setContentsMargins(0, 0, 0, 0);
 		self.gb_debug.setLayout(dbox)
 		# debug
-		self.debuglist = QTextEdit("<b>Debug:</b>", self)
+		self.debuglist = QTextEdit(self)
+		self.d_writer('DEBUG:', 0, 'green')
 		self.debuglist.setAlignment(Qt.AlignJustify)
 		self.debuglist.acceptRichText()
 		self.debuglist.setReadOnly(True)
@@ -921,10 +943,10 @@ class Window(QMainWindow):
 		self.color_b.setDisabled(True)
 
 		# SPOJ PDF
-		self.combine_pdf_b = QPushButton('Join', self)
-		self.combine_pdf_b.clicked.connect(self.combine_pdf)
-		self.buttons_layout.addWidget(self.combine_pdf_b)
-		self.combine_pdf_b.setDisabled(True)
+		self.merge_pdf_b = QPushButton('Merge', self)
+		self.merge_pdf_b.clicked.connect(self.merge_pdf)
+		self.buttons_layout.addWidget(self.merge_pdf_b)
+		self.merge_pdf_b.setDisabled(True)
 
 		# ROZDEL PDF
 		self.split_pdf_b = QPushButton('Split', self)
@@ -974,122 +996,118 @@ class Window(QMainWindow):
 		self.buttons_layout.addWidget(self.print_b)
 
 	def compres_pdf(self):
-		print ('PDF compress WIP')
-		# green_ = (QColor(80, 80, 80))
-		# black_ = (QBrush(QColor(0, 0, 0)))
 		outputfiles = []
 		if self.table.currentItem() == None:
-			QMessageBox.information(self, 'Error', 'No files selected', QMessageBox.Ok)
+			self.d_writer('Error - No files selected', 1, 'red')
 			return
 		for items in sorted(self.table.selectionModel().selectedRows()):
-			# self.table.setItemDelegateForColumn(0, self.delegate)
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
-			cesta_souboru=index.sibling(items.row(),8).data()
-			outputfiles.append(cesta_souboru)
-			# print ('toto je row:' + str(row))
-			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
+			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 			# self.table.item(0, row).setIcon(desktop_icon)
-		# print (outputfiles)
-		debugstring, outputfiles = compres_this_file(cesta_souboru)
+		debugstring, outputfiles = compres_this_file(file_path)
 		files, d_info = basic_parse(outputfiles)
 		rows = files
 		Window.table_reload(self, rows)
-		# print (debugstring)
-		self.update_Debug_list(debugstring)
+		self.d_writer('File(s) compresed:', 1, 'green')
+		self.d_writer(debugstring,1)
 
 	def rasterize_pdf(self):
-		print ('PDF rasterzie WIP')
 		outputfiles = []
 		if self.table.currentItem() == None:
-			QMessageBox.information(self, 'Error', 'No files selected', QMessageBox.Ok)
+			self.d_writer('Error - No files selected', 1, 'red')
 			return
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
-			cesta_souboru=index.sibling(items.row(),8).data()
-			outputfiles.append(cesta_souboru)
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		debugstring, outputfiles = raster_this_file(cesta_souboru, self.resolution)
+		# debugstring, outputfiles = raster_this_file(file_path, self.resolution)
+		debugstring, outputfiles = raster_this_file(file_path, default_pref[1])
+
 		files, d_info = basic_parse(outputfiles)
 		rows = files
 		Window.table_reload(self, rows)
-		self.update_Debug_list(str(debugstring))
+		self.d_writer('File(s) rasterized:', 1, 'green')
+		self.d_writer(debugstring,1)
 
 	def extract_pdf(self):
-		print ('PDF extractor WIP')
 		outputfiles = []
 		if self.table.currentItem() == None:
-			QMessageBox.information(self, 'Error', 'No files selected', QMessageBox.Ok)
+			self.d_writer('Error - No files selected', 1, 'red')
 			return
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
-			cesta_souboru=index.sibling(items.row(),8).data()
-			outputfiles.append(cesta_souboru)
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 		try:
-			outputfiles = extractfiles(cesta_souboru)
+			outputfiles = extractfiles(file_path)
 		except Exception as e:
-			QMessageBox.information(self, 'Error', 'Importing error', QMessageBox.Ok)
+			self.d_writer('Error - Importing error' + str(e), 1, 'red')
 			return
 		files, d_info = basic_parse_image(outputfiles)
 		rows = files
 		Window.table_reload(self, rows)
-		self.update_Debug_list(str(outputfiles))
+		self.d_writer('Extracted images:', 1, 'green')
+		self.d_writer(str(outputfiles),1)
 
 	def count_tb(self):
-		print ('PDF counting')
 		soucet = []
 		stranky = []
 		for items in sorted(self.table.selectionModel().selectedRows()):
-			# self.table.setItemDelegateForColumn(0, self.delegate)
 			row = items.row()
 			soucet.append(row)
 			index=(self.table.selectionModel().currentIndex())
 			info=index.sibling(items.row(),5).data()
 			stranky.append(int(info))
-			# outputfiles.append(cesta_souboru)
+			# outputfiles.append(file_path)
 			# print ('toto je row:' + str(row))
 			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 		celkem = (str(len(soucet)) + '  PDF files, ' + str(sum(stranky)) + ' pages')
-		self.update_Debug_list(celkem)
+		self.d_writer(str(celkem),1,'green')
 
 	def split_pdf(self):
 		green_ = (QColor(10, 200, 50))
-		print ('Split pdf')
-		# combinefiles = []
-		# merged_pdf_list = []
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			index=(self.table.selectionModel().currentIndex())
 			row = items.row()
 			if int(index.sibling(items.row(),5).data()) < 2:
-				QMessageBox.information(self, 'Error', 'Not enough files to split', QMessageBox.Ok)
+				self.d_writer('Error - Not enough files to split', 1, 'red')
 			else:
 				index=(self.table.selectionModel().currentIndex())
-				cesta_souboru=index.sibling(items.row(),8).data()
-				split_pdf = splitfiles(cesta_souboru)
+				file_path=index.sibling(items.row(),8).data()
+				split_pdf = splitfiles(file_path)
 				files, d_info = basic_parse(split_pdf)
-				self.update_Debug_list(split_pdf)
+				self.d_writer('Splited pdf files:', 1, 'green')
+				self.d_writer(split_pdf, 1)
 				rows = files
 				Window.table_reload(self, rows)
 				# self.table.item((len(rows)-1), 1).setForeground(green_)
 
-	def combine_pdf(self):
+	def merge_pdf(self):
 		green_ = (QColor(10, 200, 50))
 		merged_pdf_list = []
+		combinefiles = []
 		table = sorted(self.table.selectionModel().selectedRows())
 		if len(table) <= 1:
-			QMessageBox.information(self, 'Error', 'Choose two or more files to combine PDFs. At least two files....', QMessageBox.Ok)
+			self.d_writer("Error - Choose two or more files to combine PDFs. At least two files...", 1, 'red')
+			# QMessageBox.information(self, 'Error', 'Choose two or more files to combine PDFs. At least two files....', QMessageBox.Ok)
 		else:
 			for items in table:
 				row = items.row()
 				print (row)
 				index=(self.table.selectionModel().currentIndex())
-				cesta_souboru=index.sibling(items.row(),8).data()
-				combinefiles.append(cesta_souboru)
+				file_path=index.sibling(items.row(),8).data()
+				combinefiles.append(file_path)
 			merged_pdf = mergefiles(combinefiles)
-			self.update_Debug_list('New combined PDF created: ' + merged_pdf)
+			self.d_writer('New combined PDF created:', 1,'green')
+			self.d_writer(merged_pdf, 1)
+
 			merged_pdf_list.append(merged_pdf)
 			files, d_info = basic_parse(merged_pdf_list)
 			rows = files
@@ -1099,7 +1117,6 @@ class Window(QMainWindow):
 	def loadcolors(self):
 		green_ = (QColor(10, 200, 50))
 		black_ = (QBrush(QColor(200, 200, 200)))
-				# widgetText =  QLabel('<font color="cyan">C</font><font color="magenta">M</font><font color="yellow">Y</font><font color="white">K</font>')
 		outputfiles = []
 		font = QFont()
 		font.setBold(True)
@@ -1111,7 +1128,6 @@ class Window(QMainWindow):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			druh=index.sibling(items.row(),3).data()
-		print (druh)
 		# if self.table.currentItem() == None:
 		# 	QMessageBox.information(self, 'Error', 'Choose files to convert', QMessageBox.Ok)
 		# 	return
@@ -1119,26 +1135,26 @@ class Window(QMainWindow):
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
 				index=(self.table.selectionModel().currentIndex())
-				cesta_souboru=index.sibling(items.row(),8).data()
-				outputfiles.append(cesta_souboru)
-				 # self.debuglist.setText(str(outputfiles))
+				file_path=index.sibling(items.row(),8).data()
+				outputfiles.append(file_path)
 				for items in outputfiles:
 					nc = count_page_types(items)
 					if not nc:
-						print ('gray')
 						self.table.item(row, 7).setText('BLACK')
 						self.table.item(row, 7).setForeground(black_)
-						self.debuglist.setText('Document is in grayscale')
+						self.d_writer("Document is all grayscale", 1, 'red')
 						self.table.item(row, 7).setFont(font)
 						self.table.clearSelection()
 					else:
 						self.table.item(row, 7).setText('CMYK')
 						self.table.item(row, 7).setForeground(green_)
 						self.table.item(row, 7).setFont(font)
-						self.update_Debug_list('Color pages: ' +  ', '.join(map(str, nc)))
+						self.d_writer("Color pages:", 0, 'green')
+						self.d_writer(' ' +  ', '.join(map(str, nc)), 1)
 						self.table.clearSelection()
 		else:
-			QMessageBox.information(self, 'Error', 'Not supported', QMessageBox.Ok)
+			# QMessageBox.information(self, 'Error', 'Not supported', QMessageBox.Ok)
+			self.d_writer('Error: Not supported', 0, 'red')
 			return			
 
 	def createPrinter_layout(self):
@@ -1285,8 +1301,8 @@ class Window(QMainWindow):
 			# self.table.item(0, 0).setIcon(desktop_icon)
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
-			cesta_souboru=index.sibling(items.row(),8).data()
-			outputfiles.append(cesta_souboru)
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
 			# self.setColortoRow(self.table, row, green_, black_)
 			# WOP
 			tiskarna_ok = self.printer_tb.currentItem()
@@ -1304,9 +1320,9 @@ class Window(QMainWindow):
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
 				index=(self.table.selectionModel().currentIndex())
-				cesta_souboru=index.sibling(items.row(),8).data()
-				outputfiles.append(cesta_souboru)
-			previewimage(cesta_souboru)
+				file_path=index.sibling(items.row(),8).data()
+				outputfiles.append(file_path)
+			previewimage(file_path)
 		except Exception as e:
 			return
 
@@ -1318,10 +1334,10 @@ class Window(QMainWindow):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
-			cesta_souboru=index.sibling(items.row(),8).data()
-			outputfiles.append(cesta_souboru)
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
 		openfile(outputfiles)
-		self.update_Debug_list(str(cesta_souboru))
+		self.update_Debug_list(str(file_path))
 
 	def open_printer_tb(self):
 		for items in sorted(self.printer_tb.selectionModel().selectedRows()):
@@ -1359,7 +1375,7 @@ class Window(QMainWindow):
 
 if __name__ == '__main__':
 	# load config firts
-	json_pref, printers,default_pref = load_preferences()
+	json_pref,printers,default_pref = load_preferences()
 	app = QApplication(sys.argv)
 	path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')
 	app.setWindowIcon(QIcon(path))

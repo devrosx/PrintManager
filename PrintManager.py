@@ -103,7 +103,6 @@ def revealfile(list_path):
 		print (['open', '-R', list_path])
 
 def mergefiles(list_path):
-	print ('Merge file')
 	head, ext = os.path.splitext(list_path[0])
 	outputfile = head + '_m' + ext
 	merger = PdfFileMerger()
@@ -114,7 +113,6 @@ def mergefiles(list_path):
 	return outputfile
 
 def splitfiles(file):
-	print ('Split file')
 	outputfiles = []
 	pdf_file = open(file,'rb')
 	pdf_reader = PdfFileReader(file)
@@ -142,10 +140,8 @@ def resizeimage(original_file, percent):
 	return command, outputfile
 
 def previewimage(original_file):
-	# outputfiles = []
 	command = ["qlmanage", "-p", original_file]
 	subprocess.run(command)
-	# outputfiles.append(outputfile)
 	return command
 
 def compres_this_file(original_file):
@@ -227,7 +223,6 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 		command = ["lp", "-d", printer, printitems,  "-n" + copies, lp_two_sided_, p_size_, fit_to_size, _collate]
 		subprocess.run(command)
 		print (username)
-		# window.update_Debug_list(str(debugstring))
 	try:
 		subprocess.run(["open", username + "/Library/Printers/" + str(printer) + ".app"])
 	except:
@@ -237,7 +232,6 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 argy = []
 def basic_parse(inputs, *args):
 	for item in inputs:
-		# print (item)
 		oldfilename = (os.path.basename(item))
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
@@ -416,8 +410,8 @@ class PrefDialog(QDialog):
 
 		# file parser
 		self.btn_convertor = QComboBox(self)
-		self.btn_convertor.addItem('OpenOffice')
-		self.btn_convertor.addItem('CloudConvert')
+		self.btn_convertor.addItem('OpenOffice (Faster)')
+		self.btn_convertor.addItem('CloudConvert (More precise)')
 		self.btn_convertor.setCurrentText(prefs[2])
 		# self.btn_convertor.setObjectName("btn_conv")
 		# self.btn_convertor.activated[str].connect(self.color_box_change) 
@@ -439,19 +433,19 @@ class PrefDialog(QDialog):
 class Window(QMainWindow):
 	def __init__(self, parent=None):
 		super().__init__(parent)
-		# Create menu options
 		menubar = self.menuBar()
-		file_menu = QMenu('File', self) # title and parent
-		win_menu = QMenu('Windows', self) # title and parent
-		open_action = QAction("Open file", self) # title and parent
-		printing_setting_menu  = QAction("Printers", self) # title and parent
+		menubar.setNativeMenuBar(True)
+		file_menu = QMenu('File', self)
+		win_menu = QMenu('Windows', self)
+		open_action = QAction("Open file", self) 
+		printing_setting_menu  = QAction("Printers", self)
 		printing_setting_menu.setShortcut('Ctrl+P')
 		printing_setting_menu.setCheckable(True)
 		printing_setting_menu.setChecked(True)
 		printing_setting_menu.triggered.connect(self.togglePrintWidget)
 		win_menu.addAction(printing_setting_menu)
 
-		debug_setting_menu  = QAction("Debug", self) # title and parent
+		debug_setting_menu  = QAction("Debug", self)
 		debug_setting_menu.setShortcut('Ctrl+D')
 		debug_setting_menu.setCheckable(True)
 		debug_setting_menu.setChecked(True)
@@ -459,13 +453,13 @@ class Window(QMainWindow):
 		win_menu.addAction(debug_setting_menu)
 
 		# PREVIEW
-		preview_menu  = QAction("Preview", self) # title and parent
+		preview_menu  = QAction("Preview", self)
 		preview_menu.setShortcut('F1')
 		preview_menu.triggered.connect(self.preview)
 		win_menu.addAction(preview_menu)
 
 		# PREFERENCES
-		pref_action = QAction("Preferences", self) # title and parent
+		pref_action = QAction("Preferences", self)
 		pref_action.triggered.connect(self.open_dialog)
 		pref_action.setShortcut('Ctrl+W')
 		file_menu.addAction(pref_action)
@@ -516,7 +510,7 @@ class Window(QMainWindow):
 
 	def pref_generator(self):
 		try:
-			print ('loc je:' + self.localization)
+			print (self.localization)
 			print (self.resolution)
 		except:
 			self.localization = default_pref[0]
@@ -541,7 +535,7 @@ class Window(QMainWindow):
 		preferences = self.pref_generator()
 		save_preferences(preferences)
 		close = QMessageBox()
-		close.setText("You sure?")
+		close.setText("Are you sure?")
 		close.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
 		close = close.exec()
 		if close == QMessageBox.Yes:
@@ -554,8 +548,7 @@ class Window(QMainWindow):
 		if event.mimeData().hasUrls():
 			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c;")
 			event.accept()
-			self.d_writer('loading files, please wait....', 1)
-			# self.debuglist.setText('loading files, please wait....')
+			self.d_writer('Loading files, please wait....', 0)
 
 	def dropEvent(self, event):
 		# hack to update saved value.... fix later
@@ -601,7 +594,6 @@ class Window(QMainWindow):
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
-				# self.splitlinesdebug('converting:' + str(len(soubor)) + ' file(s)')
 				files = self.external_convert(extension, soubor)
 				break
 			# for images.... 
@@ -661,39 +653,17 @@ class Window(QMainWindow):
 				# QMessageBox.about(self, "Warning", "One of files isnt supported:" + extension)
 				break
 
-	def update_Debug_list(self, command):
-		if isinstance (command, list):
-			if len(command) == 1:
-				command = (' '.join('\n'.join(elems) for elems in command))
-			else:
-				command = ' '.join(command)
-				# print (command)
-				if command[0] != '/':
-					(firstWord, rest) = command.split(maxsplit=1)
-					command = ('<font color=red><b>' + firstWord + '</b></font> ' + rest)
-		self.debuglist.append(str(command))
-
-	# for pretty debug output
-	def splitlinesdebug(self, conv_output):
-		outputlist = (conv_output.splitlines())
-		outputlist = str(outputlist[0])
-		# print (outputlist)
-		for char in outputlist:
-			if char in "b'":
-					outputlist = outputlist.replace(char,'')
-		self.update_Debug_list(str(outputlist))
-
 	def d_writer(self, message, append, *args):
-	# fix list input
+	# fix for list input
 		if isinstance (message, list):
 			message = ('\n'.join(message))
 		for ar in args:
 			if ar == 'red':
-				message = '<font color=red><b>' + message + '</b></font> '
+				message = '<font color=red><b>' + message + '</b></font>'
 			if ar == 'white':
-				message = '<font color=white><b>' + message + '</b></font> '
+				message = '<font color=white>' + message + '</font>'
 			if ar == 'green':
-				message = '<font color=green><b>' + message + '</b></font> '
+				message = '<font color=green><b>' + message + '</b></font>'
 
 		if append == 1:
 			self.debuglist.append(message)
@@ -708,7 +678,6 @@ class Window(QMainWindow):
 	def external_convert(self, ext, inputfile):
 		outputdir = "/Users/jandevera/pc/"
 		converts = []
-		
 		# self.process = QProcess(self)
 		if self.convertor == 'OpenOffice':
 		# self.process.readyRead.connect(self.dataReady)
@@ -720,7 +689,7 @@ class Window(QMainWindow):
 				# self.process.start(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir])
 				# conv_output = (subprocess.check_output()
 				conv_output = (subprocess.check_output(command))
-				self.splitlinesdebug(conv_output)
+				self.d_writer(conv_output,0)
 				base = os.path.basename(items)
 				base = os.path.splitext(base)[0]
 				new_file = outputdir + base + '.pdf'
@@ -734,12 +703,11 @@ class Window(QMainWindow):
 		elif self.convertor == 'CloudConvert':
 			print ('CloudConvert')
 			for items in inputfile:
-				# print (items)
 				new_file, warning = cc_convert(items)
 				print (warning)
 				print (new_file)
 				if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
-					self.update_Debug_list('missing API_KEY')
+					self.d_writer('missing API_KEY',0,'red')
 					API_KEY,ok = QInputDialog.getText(self,"Warning ","Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
 					with open("cc.json", "w") as text_file:
 						text_file.write(API_KEY)
@@ -1263,11 +1231,11 @@ class Window(QMainWindow):
 		self.printer_layout.addStretch()
 
 	def papersize_box_change(self, text):
-			self.update_Debug_list(text)
+			self.d_writer(text,0)
 			return text
 
 	def color_box_change(self, text):
-			self.update_Debug_list(text)
+			self.d_writer(text,0)
 			return text
 
 	def togle_btn(self):
@@ -1298,21 +1266,15 @@ class Window(QMainWindow):
 			QMessageBox.information(self, 'Error', 'Choose printer!', QMessageBox.Ok)
 			return
 		for items in sorted(self.table.selectionModel().selectedRows()):
-			# self.table.item(0, 0).setIcon(desktop_icon)
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-			# self.setColortoRow(self.table, row, green_, black_)
-			# WOP
 			tiskarna_ok = self.printer_tb.currentItem()
 			tiskarna_ok = (tiskarna_ok.text())
-			# print ('INFOJE:' + str(self.lp_two_sided.isChecked()))
-			# print (debugstring)
-			# self.update_Debug_list(str(debugstring))
-		# print (outputfiles)
 		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked(), self.btn_colors.currentText())
-		self.update_Debug_list(debugstring)
+		self.d_writer('Printing setting:',0,'green')
+		self.d_writer(debugstring,1,'white')
 
 	def preview(self):
 		outputfiles = []
@@ -1330,14 +1292,13 @@ class Window(QMainWindow):
 		green_ = (QColor(80, 80, 80))
 		black_ = (QBrush(QColor(0, 0, 0)))
 		outputfiles = []
-		# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_FileIcon))
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
 		openfile(outputfiles)
-		self.update_Debug_list(str(file_path))
+		self.d_writer('Opened: ' + str(outputfiles),0, 'green')
 
 	def open_printer_tb(self):
 		for items in sorted(self.printer_tb.selectionModel().selectedRows()):
@@ -1345,7 +1306,7 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			tiskarna = (printers[row])
 		open_printer(tiskarna)
-		self.update_Debug_list(str(tiskarna))
+		self.d_writer('Printing setting: ' + tiskarna,0, 'green')
 
 	def keyPressEvent(self,e):
 		if e.key() == Qt.Key_Delete:
@@ -1365,13 +1326,10 @@ class Window(QMainWindow):
 		options = QFileDialog.Options()
 		soubor, _ = QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "",";Pdf Files (*.pdf)", options=options)
 		if soubor:
-			print (soubor)
 			files, d_info = basic_parse(soubor)
-			self.debuglist.setText(d_info)
-			print (files)
 			rows = files
-			print (rows)
 			self.table_reload(rows)
+			self.d_writer('Loaded: ' + str(soubor),0,'green')
 
 if __name__ == '__main__':
 	# load config firts
@@ -1381,7 +1339,7 @@ if __name__ == '__main__':
 	app.setWindowIcon(QIcon(path))
 	form = Window()
 	darkmode()
-	# time_boot = (str((time.time() - start_time))[:5] + ' seconds')
-	# form.update_Debug_list(time_boot)
+	time_boot = (str((time.time() - start_time))[:5] + ' seconds')
+	form.d_writer(time_boot,1)
 	form.show()
 	sys.exit(app.exec_())

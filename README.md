@@ -45,6 +45,7 @@ I'm a newbie with python and PyQt5 :)
 - removed predefined filepath (file is saved in current directory, custom directory will be added later)
 - you can now import text files or images files with merge function - one PDF from multiple files is created (cloudconvert and OpenOffice is supported)
 - basic platform detection (preparing for other platforms support)
+- better drag and drop
 
 0.24
 - Rewrited debug output, red color errors, green main info...

@@ -5,7 +5,7 @@ import subprocess
 import json
 from PyPDF2 import PdfFileReader, PdfFileMerger, PdfFileWriter
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor, QTextCursor
+from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor, QTextCursor, QDrag
 from PyQt5.QtCore import *
 
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
@@ -556,12 +556,20 @@ class Window(QMainWindow):
 		else:
 			event.ignore()
 
+	def dragMoveEvent(self, event):
+		event.accept()
+
+	def dragLeaveEvent(self, event):
+		event.accept()
+		self.table.setStyleSheet("background-image:none")
+		self.d_writer('',0)
+
 	def dragEnterEvent(self, event):
-		p = self.mapFromGlobal(QCursor().pos())
+		self.d_writer(event.mimeData().text(),0)
+		event.setDropAction(Qt.MoveAction)
 		if event.mimeData().hasUrls():
 			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c;")
 			event.accept()
-			self.d_writer('Loading files, please wait....', 0)
 
 	def dropEvent(self, event):
 		# hack to update saved value.... fix later somehow
@@ -570,7 +578,6 @@ class Window(QMainWindow):
 		except:
 			self.localization = default_pref[0]
 			self.convertor = default_pref[2]
-		
 		for url in event.mimeData().urls():
 			soubor = (url.toLocalFile())
 			extension = os.path.splitext(soubor)[1][1:].lower()
@@ -685,6 +692,7 @@ class Window(QMainWindow):
 				break
 			else:
 				self.d_writer("Warning One of files isnt supported:" + extension, 0, 'red')
+						# else: 
 				# QMessageBox.about(self, "Warning", "One of files isnt supported:" + extension)
 				break
 
@@ -787,7 +795,7 @@ class Window(QMainWindow):
 
 	def table_reload(self, inputfile):
 		self.table = TableWidgetDragRows()
-		headers = ["", "File", "Size", "Kind", "File size", "Pages", "Price", "Colors", 'Filepath']
+		headers = ["", "File", "Size", "Kind", "File size", "Pages", "Price", "Colors", 'File path']
 		self.table.setColumnCount(len(headers))
 		self.table.setHorizontalHeaderLabels(headers)
 		# better is preview (printig etc)

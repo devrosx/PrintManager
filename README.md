@@ -30,24 +30,21 @@ I'm a newbie with python and PyQt5 :)
  # Todo
 - Fix bugs
 - Interface polishing
-
-~~- Preferences panel~~
-~~- CloudConvert api support (as alternative to OpenOffice)~~
-~~- support fileformat icons~~
-
-- better file and drag and drop highligting
 - app bundle configuration
 - drag and drop on app icon
 - More image operations
 - Localizations..
 - Finish print settings
- - Grayscale/color switch
+- Preview
+- Support other platforms
+- rewrite process to QProcess
 - ...
 
 # Updates:
 0.25
 - removed predefined filepath (file is saved in current directory, custom directory will be added later)
-- you can now import text files or images files with merge function - one PDF from multiple files is created (only openoffice supported, cloudconvert is unfinished)
+- you can now import text files or images files with merge function - one PDF from multiple files is created (cloudconvert and OpenOffice is supported)
+- basic platform detection (preparing for other platforms support)
 
 0.24
 - Rewrited debug output, red color errors, green main info...

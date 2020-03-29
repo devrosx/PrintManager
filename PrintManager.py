@@ -35,6 +35,13 @@ filepath = []
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'original']
 username = os.path.expanduser("~")
 
+# other os support
+system = str(sys.platform)
+if system == 'darwin':
+	sys_support = 'supported'
+else:
+	sys_support = 'not supported'
+
 # extract printer info as list for preferences only
 def load_printers():
 	output = (subprocess.check_output(["lpstat", "-a"]))
@@ -764,10 +771,19 @@ class Window(QMainWindow):
 				elif new_file != None:
 					print ('converting...')
 					converts.append(new_file)
-			print (converts)
-			files, d_info = basic_parse(converts)
-			rows = files
-			Window.table_reload(self, rows)
+			if setting == 'combine':
+				merged_pdf = mergefiles(converts, savedir)
+				# convert to list fix for later
+				merged_pdf = (merged_pdf.split())
+				files, d_info = basic_parse(merged_pdf)
+				rows = files
+				self.d_writer('CloudConvert combining files to:', 0, 'green')
+				self.d_writer(merged_pdf[0], 1)
+				Window.table_reload(self, rows)
+			else:
+				files, d_info = basic_parse(converts)
+				rows = files
+				Window.table_reload(self, rows)
 
 	def table_reload(self, inputfile):
 		self.table = TableWidgetDragRows()
@@ -1383,7 +1399,7 @@ if __name__ == '__main__':
 	app.setWindowIcon(QIcon(path))
 	form = Window()
 	darkmode()
-	time_boot = (str((time.time() - start_time))[:5] + ' seconds')
-	form.d_writer(time_boot,1)
+	log = ('OS: '  + system + ': ' + sys_support + ' / boot time: ' + str((time.time() - start_time))[:5] + ' seconds')
+	form.d_writer(log,1)
 	form.show()
 	sys.exit(app.exec_())

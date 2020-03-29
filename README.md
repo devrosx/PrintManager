@@ -46,6 +46,7 @@ I'm a newbie with python and PyQt5 :)
 - you can now import text files or images files with merge function - one PDF from multiple files is created (cloudconvert and OpenOffice is supported)
 - basic platform detection (preparing for other platforms support)
 - better drag and drop
+- better basic pdf info (info button) WIP
 
 0.24
 - Rewrited debug output, red color errors, green main info...

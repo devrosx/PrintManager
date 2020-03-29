@@ -181,6 +181,18 @@ def raster_this_file(original_file,resolution):
 	outputfiles.append(outputfile)
 	return command, outputfiles
 
+def file_info(inputs, *args):
+	pdf_info = []
+	for item in inputs:
+		pdf_toread = PdfFileReader(open(item, "rb"))
+		pdf_ = pdf_toread.getDocumentInfo()
+		base = os.path.splitext(item)[0]
+		ext = os.path.splitext(item)[1]
+		pdf_info.append(base + ext)
+		pdf_info.append(pdf_)
+	return pdf_info
+
+
 def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate, colors):
 	# https://www.cups.org/doc/options.html
 	# COLATE
@@ -561,14 +573,14 @@ class Window(QMainWindow):
 
 	def dragLeaveEvent(self, event):
 		event.accept()
-		self.table.setStyleSheet("background-image:none")
+		self.table.setStyleSheet("QTableView {background-image:none}" )
 		self.d_writer('',0)
-
+# ;border: 2px solid #001033;
 	def dragEnterEvent(self, event):
 		self.d_writer(event.mimeData().text(),0)
 		event.setDropAction(Qt.MoveAction)
 		if event.mimeData().hasUrls():
-			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c;")
+			self.table.setStyleSheet("QTableView {border: 2px solid #00aeff;background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c; }" )
 			event.accept()
 
 	def dropEvent(self, event):
@@ -895,7 +907,7 @@ class Window(QMainWindow):
 		self.split_pdf_b.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
-		self.count_b.setEnabled(
+		self.info_b.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
 		self.gb_setting.setEnabled(
@@ -1011,10 +1023,10 @@ class Window(QMainWindow):
 		self.extract_b.setDisabled(True)
 
 		# POCITANI TABULKY PDF
-		self.count_b = QPushButton('Count', self)
-		self.count_b.clicked.connect(self.count_tb)
-		self.buttons_layout.addWidget(self.count_b)
-		self.count_b.setDisabled(True)
+		self.info_b = QPushButton('Info', self)
+		self.info_b.clicked.connect(self.info_tb)
+		self.buttons_layout.addWidget(self.info_b)
+		self.info_b.setDisabled(True)
 
 		# # # SPACE
 		# self.labl = QLabel()
@@ -1094,20 +1106,26 @@ class Window(QMainWindow):
 		self.d_writer('Extracted images:', 1, 'green')
 		self.d_writer(str(outputfiles),1)
 
-	def count_tb(self):
+	def info_tb(self):
 		soucet = []
 		stranky = []
+		pdf_files = []
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			soucet.append(row)
 			index=(self.table.selectionModel().currentIndex())
 			info=index.sibling(items.row(),5).data()
+			f_path=index.sibling(items.row(),8).data()
 			stranky.append(int(info))
+			pdf_files.append(f_path)
 			# outputfiles.append(file_path)
 			# print ('toto je row:' + str(row))
 			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
+		pdf_info = file_info(pdf_files)
+		print (pdf_info)
 		celkem = (str(len(soucet)) + '  PDF files, ' + str(sum(stranky)) + ' pages')
-		self.d_writer(str(celkem),1,'green')
+		self.d_writer(str(celkem),0,'green')
+		self.d_writer(str(pdf_info),1)
 
 	def split_pdf(self):
 		green_ = (QColor(10, 200, 50))
@@ -1164,9 +1182,6 @@ class Window(QMainWindow):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			druh=index.sibling(items.row(),3).data()
-		# if self.table.currentItem() == None:
-		# 	QMessageBox.information(self, 'Error', 'Choose files to convert', QMessageBox.Ok)
-		# 	return
 		if druh == 'pdf':
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
@@ -1189,7 +1204,6 @@ class Window(QMainWindow):
 						self.d_writer(' ' +  ', '.join(map(str, nc)), 1)
 						self.table.clearSelection()
 		else:
-			# QMessageBox.information(self, 'Error', 'Not supported', QMessageBox.Ok)
 			self.d_writer('Error: Not supported', 0, 'red')
 			return			
 

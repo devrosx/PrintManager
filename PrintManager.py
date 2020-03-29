@@ -16,7 +16,7 @@ from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
 from libs.cc_module import cc_convert
-version = '0.24'
+version = '0.25'
 import time
 start_time = time.time()
 
@@ -37,7 +37,6 @@ username = os.path.expanduser("~")
 
 # extract printer info as list for preferences only
 def load_printers():
-	# print ('load printer list')
 	output = (subprocess.check_output(["lpstat", "-a"]))
 	outputlist = (output.splitlines())
 	tolist = [] # novy list
@@ -102,9 +101,16 @@ def revealfile(list_path):
 		subprocess.call(['open', '-R', list_path]) # open converted
 		print (['open', '-R', list_path])
 
-def mergefiles(list_path):
-	head, ext = os.path.splitext(list_path[0])
-	outputfile = head + '_m' + ext
+def mergefiles(list_path,save_dir):
+	print (save_dir)
+	base = os.path.basename(list_path[0])
+	file = os.path.splitext(base)
+	folder_path = os.path.dirname(list_path[0])
+	# print (folder_path)
+	if folder_path == '/tmp':
+		folder_path = save_dir
+	outputfile = folder_path + file[0] +  '_m.pdf'
+	# print (outputfile)
 	merger = PdfFileMerger()
 	for pdf in list_path:
 		merger.append(pdf)
@@ -410,8 +416,8 @@ class PrefDialog(QDialog):
 
 		# file parser
 		self.btn_convertor = QComboBox(self)
-		self.btn_convertor.addItem('OpenOffice (Faster)')
-		self.btn_convertor.addItem('CloudConvert (More precise)')
+		self.btn_convertor.addItem('OpenOffice')
+		self.btn_convertor.addItem('CloudConvert')
 		self.btn_convertor.setCurrentText(prefs[2])
 		# self.btn_convertor.setObjectName("btn_conv")
 		# self.btn_convertor.activated[str].connect(self.color_box_change) 
@@ -551,13 +557,13 @@ class Window(QMainWindow):
 			self.d_writer('Loading files, please wait....', 0)
 
 	def dropEvent(self, event):
-		# hack to update saved value.... fix later
+		# hack to update saved value.... fix later somehow
 		try:
 			print ('loc je:' + self.localization)
 		except:
 			self.localization = default_pref[0]
 			self.convertor = default_pref[2]
-		items = ["to PDF", "SmartCut", "OCR", "Resize", "Parse"]
+		
 		for url in event.mimeData().urls():
 			soubor = (url.toLocalFile())
 			extension = os.path.splitext(soubor)[1][1:].lower()
@@ -588,25 +594,47 @@ class Window(QMainWindow):
 							afp.write(a.data)
 					self.d_writer("Successfully wrote %i files" % len(t.attachments) + ' to: ' + dirname, 0)
 				break
+			# office etc file 
 			elif extension in office_ext:
 				soubor = []
-				self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
-				files = self.external_convert(extension, soubor)
-				break
+				if len(soubor) > 1:
+					items = ["Convert to PDF","Combine to PDF"]
+					text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
+					if text == 'Convert to PDF':
+						self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
+						files = self.external_convert(extension, soubor, 'convert')
+						break
+					if text == 'Combine to PDF':
+						print ('todooo')
+						files = self.external_convert(extension, soubor, 'combine')
+						break
+					if not ok:
+						break
+				else:
+					self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
+					files = self.external_convert(extension, soubor, 'convert')
+					break
 			# for images.... 
-			elif extension in image_ext :
+			elif extension in image_ext:
 				soubor = []
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
-				text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
+				if len(soubor) > 1:
+					items = ["Convert to PDF","Combine to PDF", "SmartCut", "Resize", "Parse"]
+					text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
+				else:
+					items = ["Convert to PDF", "SmartCut", "OCR", "Resize", "Parse"]
+					text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)					
 				if not ok:
 					break
-				if text == 'to PDF':
-					files = self.external_convert(extension, soubor)
+				if text == 'Convert to PDF':
+					files = self.external_convert(extension, soubor, 'convert')
+				if text == 'Combine to PDF':
+					files = self.external_convert(extension, soubor, 'combine')
 				if text == 'OCR':
 					ocr_output = []
 					for items in soubor:
@@ -675,11 +703,22 @@ class Window(QMainWindow):
 		if append == 0:
 			self.debuglist.setText(message)
 
-	def external_convert(self, ext, inputfile):
-		outputdir = "/Users/jandevera/pc/"
+	def external_convert(self, ext, inputfile, setting):
+		# for items in inputfile:
+		# 	outputdir = os.path.dirname(items) + '/'
+		# 	print (outputdir)
+
+		# outputdir = "/Users/jandevera/pc/"
 		converts = []
-		# self.process = QProcess(self)
+		if setting == 'combine':
+			outputdir = "/tmp/"
+			print ('tmp folder selected')
+			savedir = os.path.dirname(inputfile[0]) + '/'
+		else:
+			outputdir = os.path.dirname(inputfile[0]) + '/'
+
 		if self.convertor == 'OpenOffice':
+		# self.process = QProcess(self)
 		# self.process.readyRead.connect(self.dataReady)
 			for items in inputfile:
 				command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]
@@ -689,23 +728,29 @@ class Window(QMainWindow):
 				# self.process.start(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir])
 				# conv_output = (subprocess.check_output()
 				conv_output = (subprocess.check_output(command))
-				self.d_writer(conv_output,0)
 				base = os.path.basename(items)
 				base = os.path.splitext(base)[0]
 				new_file = outputdir + base + '.pdf'
 				converts.append(new_file)
+			if setting == 'combine':
+				merged_pdf = mergefiles(converts, savedir)
+				# convert to list fix for later
+				merged_pdf = (merged_pdf.split())
+				files, d_info = basic_parse(merged_pdf)
+				rows = files
+				self.d_writer('OpenOffice combining files to:', 0, 'green')
+				self.d_writer(merged_pdf[0], 1)
+				Window.table_reload(self, rows)
+			else:
 				self.d_writer('OpenOffice converted files:', 0, 'green')
 				self.d_writer(converts, 1)
 				files, d_info = basic_parse(converts)
 				rows = files
-				Window.table_reload(self, rows)
-				# import converted
+				Window.table_reload(self, rows)				
 		elif self.convertor == 'CloudConvert':
 			print ('CloudConvert')
 			for items in inputfile:
 				new_file, warning = cc_convert(items)
-				print (warning)
-				print (new_file)
 				if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
 					self.d_writer('missing API_KEY',0,'red')
 					API_KEY,ok = QInputDialog.getText(self,"Warning ","Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
@@ -719,9 +764,10 @@ class Window(QMainWindow):
 				elif new_file != None:
 					print ('converting...')
 					converts.append(new_file)
-					files, d_info = basic_parse(converts)
-					rows = files
-					Window.table_reload(self, rows)
+			print (converts)
+			files, d_info = basic_parse(converts)
+			rows = files
+			Window.table_reload(self, rows)
 
 	def table_reload(self, inputfile):
 		self.table = TableWidgetDragRows()
@@ -1059,7 +1105,6 @@ class Window(QMainWindow):
 
 	def merge_pdf(self):
 		green_ = (QColor(10, 200, 50))
-		merged_pdf_list = []
 		combinefiles = []
 		table = sorted(self.table.selectionModel().selectedRows())
 		if len(table) <= 1:
@@ -1072,12 +1117,11 @@ class Window(QMainWindow):
 				index=(self.table.selectionModel().currentIndex())
 				file_path=index.sibling(items.row(),8).data()
 				combinefiles.append(file_path)
-			merged_pdf = mergefiles(combinefiles)
+			merged_pdf = mergefiles(combinefiles, 0)
 			self.d_writer('New combined PDF created:', 1,'green')
 			self.d_writer(merged_pdf, 1)
-
-			merged_pdf_list.append(merged_pdf)
-			files, d_info = basic_parse(merged_pdf_list)
+			merged_pdf = (merged_pdf.split())
+			files, d_info = basic_parse(merged_pdf)
 			rows = files
 			Window.table_reload(self, rows)
 			# self.table.item((len(rows)-1), 1).setForeground(green_)

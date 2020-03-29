@@ -186,11 +186,27 @@ def file_info(inputs, *args):
 	for item in inputs:
 		pdf_toread = PdfFileReader(open(item, "rb"))
 		pdf_ = pdf_toread.getDocumentInfo()
-		base = os.path.splitext(item)[0]
-		ext = os.path.splitext(item)[1]
-		pdf_info.append(base + ext)
-		pdf_info.append(pdf_)
+		# base = os.path.splitext(item)[0]
+		# ext = os.path.splitext(item)[1]
+		# pdf_info.append(base + ext)
+		# pdf_info.append(pdf_)
+		html_info = tablemaker(pdf_)
+		pdf_info.append(html_info)
 	return pdf_info
+
+def tablemaker (inputs):
+	html = "<table width=100% table cellspacing=0 style='border-collapse: collapse' border = \"1\" >"
+	html += '<style>table, td, th {font-size: 12px;text-align:left;padding-left: 4px;}</style>'
+	for dict_item in inputs:
+		html += '<tr>'
+		key_values = dict_item.split(',')
+		# print (key_values) # [1:]
+		html += '<th>' + str(key_values[0][1:]) + '</th>'
+		# print (inputs[dict_item])
+		html += '<th>' + inputs[dict_item] + '</th>'
+		html += '</tr>'
+	html += '</table>'
+	return html
 
 
 def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate, colors):
@@ -712,6 +728,7 @@ class Window(QMainWindow):
 	# fix for list input
 		if isinstance (message, list):
 			message = ('\n'.join(message))
+			print ('tadyyyyyy' + message)
 		for ar in args:
 			if ar == 'red':
 				message = '<font color=red><b>' + message + '</b></font>'
@@ -1122,10 +1139,9 @@ class Window(QMainWindow):
 			# print ('toto je row:' + str(row))
 			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 		pdf_info = file_info(pdf_files)
-		print (pdf_info)
 		celkem = (str(len(soucet)) + '  PDF files, ' + str(sum(stranky)) + ' pages')
 		self.d_writer(str(celkem),0,'green')
-		self.d_writer(str(pdf_info),1)
+		self.d_writer(pdf_info,1)
 
 	def split_pdf(self):
 		green_ = (QColor(10, 200, 50))

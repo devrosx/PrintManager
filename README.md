@@ -46,13 +46,17 @@ I'm a newbie with python and PyQt5 :)
 - you can now import text files or images files with merge function - one PDF from multiple files is created (cloudconvert and OpenOffice is supported)
 - basic platform detection (preparing for other platforms support)
 - better drag and drop
-- better basic pdf info (info button) WIP
+- Window is always on TOP
+- Fixed window bar on new macOS
+- Added detailed info generated in tab (Info button) image and PDF files are supported
+- Note: delete item in list is buggu after drop another file deleted file appears again (have to find bug)
 
 0.24
 - Rewrited debug output, red color errors, green main info...
 - new preferences panel (curently you can change OCR language and rastering resoltion, cloudconvert it WIP)
 - Cloudconvert support
 - Added API_KEY and error handling for Cloudconvert
+
 
 0.21
 - Fixed icons (pdf and image files) and better text aling in table

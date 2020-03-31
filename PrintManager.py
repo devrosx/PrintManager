@@ -7,7 +7,6 @@ from PyPDF2 import PdfFileReader, PdfFileMerger, PdfFileWriter
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor, QTextCursor, QDrag
 from PyQt5.QtCore import *
-
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
 from tnefparse.mapi import TNEFMAPI_Attribute
 # my modules import
@@ -172,27 +171,43 @@ def raster_this_file(original_file,resolution):
 	outputfile = head + '_raster' + ext
 	command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-sColorConversionStrategy=/LeaveColorUnchanged", "-dAutoFilterColorImages=true", "-dAutoFilterGrayImages=true", "-dDownsampleMonoImages=true", "-dDownsampleGrayImages=true", "-dDownsampleColorImages=true", "-sOutputFile="+outputfile, original_file]
 	command = ["convert", "-density", str(resolution), "+antialias", str(original_file), str(outputfile)]
-	# command = ["pdf2ps", original_file]
-	# cmd = "pdf2ps " +  str(original_file) + " - | ps2pdf - " + str(outputfile)
-	# ps = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-	# output = ps.communicate()[0]
-	# print(output)
 	subprocess.run(command)
 	outputfiles.append(outputfile)
 	return command, outputfiles
 
-def file_info(inputs, *args):
-	pdf_info = []
-	for item in inputs:
-		pdf_toread = PdfFileReader(open(item, "rb"))
-		pdf_ = pdf_toread.getDocumentInfo()
-		# base = os.path.splitext(item)[0]
-		# ext = os.path.splitext(item)[1]
-		# pdf_info.append(base + ext)
-		# pdf_info.append(pdf_)
-		html_info = tablemaker(pdf_)
-		pdf_info.append(html_info)
-	return pdf_info
+def file_info(inputs, file, *args):
+	_info = []
+	if file == 'pdf':
+		for item in inputs:
+			pdf_toread = PdfFileReader(open(item, "rb"))
+			pdf_ = pdf_toread.getDocumentInfo()
+			# base = os.path.splitext(item)[0]
+			# ext = os.path.splitext(item)[1]
+			# pdf_info.append(base + ext)
+			# pdf_info.append(pdf_)
+			html_info = tablemaker(pdf_)
+			_info.append(html_info)
+	else:
+		name_ = []
+		val_ = []
+		for item in inputs:
+			output = (subprocess.check_output(["mdls", item]))
+			pdf_info = (output.splitlines())
+			for num in pdf_info:
+				num = num.decode("utf-8")
+				name, *value = num.split('=')
+				value = ', '.join(value)
+				name = name.rstrip()
+				value = value.replace('"','')
+				value = value.lstrip()
+				name = name.replace('kMD','')
+				name_.append(name)
+				val_.append(value)
+		tolist = dict(zip(name_, val_))
+		unwanted = ['', [], '(', '0', '(null)']
+		img_ = {k: v for k, v in tolist.items() if v not in unwanted}
+		_info = tablemaker(img_)
+	return _info
 
 def tablemaker (inputs):
 	html = "<table width=100% table cellspacing=0 style='border-collapse: collapse' border = \"1\" >"
@@ -201,13 +216,12 @@ def tablemaker (inputs):
 		html += '<tr>'
 		key_values = dict_item.split(',')
 		# print (key_values) # [1:]
-		html += '<th>' + str(key_values[0][1:]) + '</th>'
+		html += '<th>' + str(key_values[0]) + '</th>'
 		# print (inputs[dict_item])
 		html += '<th>' + inputs[dict_item] + '</th>'
 		html += '</tr>'
 	html += '</table>'
 	return html
-
 
 def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate, colors):
 	# https://www.cups.org/doc/options.html
@@ -226,14 +240,12 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 	if colors == 'Gray':
 		_colors =  ('-OColorMode=GrayScale')
 		# _colors =  ('-oColorModel=KGray')
-
 	# PAPER SHRINK
 	if fit_to_size == 1:
 		# print ('fit_to_size ON')
 		fit_to_size =  ('-o fit-to-page')
 	else: 
 		# fix cant be null or empty
-		# print ('fit_to_size OFF ')
 		fit_to_size = ('-o job-priority=10')
 	# PAPER SIZE WIP
 	if p_size == 'A4':
@@ -270,8 +282,9 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 		print ('printer not found')
 	return command
 
-argy = []
-def basic_parse(inputs, *args):
+def basic_parse(self, inputs, *args):
+	self.rows = []
+	print ('ROOOOWSje:' + str(self.rows))
 	for item in inputs:
 		oldfilename = (os.path.basename(item))
 		ext_file = os.path.splitext(oldfilename)
@@ -300,8 +313,8 @@ def basic_parse(inputs, *args):
 				colors.append('')
 				extension.append(ext_file[1][1:])
 				d_info = ''
-	rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	return rows, d_info
+	self.rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	return self.rows, d_info
 
 def getimageinfo (filename):
 	output = (subprocess.check_output(["identify", filename]))
@@ -313,7 +326,7 @@ def getimageinfo (filename):
 		getimageinfo.append(str(middle[4].decode()))
 	return getimageinfo
 	
-def basic_parse_image(inputs, *args):
+def basic_parse_image(self, inputs, *args):
 	for item in inputs:
 		oldfilename = (os.path.basename(item))
 		filesize = humansize(os.path.getsize(item))
@@ -330,8 +343,8 @@ def basic_parse_image(inputs, *args):
 		colors.append(str(image_info[1]))
 		filepath.append(item)
 		d_info = 'All ok'
-	rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	return rows, d_info
+	self.rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	return self.rows, d_info
 
 def size_check(page_size):
 	velikost = 0
@@ -456,7 +469,6 @@ class PrefDialog(QDialog):
 		self.btn_convertor.setCurrentText(prefs[2])
 		# self.btn_convertor.setObjectName("btn_conv")
 		# self.btn_convertor.activated[str].connect(self.color_box_change) 
-
 		self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self);
 		self.layout.addRow("OCR language", self.text_link)
 		self.layout.addRow("File convertor", self.btn_convertor)
@@ -521,14 +533,17 @@ class Window(QMainWindow):
 		self.createPrinter_layout()
 		self.createDebug_layout()
 		self.createButtons_layout()
-		rows = []
-		self.table_reload(rows)
+		self.files = []
+		print (self.files)
+		self.table_reload(self.files)
 		self.mainLayout.addLayout(self.printer_layout, 0,0)
 		self.mainLayout.addLayout(self.debug_layout, 2, 0)
 		self.mainLayout.addLayout(self.buttons_layout, 3, 0)
 		self.setAcceptDrops(True)
 		self.setFixedWidth(self.sizeHint().width())
 		self.setWindowTitle("PrintManager " + version)
+		# stay on top
+		self.setWindowFlags(Qt.WindowStaysOnTopHint) 
 
 	def sizeHint(self):
 		return QSize(620, 650)
@@ -541,8 +556,6 @@ class Window(QMainWindow):
 		try:
 			if form.exec():
 				self.localization, self.resolution, self.convertor = form.getInputs()
-				# print (self.convertor)
-				# save and reload config 
 				preferences = self.pref_generator()
 				save_preferences(preferences)
 				json_pref,printers,default_pref = load_preferences()
@@ -614,15 +627,17 @@ class Window(QMainWindow):
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())
 					soubor.append(file)
-				try:	
-					files, d_info = basic_parse(soubor)
-				except:
-					self.d_writer("Warning - File " + str(file) + " import error.", 0, 'red')
-					# QMessageBox.about(self, "Warning", "File " + str(file) + " import error.")
-					break
+					self.files, d_info = basic_parse(self,soubor)
+					print ('D' + str(soubor))
+					print ('self.files_drop:' + str(self.files))
+				# try:	
+
+				# except:
+				# 	self.d_writer("Warning - File " + str(file) + " import error.", 0, 'red')
+				# 	# QMessageBox.about(self, "Warning", "File " + str(file) + " import error.")
+				# 	break
 				self.d_writer(d_info, 0, 'red')
-				rows = files
-				Window.table_reload(self, rows)
+				Window.table_reload(self, self.files)
 				break
 			if extension == 'dat':
 				for url in event.mimeData().urls():
@@ -696,26 +711,23 @@ class Window(QMainWindow):
 						smartcut_files.append(outputfiles)
 					# merge lists inside lists 
 					smartcut_files = [j for i in smartcut_files for j in i]
-					files, d_info = basic_parse_image(smartcut_files)
-					rows = files
-					Window.table_reload(self, rows)
+					self.files, d_info = basic_parse_image(smartcut_files)
+					Window.table_reload(self, self.files)
 					self.d_writer(str(smartcut_files), 0)
 				if text == 'Parse':
 					parse_files = []
 					print (type(soubor))
-					files, d_info = basic_parse_image(soubor)
-					rows = files
-					Window.table_reload(self, rows)
-					self.d_writer('imported:' + str(soubor), 0)
+					self.files, d_info = basic_parse_image(self, soubor)
+					Window.table_reload(self, self.files)
+					self.d_writer('Imported: ' + ' '.join(soubor), 0)
 				if text == 'Resize':
 					resize_files = []
 					percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
 					for items in soubor:
 						command, outputfiles = resizeimage(items, percent)
 						resize_files.append(outputfiles)
-					files, d_info = basic_parse_image(resize_files)
-					rows = files
-					Window.table_reload(self, rows)
+					self.files, d_info = basic_parse_image(self, resize_files)
+					Window.table_reload(self, self.files)
 					self.d_writer(str(resize_files), 0)
 				break
 			else:
@@ -728,7 +740,6 @@ class Window(QMainWindow):
 	# fix for list input
 		if isinstance (message, list):
 			message = ('\n'.join(message))
-			print ('tadyyyyyy' + message)
 		for ar in args:
 			if ar == 'red':
 				message = '<font color=red><b>' + message + '</b></font>'
@@ -780,17 +791,15 @@ class Window(QMainWindow):
 				merged_pdf = mergefiles(converts, savedir)
 				# convert to list fix for later
 				merged_pdf = (merged_pdf.split())
-				files, d_info = basic_parse(merged_pdf)
-				rows = files
+				self.files, d_info = basic_parse(self,merged_pdf)
 				self.d_writer('OpenOffice combining files to:', 0, 'green')
 				self.d_writer(merged_pdf[0], 1)
-				Window.table_reload(self, rows)
+				Window.table_reload(self, self.files)
 			else:
 				self.d_writer('OpenOffice converted files:', 0, 'green')
 				self.d_writer(converts, 1)
-				files, d_info = basic_parse(converts)
-				rows = files
-				Window.table_reload(self, rows)				
+				self.files, d_info = basic_parse(self,converts)
+				Window.table_reload(self, self.files)				
 		elif self.convertor == 'CloudConvert':
 			print ('CloudConvert')
 			for items in inputfile:
@@ -812,17 +821,16 @@ class Window(QMainWindow):
 				merged_pdf = mergefiles(converts, savedir)
 				# convert to list fix for later
 				merged_pdf = (merged_pdf.split())
-				files, d_info = basic_parse(merged_pdf)
-				rows = files
+				self.files, d_info = basic_parse(self,merged_pdf)
 				self.d_writer('CloudConvert combining files to:', 0, 'green')
 				self.d_writer(merged_pdf[0], 1)
-				Window.table_reload(self, rows)
+				Window.table_reload(self, self.files)
 			else:
-				files, d_info = basic_parse(converts)
-				rows = files
-				Window.table_reload(self, rows)
+				self.files, d_info = basic_parse(self,converts)
+				Window.table_reload(self, self.files)
 
 	def table_reload(self, inputfile):
+		print ('self.files:' + str(inputfile))
 		self.table = TableWidgetDragRows()
 		headers = ["", "File", "Size", "Kind", "File size", "Pages", "Price", "Colors", 'File path']
 		self.table.setColumnCount(len(headers))
@@ -1075,11 +1083,10 @@ class Window(QMainWindow):
 			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 			# self.table.item(0, row).setIcon(desktop_icon)
 		debugstring, outputfiles = compres_this_file(file_path)
-		files, d_info = basic_parse(outputfiles)
-		rows = files
-		Window.table_reload(self, rows)
+		self.files, d_info = basic_parse(self,outputfiles)
+		Window.table_reload(self, self.files)
 		self.d_writer('File(s) compresed:', 1, 'green')
-		self.d_writer(debugstring,1)
+		self.d_writer(', '.join(debugstring),1)
 
 	def rasterize_pdf(self):
 		outputfiles = []
@@ -1094,12 +1101,10 @@ class Window(QMainWindow):
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 		# debugstring, outputfiles = raster_this_file(file_path, self.resolution)
 		debugstring, outputfiles = raster_this_file(file_path, default_pref[1])
-
-		files, d_info = basic_parse(outputfiles)
-		rows = files
-		Window.table_reload(self, rows)
+		self.files, d_info = basic_parse(self,outputfiles)
+		Window.table_reload(self, self.files)
 		self.d_writer('File(s) rasterized:', 1, 'green')
-		self.d_writer(debugstring,1)
+		self.d_writer(', '.join(debugstring),1)
 
 	def extract_pdf(self):
 		outputfiles = []
@@ -1117,31 +1122,33 @@ class Window(QMainWindow):
 		except Exception as e:
 			self.d_writer('Error - Importing error' + str(e), 1, 'red')
 			return
-		files, d_info = basic_parse_image(outputfiles)
-		rows = files
-		Window.table_reload(self, rows)
+		self.files, d_info = basic_parse_image(outputfiles)
+		Window.table_reload(self, self.files)
 		self.d_writer('Extracted images:', 1, 'green')
 		self.d_writer(str(outputfiles),1)
 
 	def info_tb(self):
 		soucet = []
 		stranky = []
-		pdf_files = []
+		_files = []
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			soucet.append(row)
 			index=(self.table.selectionModel().currentIndex())
 			info=index.sibling(items.row(),5).data()
 			f_path=index.sibling(items.row(),8).data()
+			ftype=index.sibling(items.row(),3).data()
 			stranky.append(int(info))
-			pdf_files.append(f_path)
-			# outputfiles.append(file_path)
-			# print ('toto je row:' + str(row))
-			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		pdf_info = file_info(pdf_files)
-		celkem = (str(len(soucet)) + '  PDF files, ' + str(sum(stranky)) + ' pages')
-		self.d_writer(str(celkem),0,'green')
-		self.d_writer(pdf_info,1)
+			_files.append(f_path)
+		if ftype == 'pdf':
+			pdf_info = file_info(_files, 'pdf')
+			celkem = (str(len(soucet)) + '  PDF files, ' + str(sum(stranky)) + ' pages')
+			self.d_writer(str(celkem),0,'green')
+			self.d_writer(pdf_info,1)
+		else:
+			jpg_info = file_info(_files, 'image')
+			self.d_writer(' '.join(_files),0,'green')
+			self.d_writer(jpg_info,1)
 
 	def split_pdf(self):
 		green_ = (QColor(10, 200, 50))
@@ -1154,11 +1161,10 @@ class Window(QMainWindow):
 				index=(self.table.selectionModel().currentIndex())
 				file_path=index.sibling(items.row(),8).data()
 				split_pdf = splitfiles(file_path)
-				files, d_info = basic_parse(split_pdf)
+				self.files, d_info = basic_parse(self,split_pdf)
 				self.d_writer('Splited pdf files:', 1, 'green')
 				self.d_writer(split_pdf, 1)
-				rows = files
-				Window.table_reload(self, rows)
+				Window.table_reload(self, self.files)
 				# self.table.item((len(rows)-1), 1).setForeground(green_)
 
 	def merge_pdf(self):
@@ -1179,9 +1185,8 @@ class Window(QMainWindow):
 			self.d_writer('New combined PDF created:', 1,'green')
 			self.d_writer(merged_pdf, 1)
 			merged_pdf = (merged_pdf.split())
-			files, d_info = basic_parse(merged_pdf)
-			rows = files
-			Window.table_reload(self, rows)
+			self.files, d_info = basic_parse(self,merged_pdf)
+			Window.table_reload(self, self.files)
 			# self.table.item((len(rows)-1), 1).setForeground(green_)
 
 	def loadcolors(self):
@@ -1407,12 +1412,19 @@ class Window(QMainWindow):
 		self.d_writer('Printing setting: ' + tiskarna,0, 'green')
 
 	def keyPressEvent(self,e):
+		# rows_to_delete = []
 		if e.key() == Qt.Key_Delete:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
-				# print ('row is' + str(row))
-				print (str(argy))
-				self.table.removeRow(row)
+				# rows_to_delete.append(row)
+				# print ('row is' + str(self.files))
+			# for items in rows_to_delete:
+			# 	print (len(self.files))
+			# 	print ('chci smazat:' + str(items))
+				del(self.files[row]) 
+			Window.table_reload(self, self.files)
+				# print ('po smazani:' + str(self.files))
+
 		if e.key() == Qt.Key_F1:
 			self.preview()
 
@@ -1424,9 +1436,9 @@ class Window(QMainWindow):
 		options = QFileDialog.Options()
 		soubor, _ = QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "",";Pdf Files (*.pdf)", options=options)
 		if soubor:
-			files, d_info = basic_parse(soubor)
-			rows = files
-			self.table_reload(rows)
+			self.files, d_info = basic_parse(self,soubor)
+			print (self.files)
+			self.table_reload(self.files)
 			self.d_writer('Loaded: ' + str(soubor),0,'green')
 
 if __name__ == '__main__':

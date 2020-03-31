@@ -6,7 +6,6 @@ RE_FLOAT = re.compile("[01].[0-9]+")
 CMYK_NCOLORS = 4
 
 def parseCMYK(pdf_file):
-  print ('start parsing')
   gs_inkcov = subprocess.Popen(["gs", "-o", "-", "-sDEVICE=inkcov", pdf_file], stdout=subprocess.PIPE)
   for raw_line in iter(gs_inkcov.stdout.readline, b''):
     line = raw_line.decode('utf8').rstrip()

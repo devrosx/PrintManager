@@ -50,6 +50,7 @@ I'm a newbie with python and PyQt5 :)
 - Fixed window bar on new macOS
 - Added detailed info generated in tab (Info button) image and PDF files are supported
 - Note: delete item in list is buggu after drop another file deleted file appears again (have to find bug)
+- Experimental support for all clouconvert supported files https://cloudconvert.com/pdf-converter (like EPS, CDR, HEIC, PSD etc...)
 
 0.24
 - Rewrited debug output, red color errors, green main info...

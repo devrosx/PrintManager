@@ -616,6 +616,7 @@ class Window(QMainWindow):
 					file = (url.toLocalFile())
 					input_pdf.append(file)
 				self.files = pdf_parse(self, input_pdf)
+				self.d_writer(', '.join(input_pdf), 0,'green')
 				Window.table_reload(self, self.files)
 				break
 			if extension == 'dat':
@@ -708,10 +709,20 @@ class Window(QMainWindow):
 					self.d_writer(str(resize_files), 0)
 				break
 			else:
-				self.d_writer("Warning One of files isnt supported:" + extension, 0, 'red')
-						# else: 
-				# QMessageBox.about(self, "Warning", "One of files isnt supported:" + extension)
-				break
+				soubor = []
+				for url in event.mimeData().urls():
+					file = (url.toLocalFile())
+					soubor.append(file)				
+				# self.d_writer("Warning One of files isnt propably supported." + extension, 0, 'red')
+				conv = QMessageBox()
+				conv.setText("Warning One of files isnt propably supported. Do you still want to try import to PDF? (Clouconvert importer recomended)")
+				conv.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+				conv = conv.exec()
+				if conv == QMessageBox.Yes:
+					files = self.external_convert(extension, soubor, 'convert')
+				else:
+					event.ignore()
+			break
 
 	def d_writer(self, message, append, *args):
 	# fix for list input

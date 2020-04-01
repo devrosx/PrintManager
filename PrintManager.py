@@ -1103,7 +1103,7 @@ class Window(QMainWindow):
 		except Exception as e:
 			self.d_writer('Error - Importing error' + str(e), 1, 'red')
 			return
-		self.files = parse_img(outputfiles)
+		self.files = parse_img(self,outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer('Extracted images:', 1, 'green')
 		self.d_writer(str(outputfiles),1)

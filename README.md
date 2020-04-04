@@ -42,6 +42,12 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
+0.26
+- big feature SuperCrop
+  How it works: (file is converted to JPG saved to TMP folder (you can specify witch page tu use (not in gui yet) to crop rest pages or crop all pages individualy, then opencv detect image border and use it as crop region in PDF)
+  This module requires Numpy and OpenCV
+
+
 0.25
 - removed predefined filepath (file is saved in current directory, custom directory will be added later)
 - you can now import text files or images files with merge function - one PDF from multiple files is created (cloudconvert and OpenOffice is supported)

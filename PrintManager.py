@@ -1108,7 +1108,7 @@ class Window(QMainWindow):
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		debugstring, outputfile = convertor(pdf_input,72,croppage=0,multipage=1,margin=0)
+		debugstring, outputfile = convertor(file_path,72,croppage=0,multipage=1,margin=1)
 		outputfiles.append(outputfile)
 		self.files = pdf_parse(self,outputfiles)
 		Window.table_reload(self, self.files)

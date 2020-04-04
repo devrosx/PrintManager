@@ -8,7 +8,7 @@ from PyPDF2 import PdfFileWriter,PdfFileReader,PdfFileMerger
 
 debug_mode = False
 window_name = 'debug'
-pdf_input = '/Users/jandevera/Desktop/X/024_usti_nahled3_m.pdf'
+# pdf_input = '/Users/jandevera/Desktop/X/024_usti_nahled3_m.pdf'
 
 def raster_this_file(pdf_input, res, croppage, multipage, pages):
 	outputfiles = []
@@ -18,7 +18,7 @@ def raster_this_file(pdf_input, res, croppage, multipage, pages):
 	file, ext = os.path.splitext(filename)
 	outputfile = outputdir + file + '_r.jpg'
 	outputpdf = head + 'croped' + ext
-	if multipage == 1:
+	if multipage == 1 and pages > 1:
 		print ('converting all pages in PDF (multipage)')
 		command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
 		for i in range(pages):

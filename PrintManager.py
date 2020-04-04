@@ -15,7 +15,8 @@ from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
 from libs.cc_module import cc_convert
-version = '0.25'
+from libs.super_crop_module import *
+version = '0.26'
 import time
 start_time = time.time()
 
@@ -919,6 +920,9 @@ class Window(QMainWindow):
 		self.gb_setting.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
+		self.crop_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
 
 	def contextMenuEvent(self, pos):
 			if self.table.selectionModel().selection().indexes():
@@ -1022,6 +1026,12 @@ class Window(QMainWindow):
 		self.buttons_layout.addWidget(self.raster_b)
 		self.raster_b.setDisabled(True)
 
+		# CROP PDF WIP
+		self.crop_b = QPushButton('Crop', self)
+		self.crop_b.clicked.connect(self.crop_pdf)
+		self.buttons_layout.addWidget(self.crop_b)
+		self.crop_b.setDisabled(True)
+
 		# EXTRACT IMAGES
 		self.extract_b = QPushButton('Extract', self)
 		self.extract_b.clicked.connect(self.extract_pdf)
@@ -1086,6 +1096,23 @@ class Window(QMainWindow):
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s) rasterized:', 1, 'green')
 		self.d_writer(', '.join(debugstring),1)
+# WIP
+	def crop_pdf(self):
+		outputfiles = []
+		if self.table.currentItem() == None:
+			self.d_writer('Error - No files selected', 1, 'red')
+			return
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
+			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
+		debugstring, outputfile = convertor(pdf_input,72,croppage=0,multipage=1,margin=0)
+		outputfiles.append(outputfile)
+		self.files = pdf_parse(self,outputfiles)
+		Window.table_reload(self, self.files)
+		self.d_writer(debugstring, 1, 'green')
 
 	def extract_pdf(self):
 		outputfiles = []

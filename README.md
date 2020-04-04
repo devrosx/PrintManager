@@ -38,6 +38,7 @@ I'm a newbie with python and PyQt5 :)
 - Preview
 - Support other platforms
 - rewrite process to QProcess
+- Rework pricing
 - ...
 
 # Updates:

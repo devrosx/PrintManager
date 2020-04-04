@@ -4,7 +4,6 @@ import sys
 from PyQt5.QtWidgets import QWidget, QApplication, QComboBox, QLabel
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush
 from PyQt5.QtCore import Qt
-
 print_pages = [[74,105,'A7'],[105,148,'A6'],[148,210,'A5'],[210,297,'A4'],[297,420,'A3'],[420,594,'A2'],[594,841,'A1'],[841,1189,'A0']]
 window_size = [405,405]
 
@@ -59,8 +58,8 @@ class MyFirstGUI(QWidget):
 			pagesize[0], pagesize[1] = pagesize[1], pagesize[0]
 			orient = 'Landscape'
 			if pagesize[0] > window_size[0]:
-				page_width = (((100 * (pagesize[0] - window_size[0]+padding) / pagesize[0])-100)/-100) * pagesize[0]
-				page_height = (((100 * (pagesize[0] - window_size[0]+padding) / pagesize[0])-100)/-100) * pagesize[1]
+				page_width = int((((100 * (pagesize[0] - window_size[0]+padding) / pagesize[0])-100)/-100) * pagesize[0])
+				page_height = int((((100 * (pagesize[0] - window_size[0]+padding) / pagesize[0])-100)/-100) * pagesize[1])
 				print ('musim zmensit landscape: ' + str(page_width) + ' x '  + str(page_height))
 			else:
 				page_width = pagesize[0]
@@ -68,8 +67,8 @@ class MyFirstGUI(QWidget):
 		else:
 			orient = 'Portrait'
 			if pagesize[1] > window_size[1]:
-				page_width = (((100 * (pagesize[1] - window_size[1]+padding) / pagesize[1])-100)/-100) * pagesize[0]
-				page_height = (((100 * (pagesize[1] - window_size[1]+padding) / pagesize[1])-100)/-100) * pagesize[1]
+				page_width = int((((100 * (pagesize[1] - window_size[1]+padding) / pagesize[1])-100)/-100) * pagesize[0])
+				page_height = int((((100 * (pagesize[1] - window_size[1]+padding) / pagesize[1])-100)/-100) * pagesize[1])
 				print ('musim zmensit portrait: ' + str(page_width) + ' x '  + str(page_height))
 			else:
 				page_width = pagesize[0]
@@ -95,7 +94,7 @@ class MyFirstGUI(QWidget):
 		qp.drawText(d_width - page_width_center+40, d_height - page_height_center+20, (str(pagesize[0]) + ' x ' + str(pagesize[1]) + ' mm ' + orient))
 		# draw letter on it
 		qp.setPen(QColor(Qt.black))
-		qp.setFont(QFont("Arial", 80, QFont.Bold))
+		qp.setFont(QFont("Arial", 60, QFont.Bold))
 		qp.drawText(d_width-27, d_height+30, 'R')# hack how to calculate center
 
 if __name__ == '__main__':

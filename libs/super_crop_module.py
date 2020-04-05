@@ -8,7 +8,7 @@ from PyPDF2 import PdfFileWriter,PdfFileReader,PdfFileMerger
 
 debug_mode = False
 window_name = 'debug'
-# pdf_input = '/Users/jandevera/Desktop/X/024_usti_nahled3_m.pdf'
+pdf_input = '/Users/jandevera/Desktop/testy/Vizitky2_raster.pdf'
 
 def raster_this_file(pdf_input, res, croppage, multipage, pages):
 	outputfiles = []
@@ -31,7 +31,6 @@ def raster_this_file(pdf_input, res, croppage, multipage, pages):
 		command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
 		outputfiles.append(outputfile)
 	subprocess.run(command)
-	# print (command)
 	return outputfiles, outputpdf
 
 def get_image_width_height(image):
@@ -87,14 +86,14 @@ def pdf_cropper(pdf_input,cropboxes, multipage,outputpdf):
 	pages = pdf_file.getNumPages()
 	if multipage == 1:
 		for i in range(pages):
-			print (cropboxes[i][0])
+			# print (cropboxes[i][0])
 			page = pdf_file.getPage(i)
 			page.cropBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
 			page.cropBox.lowerRight = (cropboxes[i][2], cropboxes[i][0])
 			output.addPage(page)
 		with open(outputpdf, "wb") as out_f:
 			output.write(out_f)
-			print ('Saved file: '+outputpdf)
+			# print ('Saved file: '+outputpdf)
 	else:
 		for i in range(pages):
 			print (cropboxes[0][0])
@@ -104,7 +103,7 @@ def pdf_cropper(pdf_input,cropboxes, multipage,outputpdf):
 			output.addPage(page)
 		with open(outputpdf, "wb") as out_f:
 			output.write(out_f)
-			print ('Saved file: '+ outputpdf)
+			# print ('Saved file: '+ outputpdf)
 
 def pdf_get_num_pages(pdf_input):
 	pdf_file = PdfFileReader(open(pdf_input, 'rb'))
@@ -115,21 +114,21 @@ def detect_cropboxes(pages,file,margin,multipage):
 	cropboxes = []
 	if multipage == 1:
 		for i in range(pages):
-			print (file[i])
+			# print (file[i])
 			images = cv2.imread(file[i])
 			image, cropbox = detect_box(images, margin)
 			cropboxes.append(cropbox)
 		return cropboxes
 	else:
 		for i in range(pages):
-			print (file[0])
+			# print (file[0])
 			images = cv2.imread(file[0])
 			image, cropbox = detect_box(images, margin)
 			cropboxes.append(cropbox)
 		return cropboxes		
 
 def convertor(pdf_input,res,croppage,multipage,margin):
-	print ('starting supercrop / ' + 'margin je: ' + str(margin))
+	# print ('starting supercrop / ' + 'margin je: ' + str(margin))
 	pages = pdf_get_num_pages(pdf_input)
 	file,outputpdf = raster_this_file(pdf_input, res, croppage, multipage, pages)
 	print ('Rasterized file (JPG): ' + str(file))

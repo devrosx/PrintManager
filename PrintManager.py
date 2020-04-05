@@ -19,11 +19,11 @@ from libs.super_crop_module import *
 version = '0.26'
 import time
 start_time = time.time()
-
+info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
 mm = '0.3527777778'
 office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
-info,name,size,extension,file_size,pages,price,colors,filepath = [],[],[],[],[],[],[],[],[]
+# info,name,size,extension,file_size,pages,price,colors,filepath = [],[],[],[],[],[],[],[],[]
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'original']
 username = os.path.expanduser("~")
 
@@ -149,23 +149,36 @@ def previewimage(original_file):
 	subprocess.run(command)
 	return command
 
+def gray_this_file(original_file):
+	outputfiles = []
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '_gray' + ext
+		command = ["gs", "-sDEVICE=pdfwrite", "-dProcessColorModel=/DeviceGray", "-dColorConversionStrategy=/Gray", "-dPDFUseOldCMS=false", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile="+outputfile, item]
+		subprocess.run(command)
+		print (command)
+		outputfiles.append(outputfile)
+	return command, outputfiles
+
 def compres_this_file(original_file):
 	outputfiles = []
-	head, ext = os.path.splitext(original_file)
-	outputfile = head + '_c' + ext
-	command = ["gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4", "-dPDFSETTINGS=/ebook", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile="+outputfile, original_file]
-	subprocess.run(command)
-	outputfiles.append(outputfile)
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '_c' + ext
+		command = ["gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4", "-dPDFSETTINGS=/ebook", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile="+outputfile, item]
+		subprocess.run(command)
+		outputfiles.append(outputfile)
 	return command, outputfiles
 
 def raster_this_file(original_file,resolution):
 	outputfiles = []
-	head, ext = os.path.splitext(original_file)
-	outputfile = head + '_raster' + ext
-	command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-sColorConversionStrategy=/LeaveColorUnchanged", "-dAutoFilterColorImages=true", "-dAutoFilterGrayImages=true", "-dDownsampleMonoImages=true", "-dDownsampleGrayImages=true", "-dDownsampleColorImages=true", "-sOutputFile="+outputfile, original_file]
-	command = ["convert", "-density", str(resolution), "+antialias", str(original_file), str(outputfile)]
-	subprocess.run(command)
-	outputfiles.append(outputfile)
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '_raster' + ext
+		command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-sColorConversionStrategy=/LeaveColorUnchanged", "-dAutoFilterColorImages=true", "-dAutoFilterGrayImages=true", "-dDownsampleMonoImages=true", "-dDownsampleGrayImages=true", "-dDownsampleColorImages=true", "-sOutputFile="+outputfile, original_file]
+		command = ["convert", "-density", str(resolution), "+antialias", str(item), str(outputfile)]
+		subprocess.run(command)
+		outputfiles.append(outputfile)
 	return command, outputfiles
 
 def file_info(inputs, file, *args):
@@ -279,6 +292,7 @@ def pdf_parse(self, inputs, *args):
 	self.rows = []
 	# print ('ROWS:' + str(self.rows))
 	for item in inputs:
+		# print ('item' + str(item))
 		oldfilename = (os.path.basename(item))
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
@@ -305,6 +319,7 @@ def pdf_parse(self, inputs, *args):
 				colors.append('')
 				extension.append(ext_file[1][1:])
 	self.rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	# print (self.rows)
 	return self.rows
 
 def getimageinfo (filename):
@@ -905,6 +920,9 @@ class Window(QMainWindow):
 		self.compres_pdf_b.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
+		self.gray_pdf_b.setEnabled(
+			bool(self.table.selectionModel().selectedRows())
+		)
 		self.raster_b.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
@@ -1020,6 +1038,12 @@ class Window(QMainWindow):
 		self.buttons_layout.addWidget(self.compres_pdf_b)
 		self.compres_pdf_b.setDisabled(True)
 
+		# GRAY PDF
+		self.gray_pdf_b = QPushButton('To Gray', self)
+		self.gray_pdf_b.clicked.connect(self.gray_pdf)
+		self.buttons_layout.addWidget(self.gray_pdf_b)
+		self.gray_pdf_b.setDisabled(True)
+
 		# RASTROVANI PDF
 		self.raster_b = QPushButton('Rasterize', self)
 		self.raster_b.clicked.connect(self.rasterize_pdf)
@@ -1071,13 +1095,29 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-			# desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-			# self.table.item(0, row).setIcon(desktop_icon)
-		debugstring, outputfiles = compres_this_file(file_path)
+		debugstring, outputfiles = compres_this_file(outputfiles)
 		self.files = pdf_parse(self,outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s) compresed:', 1, 'green')
 		self.d_writer(', '.join(debugstring),1)
+
+	def gray_pdf(self):
+		outputfiles = []
+		if self.table.currentItem() == None:
+			self.d_writer('Error - No files selected', 1, 'red')
+			return
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
+		debugstring, outputfiles = gray_this_file(outputfiles)
+		self.files = pdf_parse(self,outputfiles)
+		Window.table_reload(self, self.files)
+		self.d_writer('File(s) converted to grayscale:', 1, 'green')
+		self.d_writer(', '.join(debugstring),1)
+
+
 
 	def rasterize_pdf(self):
 		outputfiles = []
@@ -1091,7 +1131,7 @@ class Window(QMainWindow):
 			outputfiles.append(file_path)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 		# debugstring, outputfiles = raster_this_file(file_path, self.resolution)
-		debugstring, outputfiles = raster_this_file(file_path, default_pref[1])
+		debugstring, outputfiles = raster_this_file(outputfiles, default_pref[1])
 		self.files = pdf_parse(self,outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s) rasterized:', 1, 'green')
@@ -1110,6 +1150,7 @@ class Window(QMainWindow):
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 		debugstring, outputfile = convertor(file_path,72,croppage=0,multipage=1,margin=1)
 		outputfiles.append(outputfile)
+		print (outputfiles)
 		self.files = pdf_parse(self,outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer(debugstring, 1, 'green')

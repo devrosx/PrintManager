@@ -23,7 +23,6 @@ info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[
 mm = '0.3527777778'
 office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
-# info,name,size,extension,file_size,pages,price,colors,filepath = [],[],[],[],[],[],[],[],[]
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'original']
 username = os.path.expanduser("~")
 
@@ -389,11 +388,6 @@ def price_check(pages, velikost):
 		pricesum = '/'
 	return pricesum
 
-class Customdialog(QDialog):
-	def __init__(self):
-		super(RegisterPage, self).__init__()
-		loadUi('RegisterPage.ui', self)
-
 def darkmode():
 	app.setStyle("Fusion")
 	app.setStyleSheet('QPushButton:disabled {color: #696969;background-color:#272727;}')
@@ -430,7 +424,7 @@ class IconDelegate(QStyledItemDelegate):
 			s.setWidth(option.rect.width())
 			option.decorationSize = s
 
-class InputDialog(QDialog):
+class InputDialog_SmartCut(QDialog):
 	def __init__(self, parent=None):
 		super().__init__(parent)
 		self.first = QSpinBox(self)
@@ -445,12 +439,45 @@ class InputDialog(QDialog):
 		layout.addRow("Treshold", self.second)
 		layout.addWidget(buttonBox)
 		buttonBox.accepted.connect(self.accept)
-		buttonBox.rejected.connect(self.exit_dialog)
-
+		buttonBox.rejected.connect(self.reject)
 	def getInputs(self):
 		return (self.first.text(), self.second.text())
-	def exit_dialog(self):
-		self.destroy()
+
+class InputDialog_PDFcut(QDialog):
+	def __init__(self, parent=None):
+		super().__init__(parent)
+		self.multipage = QCheckBox(self)
+		self.multipage.setChecked(True)
+		self.multipage.toggled.connect(self.hide)
+		self.croppage_l = QLabel()
+		self.croppage_l.setText("Page used as cropbox for all pages")
+		self.croppage = QSpinBox(self)
+		self.croppage.setValue(1)
+		self.croppage.setVisible(False)
+		self.croppage_l.setVisible(False)
+		self.margin = QSpinBox(self)
+		self.margin.setRange(-200, 200)
+		# self.margin.setValue(1)
+		buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self);
+		self.layout = QFormLayout(self)
+		self.layout.addRow("Detect all pages cropboxes", self.multipage)
+		self.layout.addRow(self.croppage_l, self.croppage)
+		self.layout.addRow("Margin", self.margin)
+		self.layout.addWidget(buttonBox)
+		buttonBox.accepted.connect(self.accept)
+		buttonBox.rejected.connect(self.reject)
+	def getInputs(self):
+		return (self.multipage.isChecked(), self.croppage.value(), self.margin.value())
+	def hide(self):
+		if self.multipage.isChecked():
+			self.croppage.setEnabled(False)
+			self.croppage.setVisible(False)
+			self.croppage_l.setVisible(False)
+		else:
+			self.croppage.setEnabled(True)
+			self.croppage.setVisible(True)
+			self.croppage_l.setVisible(True)
+
 
 class PrefDialog(QDialog):
 	def __init__(self, prefs, parent=None):
@@ -466,7 +493,6 @@ class PrefDialog(QDialog):
 		self.res_box.setRange(50, 1200)
 		self.res_box.setValue(prefs[1])
 		# self.res_box.setObjectName("text_res")
-
 		# file parser
 		self.btn_convertor = QComboBox(self)
 		self.btn_convertor.addItem('OpenOffice')
@@ -483,7 +509,6 @@ class PrefDialog(QDialog):
 		self.buttonBox.accepted.connect(self.accept)
 		self.buttonBox.rejected.connect(self.reject)
 		self.resize(50, 200)
-
 	def getInputs(self):
 		self.destroy()
 		return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText()		
@@ -698,17 +723,19 @@ class Window(QMainWindow):
 						self.toggleDebugWidget()
 				if text == 'SmartCut':
 					smartcut_files = []
-					dialog = InputDialog()
+					dialog = InputDialog_SmartCut()
 					if dialog.exec():
 						n_images, tresh = dialog.getInputs()
-					for items in soubor:
-						outputfiles = processFile(items, n_images, tresh)
-						smartcut_files.append(outputfiles)
-					# merge lists inside lists 
-					smartcut_files = [j for i in smartcut_files for j in i]
-					self.files = parse_img(smartcut_files)
-					Window.table_reload(self, self.files)
-					self.d_writer(str(smartcut_files), 0)
+						for items in soubor:
+							outputfiles = processFile(items, n_images, tresh)
+							smartcut_files.append(outputfiles)
+						# merge lists inside lists 
+						smartcut_files = [j for i in smartcut_files for j in i]
+						self.files = parse_img(self, smartcut_files)
+						Window.table_reload(self, self.files)
+						self.d_writer(str(smartcut_files), 0)
+					else:
+						dialog.close()
 				if text == 'Parse':
 					parse_files = []
 					self.files = parse_img(self, soubor)
@@ -1053,6 +1080,9 @@ class Window(QMainWindow):
 		# CROP PDF WIP
 		self.crop_b = QPushButton('Crop', self)
 		self.crop_b.clicked.connect(self.crop_pdf)
+		# self.crop_b.clicked.connect(self.InputDialog_PDFcut)
+
+		# InputDialog_PDFcut
 		self.buttons_layout.addWidget(self.crop_b)
 		self.crop_b.setDisabled(True)
 
@@ -1136,7 +1166,7 @@ class Window(QMainWindow):
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s) rasterized:', 1, 'green')
 		self.d_writer(', '.join(debugstring),1)
-# WIP
+
 	def crop_pdf(self):
 		outputfiles = []
 		if self.table.currentItem() == None:
@@ -1148,12 +1178,17 @@ class Window(QMainWindow):
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		debugstring, outputfile = convertor(file_path,72,croppage=0,multipage=1,margin=1)
-		outputfiles.append(outputfile)
-		print (outputfiles)
-		self.files = pdf_parse(self,outputfiles)
-		Window.table_reload(self, self.files)
-		self.d_writer(debugstring, 1, 'green')
+		pdf_dialog = InputDialog_PDFcut()
+		if pdf_dialog.exec():
+			multipage, croppage, margin = pdf_dialog.getInputs()
+			debugstring, outputfile = convertor(file_path,72,croppage=croppage,multipage=multipage,margin=margin)
+			outputfiles.append(outputfile)
+			print (outputfiles)
+			self.files = pdf_parse(self,outputfiles)
+			Window.table_reload(self, self.files)
+			self.d_writer(debugstring, 1, 'green')
+		else:
+			pdf_dialog.close()
 
 	def extract_pdf(self):
 		outputfiles = []
@@ -1430,13 +1465,20 @@ class Window(QMainWindow):
 
 	def preview(self):
 		outputfiles = []
+		filetypes = []
 		try:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
 				index=(self.table.selectionModel().currentIndex())
 				file_path=index.sibling(items.row(),8).data()
+				filetype=index.sibling(items.row(),3).data()
+				filetypes.append(filetype)
+				print (filetype)
 				outputfiles.append(file_path)
-			previewimage(file_path)
+			if filetypes[0] == 'jpg':
+				openfile(file_path)
+			else:
+				previewimage(file_path)
 		except Exception as e:
 			return
 

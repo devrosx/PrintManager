@@ -112,7 +112,7 @@ def pdf_get_num_pages(pdf_input):
 
 def detect_cropboxes(pages,file,margin,multipage):
 	cropboxes = []
-	if multipage == 1:
+	if multipage == True:
 		for i in range(pages):
 			# print (file[i])
 			images = cv2.imread(file[i])
@@ -139,4 +139,4 @@ def convertor(pdf_input,res,croppage,multipage,margin):
 	return debugstring, outputpdf
 
 if __name__ == '__main__':
-	convertor(pdf_input,72,croppage=0,multipage=1,margin=0)
+	convertor(pdf_input,72,croppage=0,multipage=True,margin=0)

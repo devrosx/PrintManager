@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 import sys
 from PyQt5.QtWidgets import QWidget, QApplication, QComboBox, QLabel
-from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush, QPainter, QPixmap
 from PyQt5.QtCore import Qt
+from PyQt5 import QtCore, QtGui, QtWidgets
 print_pages = [[74,105,'A7'],[105,148,'A6'],[148,210,'A5'],[210,297,'A4'],[297,420,'A3'],[420,594,'A2'],[594,841,'A1'],[841,1189,'A0']]
 window_size = [405,405]
 
@@ -25,7 +26,8 @@ class MyFirstGUI(QWidget):
 		self.combo_or.addItem('Portrait','P')
 		self.combo_or.addItem('Landscape','L')
 		self.combo_or.move(318, 343)
-		self.combo_or.activated.connect(self.onChangedOr)       
+		self.combo_or.activated.connect(self.onChangedOr)  
+
 		
 	def initUI(self):      
 		self.setWindowTitle('print preview')
@@ -46,8 +48,28 @@ class MyFirstGUI(QWidget):
 		if self.flag:
 			qp = QPainter()
 			qp.begin(self)
-			self.showprintpage(qp, self.page_info, self.orientace)
+			page_frame = self.showprintpage(qp, self.page_info, self.orientace)
+			print (page_frame)
+			print (type(page_frame[0],))
+
+			image_path = '/Users/jandevera/Desktop/X/text.jpg'
+			r = QtCore.QRect(page_frame[0],page_frame[1],page_frame[2],page_frame[3])
+			pixmap = QPixmap(image_path)
+			pixmap = pixmap.scaled(r.size())
+			qp.drawPixmap(r, pixmap)
 			qp.end()
+
+	def showimage(self, input_file):
+		# convert image file into pixmap
+		print (input_file)
+
+		label = QLabel(self)
+		pixmap = QPixmap('/Users/jandevera/Desktop/X/text.jpg')
+		label.setPixmap(pixmap)
+	
+		# Optional, resize window to image size
+		self.resize(pixmap.width(),pixmap.height())
+		self.show()
 	
 	def showprintpage(self, qp, pagesize, orient):
 		print (orient)
@@ -81,11 +103,13 @@ class MyFirstGUI(QWidget):
 		# draw page frame
 		qp.setPen(QPen(Qt.black,  2, Qt.SolidLine))
 		qp.setBrush(QBrush(Qt.white))
+		page_frame = d_width - page_width_center, d_height - page_height_center, page_width, page_height
 		qp.drawRect(d_width - page_width_center, d_height - page_height_center, page_width, page_height)
 		# draw non printing area 
 		qp.setPen(QPen(Qt.cyan,  1, Qt.SolidLine))
 		qp.drawRect(d_width - page_width_center + no_print, d_height - page_height_center + no_print, page_width - no_print*2, page_height - no_print*2)
 		# draw page size
+		self.showimage('/Users/jandevera/Desktop/X/text.jpg')
 		qp.setPen(QColor(Qt.black))
 		qp.setFont(QFont("Arial", 14, QFont.Bold))
 		qp.drawText(d_width - page_width_center+15, d_height - page_height_center+20, pagesize[2])
@@ -96,6 +120,7 @@ class MyFirstGUI(QWidget):
 		qp.setPen(QColor(Qt.black))
 		qp.setFont(QFont("Arial", 60, QFont.Bold))
 		qp.drawText(d_width-27, d_height+30, 'R')# hack how to calculate center
+		return page_frame
 
 if __name__ == '__main__':
 	app = QApplication(sys.argv)

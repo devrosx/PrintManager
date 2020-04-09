@@ -48,7 +48,7 @@ I'm a newbie with python and PyQt5 :)
   This module requires Numpy and OpenCV. Added simple gui
 - Rastering and compresing setting works again on multiple selection
 - Added To Gray (convert pdf to grayscale...)
-- Bugfixes
+- Bugfixes in superCrop
 
 0.25
 - removed predefined filepath (file is saved in current directory, custom directory will be added later)

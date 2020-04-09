@@ -452,6 +452,7 @@ class InputDialog_PDFcut(QDialog):
 		self.croppage_l = QLabel()
 		self.croppage_l.setText("Page used as cropbox for all pages")
 		self.croppage = QSpinBox(self)
+		self.croppage.setRange(1, 1000)
 		self.croppage.setValue(1)
 		self.croppage.setVisible(False)
 		self.croppage_l.setVisible(False)
@@ -1181,7 +1182,8 @@ class Window(QMainWindow):
 		pdf_dialog = InputDialog_PDFcut()
 		if pdf_dialog.exec():
 			multipage, croppage, margin = pdf_dialog.getInputs()
-			debugstring, outputfile = convertor(file_path,72,croppage=croppage,multipage=multipage,margin=margin)
+			print (multipage, croppage, margin)
+			debugstring, outputfile = convertor(file_path,72,croppage=croppage-1,multipage=multipage,margin=margin)
 			outputfiles.append(outputfile)
 			print (outputfiles)
 			self.files = pdf_parse(self,outputfiles)

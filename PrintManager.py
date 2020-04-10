@@ -23,7 +23,7 @@ info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[
 mm = '0.3527777778'
 office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
-papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'original']
+papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'undefined']
 username = os.path.expanduser("~")
 
 # other os support
@@ -79,25 +79,20 @@ def humansize(size):
 	filesize = ('%.1f' % float(size/1000000) + 'MB')
 	return filesize
 
-def openfile(list_path):
-	if isinstance (list_path, list):
-		for items in list_path:
-			subprocess.call(['open', items]) # open converted
-	else:
-		subprocess.call(['open', list_path]) # open converted
-
 def open_printer(file):
-	subprocess.call(['subl', '/private/etc/cups/ppd/'+file+'.ppd']) # open converted
+	subprocess.call(['subl', '/private/etc/cups/ppd/'+file+'.ppd'])
 
-def revealfile(list_path):
+def revealfile(list_path,reveal): #reveal and convert
 	if isinstance (list_path, list):
-		# print ('Input is list :)' + str(list_path))
 		for items in list_path:
-			subprocess.call(['open', '-R', items]) # open converted
-			print (['open', '-R', items])
+			subprocess.call(['open', reveal, items])
 	else:
-		subprocess.call(['open', '-R', list_path]) # open converted
-		print (['open', '-R', list_path])
+		subprocess.call(['open', reveal, list_path])
+
+def previewimage(original_file):
+	command = ["qlmanage", "-p", original_file]
+	subprocess.run(command)
+	return command
 
 def mergefiles(list_path,save_dir):
 	print (save_dir)
@@ -143,11 +138,6 @@ def resizeimage(original_file, percent):
 	# outputfiles.append(outputfile)
 	return command, outputfile
 
-def previewimage(original_file):
-	command = ["qlmanage", "-p", original_file]
-	subprocess.run(command)
-	return command
-
 def gray_this_file(original_file):
 	outputfiles = []
 	for item in original_file:
@@ -155,7 +145,6 @@ def gray_this_file(original_file):
 		outputfile = head + '_gray' + ext
 		command = ["gs", "-sDEVICE=pdfwrite", "-dProcessColorModel=/DeviceGray", "-dColorConversionStrategy=/Gray", "-dPDFUseOldCMS=false", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile="+outputfile, item]
 		subprocess.run(command)
-		print (command)
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
@@ -186,10 +175,6 @@ def file_info(inputs, file, *args):
 		for item in inputs:
 			pdf_toread = PdfFileReader(open(item, "rb"))
 			pdf_ = pdf_toread.getDocumentInfo()
-			# base = os.path.splitext(item)[0]
-			# ext = os.path.splitext(item)[1]
-			# pdf_info.append(base + ext)
-			# pdf_info.append(pdf_)
 			html_info = tablemaker(pdf_)
 			_info.append(html_info)
 	else:
@@ -231,40 +216,39 @@ def tablemaker (inputs):
 def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate, colors):
 	# https://www.cups.org/doc/options.html
 	# COLATE
+	print ('XXXXX: ' + str(colors))
 	if collate == 1:
 		print ('collate ON')
-		_collate =  ('-o collate=true')
+		collate =  ('-o collate=true')
 	else: 
 		print ('collate OFF')
-		_collate = ('-o collate=false')
+		collate = ('')
 	# COLORS 
 	if colors == 'Auto':
-		_colors =  ('-oColorModel=')
+		colors =  ('')
 	if colors == 'Color':
-		_colors =  ('-OColorMode=Color')
+		colors =  ('-OColorMode=Color')
 	if colors == 'Gray':
-		_colors =  ('-OColorMode=GrayScale')
+		colors =  ('-OColorMode=GrayScale')
 		# _colors =  ('-oColorModel=KGray')
 	# PAPER SHRINK
 	if fit_to_size == 1:
-		# print ('fit_to_size ON')
 		fit_to_size =  ('-o fit-to-page')
 	else: 
-		# fix cant be null or empty
-		fit_to_size = ('-o job-priority=10')
+		fit_to_size = ('')
 	# PAPER SIZE WIP
 	if p_size == 'A4':
-		p_size_ = ('-o media=A4')
+		p_size = ('-o media=A4')
 	if p_size == 'A3':
-		p_size_ = ('-o media=A3')
+		p_size = ('-o media=A3')
 	if p_size == 'A5':
-		p_size_ = ('-o media=A5')
+		p_size = ('-o media=A5')
 	if p_size == '480x320':
-		p_size_ = ('-o media=480x320')
+		p_size = ('-o media=480x320')
 	if p_size == '450x320':
-		p_size_ = ('-o media=450x320')
-	if p_size_ == ('original'):
-		p_size_ = ('-o media=XXXX')
+		p_size = ('-o media=450x320')
+	else:
+		p_size = '-o media=Custom.' + p_size + 'mm'
 	# na canonu nefunguje pocet kopii... vyhodit -o sides=one-sided
 	if lp_two_sided == 1:
 		# print ('two sided')
@@ -278,7 +262,7 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 	# if isinstance (print_file, list):
 	for printitems in print_file:
 		# subprocess.run("lp", "-d", printer + str(print_file[0]) + lp_two_sided_ + p_size_ + fit_to_size + _collate + "-n=" + copies)
-		command = ["lp", "-d", printer, printitems,  "-n" + copies, lp_two_sided_, p_size_, fit_to_size, _collate]
+		command = ["lp", "-d", printer, printitems,  "-n" + copies, lp_two_sided_, p_size, fit_to_size, collate, colors]
 		subprocess.run(command)
 		print (username)
 	try:
@@ -304,7 +288,7 @@ def pdf_parse(self, inputs, *args):
 				qsizedoc = (pdf_input.getPage(0).mediaBox)
 				sirka = (float(qsizedoc[2]) * float(mm))
 				vyska = (float(qsizedoc[3]) * float(mm))
-				page_size = (str(round(sirka)) + 'x' + str(round(vyska)) + 'mm')
+				page_size = (str(round(sirka)) + 'x' + str(round(vyska)) + ' mm')
 				pdf_pages = pdf_input.getNumPages()
 				velikost = size_check(page_size)
 				newfilename = ('[' + str(round(sirka)) + 'x' + str(round(vyska)) + 'mm_' + str(pdf_pages) + 'str]' + oldfilename)
@@ -862,7 +846,7 @@ class Window(QMainWindow):
 		self.table.setColumnCount(len(headers))
 		self.table.setHorizontalHeaderLabels(headers)
 		# better is preview (printig etc)
-		# self.table.doubleClicked.connect(self.preview)
+		self.table.cellClicked.connect(self.get_page_size)
 		self.table.doubleClicked.connect(self.open_tb)
 		self.table.verticalHeader().setDefaultSectionSize(35)
 		self.table.setColumnWidth(0, 35)
@@ -984,12 +968,12 @@ class Window(QMainWindow):
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
 						file_path=index.sibling(row,8).data()
-						openfile(file_path)
+						revealfile(file_path,'')
 					if action == revealAction:
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
 						file_path=index.sibling(row,8).data()
-						revealfile(file_path)
+						revealfile(file_path,'-R')
 					if action == printAction:
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
@@ -1327,7 +1311,7 @@ class Window(QMainWindow):
 		vbox = QVBoxLayout()
 		self.gb_printers.setLayout(vbox)
 		self.gb_printers.setFixedHeight(150)
-		self.gb_printers.setFixedWidth(250)
+		self.gb_printers.setFixedWidth(210)
 		self.gb_printers.setVisible(not pref_printers_state)
 		self.printer_tb = QListWidget()
 		self.printer_tb.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -1342,20 +1326,22 @@ class Window(QMainWindow):
 
 		# SETTINGS GROUPBOX
 		self.gb_setting = QGroupBox("Printer setting")
-		vbox2 = QGridLayout()
+		self.vbox2 = QGridLayout()
 		self.gb_setting.setFixedHeight(150)
-		self.gb_setting.setFixedWidth(350)
+		self.gb_setting.setFixedWidth(387)
 		self.gb_setting.setVisible(not pref_printers_state)
 		self.gb_setting.setDisabled(True)
 
 		# # POČET KOPII
+		copies_Label = QLabel("Copies:")
 		self.copies = QSpinBox()
 		self.copies.setValue(1)
 		self.copies.setMinimum(1)
 		self.copies.setMaximum(999)
 		self.copies.setFixedSize(60, 25)
-		self.gb_setting.setLayout(vbox2)
+		self.gb_setting.setLayout(self.vbox2)
 		# PAPERFORMAT
+		paper_Label = QLabel("Paper size:")
 		self.papersize = QComboBox(self)
 		self.papersize.clear()
 		for items in papers:
@@ -1366,16 +1352,14 @@ class Window(QMainWindow):
 		self.lp_two_sided.toggled.connect(self.togle_btn)
 		self.lp_two_sided.move(20, 20)
 		# FIT 
+		fit_to_size_Label = QLabel("Paper size:")
 		self.fit_to_size = QCheckBox('Fit to page', self)
-		# self.fit_to_size.toggled.connect(self.togle_btn)
 		# ORIENTATION L/T
 		self.btn_orientation = QPushButton()
 		self._icon = QIcon()
 		self._icon.addPixmap(QPixmap('icons/long.png'))
 		self.btn_orientation.setCheckable(True)
 		self.btn_orientation.setIcon(self._icon)
-		# self.btn_orientation.setFixedHeight(24)
-		# self.btn_orientation.setFixedWidth(24)
 		self.btn_orientation.setIconSize(QSize(23,38))
 		self.btn_orientation.setChecked(True)
 		self.btn_orientation.setVisible(False)
@@ -1392,6 +1376,9 @@ class Window(QMainWindow):
 		self.btn_collate.toggled.connect(lambda: self.icon_change('icons/collate_on.png','icons/collate_off.png',self.btn_collate))
 
 		# COLORS
+		btn_colors_Label = QLabel("Color:")
+
+		# # SPACE
 		self.btn_colors = QComboBox(self)
 		self.btn_colors.addItem('Auto')
 		self.btn_colors.addItem('Color')
@@ -1406,14 +1393,16 @@ class Window(QMainWindow):
 		# self.btn_colors.setChecked(True)
 		# self.btn_colors.toggled.connect(lambda: self.icon_change('icons/colors_on.png','icons/colors_off.png',self.btn_colors))
 
-
-		vbox2.addWidget(self.copies, 0,0)
-		vbox2.addWidget(self.papersize, 0,1)
-		vbox2.addWidget(self.fit_to_size, 0,2)
-		vbox2.addWidget(self.lp_two_sided, 1,0)
-		vbox2.addWidget(self.btn_orientation, 1,1)
-		vbox2.addWidget(self.btn_collate, 1,2)
-		vbox2.addWidget(self.btn_colors, 2,0)
+		self.vbox2.addWidget(copies_Label, 0,0)
+		self.vbox2.addWidget(self.copies, 0,1)
+		self.vbox2.addWidget(paper_Label, 0,2)
+		self.vbox2.addWidget(self.papersize, 0,3)
+		self.vbox2.addWidget(self.lp_two_sided, 1,0)
+		self.vbox2.addWidget(self.btn_orientation, 1,1)
+		self.vbox2.addWidget(self.btn_collate, 1,2)
+		self.vbox2.addWidget(btn_colors_Label, 2,0)
+		self.vbox2.addWidget(self.btn_colors, 2,1)
+		self.vbox2.addWidget(self.fit_to_size, 1,3)
 
 
 		self.printer_layout.addWidget(self.gb_setting)
@@ -1421,6 +1410,7 @@ class Window(QMainWindow):
 
 	def papersize_box_change(self, text):
 			self.d_writer(text,0)
+			print (text)
 			return text
 
 	def color_box_change(self, text):
@@ -1493,7 +1483,7 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-		openfile(outputfiles)
+		revealfile(outputfiles,'')
 		self.d_writer('Opened: ' + str(outputfiles),0, 'green')
 
 	def open_printer_tb(self):
@@ -1504,19 +1494,27 @@ class Window(QMainWindow):
 		open_printer(tiskarna)
 		self.d_writer('Printing setting: ' + tiskarna,0, 'green')
 
+	def get_page_size(self):
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			size=index.sibling(items.row(),2).data()
+		if size[-2:] == 'px':
+			papers[5] = 'not supported'
+		else: 
+			papers[5] = size[:-3]
+		self.papersize.clear()
+		for items in papers:
+			self.papersize.addItem(items)
+		self.papersize.update()
+		self.d_writer('Page size: ' + size,0, 'green')
+
 	def keyPressEvent(self,e):
-		# rows_to_delete = []
 		if e.key() == Qt.Key_Delete:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
-				# rows_to_delete.append(row)
-				# print ('row is' + str(self.files))
-			# for items in rows_to_delete:
-			# 	print (len(self.files))
-			# 	print ('chci smazat:' + str(items))
 				del(self.files[row]) 
 			Window.table_reload(self, self.files)
-				# print ('po smazani:' + str(self.files))
 
 		if e.key() == Qt.Key_F1:
 			self.preview()
@@ -1535,7 +1533,6 @@ class Window(QMainWindow):
 			self.d_writer('Loaded: ' + str(soubor),0,'green')
 
 if __name__ == '__main__':
-	# load config firts
 	json_pref,printers,default_pref = load_preferences()
 	app = QApplication(sys.argv)
 	path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')

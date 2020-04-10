@@ -49,6 +49,7 @@ I'm a newbie with python and PyQt5 :)
 - Rastering and compresing setting works again on multiple selection
 - Added To Gray (convert pdf to grayscale...)
 - Bugfixes in superCrop
+- Fixes in printing and support for original size as paper size (paper size dropbox)
 
 0.25
 - removed predefined filepath (file is saved in current directory, custom directory will be added later)

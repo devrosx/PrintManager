@@ -16,7 +16,7 @@ from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
 from libs.cc_module import cc_convert
 from libs.super_crop_module import *
-version = '0.26'
+version = '0.27'
 import time
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
@@ -50,17 +50,18 @@ def load_preferences():
 	try:
 		with open('config.json', encoding='utf-8') as data_file:
 			json_pref = json.loads(data_file.read())
-		if json_pref[0][6] == username:
+		if json_pref[0][8] == username:
 			print ('preferences OK - using saved printers')
-			printers = json_pref[0][7]
-			default_pref = [json_pref[0][8],json_pref[0][9],json_pref[0][10]]
+			printers = json_pref[0][9]
+			default_pref = [json_pref[0][10],json_pref[0][11],json_pref[0][12]]
 		else: 
 			print ('other machine loading printers')
 			printers = load_printers()
-	except:
+	except Exception as e:
+		print (e)
 		print ('json loading error')
 		printers = load_printers()
-		json_pref = [0,0,0,0,0,0]
+		json_pref = [0,0,0,0,0,0,0]
 		default_pref = ['eng',300,'OpenOffice']
 	return json_pref, printers, default_pref
 
@@ -238,17 +239,17 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 		fit_to_size = ('')
 	# PAPER SIZE WIP
 	if p_size == 'A4':
-		p_size = ('-o media=A4')
+		_p_size = ('-o media=A4')
 	if p_size == 'A3':
-		p_size = ('-o media=A3')
+		_p_size = ('-o media=A3')
 	if p_size == 'A5':
-		p_size = ('-o media=A5')
+		_p_size = ('-o media=A5')
 	if p_size == '480x320':
-		p_size = ('-o media=480x320')
+		_p_size = ('-o media=480x320')
 	if p_size == '450x320':
-		p_size = ('-o media=450x320')
+		_p_size = ('-o media=450x320')
 	else:
-		p_size = '-o media=Custom.' + p_size + 'mm'
+		_p_size = '-o media=Custom.' + p_size + 'mm'
 	# na canonu nefunguje pocet kopii... vyhodit -o sides=one-sided
 	if lp_two_sided == 1:
 		# print ('two sided')
@@ -259,12 +260,11 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 			lp_two_sided_ = ('-o sides=two-sided-short-edge')
 	else:
 		lp_two_sided_ = ('-o sides=one-sided')
-	# if isinstance (print_file, list):
 	for printitems in print_file:
-		# subprocess.run("lp", "-d", printer + str(print_file[0]) + lp_two_sided_ + p_size_ + fit_to_size + _collate + "-n=" + copies)
-		command = ["lp", "-d", printer, printitems,  "-n" + copies, lp_two_sided_, p_size, fit_to_size, collate, colors]
+		command = ["lp", "-d", printer, printitems, "-n" + copies, lp_two_sided_, _p_size, fit_to_size, collate, colors]
+		# remove blank strings
+		command = [x for x in command if x]
 		subprocess.run(command)
-		print (username)
 	try:
 		subprocess.run(["open", username + "/Library/Printers/" + str(printer) + ".app"])
 	except:
@@ -520,6 +520,14 @@ class Window(QMainWindow):
 		debug_setting_menu.triggered.connect(self.toggleDebugWidget)
 		win_menu.addAction(debug_setting_menu)
 
+		# PREVIEW PANEL WIP
+		printing_setting_menu  = QAction("Preview panel", self)
+		printing_setting_menu.setShortcut('Ctrl+A')
+		printing_setting_menu.setCheckable(True)
+		printing_setting_menu.setChecked(False)
+		printing_setting_menu.triggered.connect(self.togglePreviewWidget)
+		win_menu.addAction(printing_setting_menu)
+
 		# PREVIEW
 		preview_menu  = QAction("Preview", self)
 		preview_menu.setShortcut('F1')
@@ -541,26 +549,40 @@ class Window(QMainWindow):
 		menubar.addMenu(file_menu)
 		menubar.addMenu(win_menu)
 
-		self.central_widget = QWidget()               # define central widget
+		self.central_widget = QWidget()   
 		self.setCentralWidget(self.central_widget)    # set QMainWindow.centralWidget
+            # define central widget
 		self.mainLayout = QGridLayout()
 		self.centralWidget().setLayout(self.mainLayout)
+
+		self.files = []
+		self.table_reload(self.files)
 		self.createPrinter_layout()
 		self.createDebug_layout()
 		self.createButtons_layout()
-		self.files = []
-		self.table_reload(self.files)
+		pref_preview_state = self.createPreview_layout()
+		# HACK to window size on boot
+		if pref_preview_state == 1:
+			self.setFixedSize(620, 650)
+			self.resize(620, 650)
+		else:
+			self.setFixedSize(860, 650)
+			self.resize(860, 650)
+
+		# self.mainLayout.addWidget(self.table,1,0)
 		self.mainLayout.addLayout(self.printer_layout, 0,0)
 		self.mainLayout.addLayout(self.debug_layout, 2, 0)
+		# self.mainLayout.setRowStretch(2, 2)
+		# self.mainLayout.setColumnStretch(0, 3)
+		self.mainLayout.addLayout(self.preview_layout, 1, 1)
 		self.mainLayout.addLayout(self.buttons_layout, 3, 0)
 		self.setAcceptDrops(True)
-		self.setFixedWidth(self.sizeHint().width())
+		# self.setFixedSize(self.mainLayout.sizeHint())
+		# self.setFixedWidth(self.sizeHint().width())
 		self.setWindowTitle("PrintManager " + version)
 		# stay on top
 		self.setWindowFlags(Qt.WindowStaysOnTopHint) 
-
-	def sizeHint(self):
-		return QSize(620, 650)
+		self.setLayout(self.mainLayout)
 
 	def open_dialog(self):
 		# load setting first
@@ -592,6 +614,8 @@ class Window(QMainWindow):
 			preferences.append(self.gb_printers.isHidden())
 			preferences.append('debug_window')
 			preferences.append(self.gb_debug.isHidden())
+			preferences.append('preview_window')
+			preferences.append(self.gb_preview.isHidden())
 			preferences.append(username)
 			preferences.append(printers)
 			preferences.append(self.localization)
@@ -604,7 +628,9 @@ class Window(QMainWindow):
 		save_preferences(preferences)
 		close = QMessageBox()
 		close.setText("Are you sure?")
+		close.setIcon(QMessageBox.Warning)
 		close.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+		close.setDefaultButton(QMessageBox.Yes)
 		close = close.exec()
 		if close == QMessageBox.Yes:
 			event.accept()
@@ -983,13 +1009,60 @@ class Window(QMainWindow):
 						self.preview()
 
 	def togglePrintWidget(self):
+		print ('WTF')
 		print (self.gb_printers.isHidden())
 		self.gb_printers.setHidden(not self.gb_printers.isHidden())
 		self.gb_setting.setHidden(not self.gb_setting.isHidden())
 		return True
 
+	def togglePreviewWidget(self):
+		# ag = QDesktopWidget().availableGeometry()
+		# sg = QDesktopWidget().screenGeometry()
+		PreviewWidget = 1
+		# self.move(50, 50)
+		self.gb_preview.setHidden(not self.gb_preview.isHidden())
+		print (self.gb_preview.isHidden())
+		if self.gb_preview.isHidden() == 1:
+			self.setFixedSize(620, 650)
+			self.resize(620, 650)
+		else:
+			self.setFixedSize(840, 650)
+			self.resize(840, 650)
+
 	def toggleDebugWidget(self):
 		self.gb_debug.setHidden(not self.gb_debug.isHidden())
+
+	def createPreview_layout(self):
+		self.preview_layout = QHBoxLayout()
+		try:
+			pref_preview_state = (json_pref[0][7])
+		except Exception as e:
+			pref_preview_state = 1
+		# PREVIEW GROUPBOX
+		self.gb_preview = QGroupBox("Preview file")
+		self.gb_preview.setVisible(not pref_preview_state)
+		pbox = QVBoxLayout()
+		# image
+		self.image_label = QLabel(self)
+		self.image_label_pixmap = QPixmap('')
+		self.image_label.setPixmap(self.image_label_pixmap)
+		# name
+		self.labl_name = QLabel()
+		self.labl_name.setStyleSheet("QLabel { background-color : '#2c2c2c'; border-radius: 5px;}")
+		self.labl_name.setText('')
+		self.labl_name.setAlignment(Qt.AlignCenter)
+		self.labl_name.setFixedHeight(30)
+		self.labl_name.setWordWrap(True)
+		self.gb_preview.setLayout(pbox)
+		# self.gb_preview.setFixedHeight(350)
+		self.gb_preview.setFixedWidth(200)
+		# self.printer_layout.addStretch()
+		pbox.addWidget(self.image_label)
+		pbox.addWidget(self.labl_name)
+		self.preview_layout.addWidget(self.gb_preview)
+		self.setFixedWidth(self.sizeHint().width()+300)
+		return pref_preview_state
+
 
 	def createDebug_layout(self):
 		self.debug_layout = QHBoxLayout()
@@ -1022,6 +1095,9 @@ class Window(QMainWindow):
 
 	def createButtons_layout(self):
 		self.buttons_layout = QHBoxLayout()
+		# self.buttons_layout.setContentsMargins(0,0,0,0)
+		# self.buttons_layout.setSpacing(-5)
+		# self.buttons_layout.setFixedHeight(350)
 		# OPEN FILES
 		# self.preview_b = QPushButton('Preview', self)
 		# self.preview_b.clicked.connect(self.preview)
@@ -1083,6 +1159,11 @@ class Window(QMainWindow):
 		self.buttons_layout.addWidget(self.info_b)
 		self.info_b.setDisabled(True)
 
+		# # # PRINT SCRIPT
+		# self.print_b = QPushButton('Print', self)
+		# self.print_b.clicked.connect(self.table_print)
+		# self.buttons_layout.addWidget(self.print_b)
+		# self.print_b.setDisabled(True)
 		# # # SPACE
 		# self.labl = QLabel()
 		# self.labl.setText(version)
@@ -1090,11 +1171,6 @@ class Window(QMainWindow):
 		# self.labl.setFixedSize(50, 10)
 		# self.buttons_layout.addWidget(self.labl)
 
-		# # EXIT SCRIPT
-		# self.qbtn_exit = QPushButton('Konec', self)
-		# self.qbtn_exit.clicked.connect(QCoreApplication.instance().quit)
-		# self.buttons_layout.addWidget(self.qbtn_exit)
-		# # # PRINT SCRIPT
 		self.print_b = QPushButton('Print', self)
 		self.print_b.clicked.connect(self.table_print)
 		self.print_b.setDisabled(True)
@@ -1499,6 +1575,24 @@ class Window(QMainWindow):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			size=index.sibling(items.row(),2).data()
+			filename=index.sibling(items.row(),1).data()
+			filetype=index.sibling(items.row(),3).data()
+			filepath=index.sibling(items.row(),8).data()
+		if not self.gb_preview.isHidden():
+			print ('Preview enabled')
+			self.labl_name.setText(filename+'.'+filetype)
+			if filetype.upper() in (name.upper() for name in image_ext):
+				self.image_label_pixmap = QPixmap(filepath)
+				self.image_label.setPixmap(self.image_label_pixmap)
+				w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
+				w_l, h_l = self.image_label.width(), self.image_label.height()
+				print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
+				self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
+				self.image_label.setScaledContents(True)
+				# self.resize(self.image_label.width(), self.image_label.height())
+			else:
+				self.image_label_pixmap = QPixmap('')
+				self.image_label.setPixmap(self.image_label_pixmap)
 		if size[-2:] == 'px':
 			papers[5] = 'not supported'
 		else: 

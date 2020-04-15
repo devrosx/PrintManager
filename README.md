@@ -43,11 +43,12 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.27
-- Initial work on preview (commad+A) still WIP, but on image files it should allready work
-- fixed printing with (exmpty string bug)
+- Initial work on preview (commad+A) still WIP, should work on PDF and images
+- Fixes spaces in cloudconvert
+- Fixed printing with (exmpty string bug)
 
 0.26
-- big feature # SuperCrop
+- Big feature # SuperCrop
   How it works: (file is converted to JPG saved to TMP folder (you can specify witch page tu use (not in gui yet) to crop rest pages or crop all pages individualy, then opencv detect image border and use it as crop region in PDF)
   This module requires Numpy and OpenCV. Added simple gui
 - Rastering and compresing setting works again on multiple selection

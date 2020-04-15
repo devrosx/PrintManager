@@ -39,6 +39,10 @@ def cc_convert(file):
 		export_task_id = export_task.get("id")
 		# fetch the finished task
 		import_task = cloudconvert.Task.find(id=import_task_id)
+
+		# fix spaces WIP
+		file.rename(file, file.replace(" ", "_"))
+		file = file.replace(" ", "_")
 		# do upload
 		uploaded = cloudconvert.Task.upload(
 			# file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
@@ -61,12 +65,6 @@ def cc_convert(file):
 if __name__ == '__main__':
 	# fix spaces in file
 	test = '/Users/jandevera/Desktop/X/pr 2.pdf'
-	# file_name=os.path.join(os.path.dirname(os.path.normpath(test)), test)
-	# # escape path
-	# file_name = file_name.replace(" ", "\\ ")
-
-	# print (file_name)
-	# subprocess.call(['open', file_name])
 	res, warning = cc_convert(test)
 	print (warning)
 	print (res)

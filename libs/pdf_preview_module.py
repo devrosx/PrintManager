@@ -1,7 +1,6 @@
 import os
 import subprocess
 import numpy
-
 res = 72
 
 def pdf_preview_generator(input_file):

@@ -35,7 +35,6 @@ I'm a newbie with python and PyQt5 :)
 - More image operations
 - Localizations..
 - Finish print settings
-- Preview
 - Support other platforms
 - rewrite process to QProcess
 - Rework pricing
@@ -44,7 +43,7 @@ I'm a newbie with python and PyQt5 :)
 # Updates:
 0.27
 - Initial work on preview (commad+A) still WIP, should work on PDF and images
-- Fixes spaces in cloudconvert
+- Fixes spaces in CloudConvert
 - Fixed printing with (exmpty string bug)
 
 0.26

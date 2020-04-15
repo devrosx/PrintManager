@@ -8,7 +8,7 @@ from PyPDF2 import PdfFileWriter,PdfFileReader,PdfFileMerger
 
 debug_mode = False
 window_name = 'debug'
-pdf_input = '/Users/jandevera/Desktop/testy/Vizitky2_raster.pdf'
+
 
 def raster_this_file(pdf_input, res, croppage, multipage, pages):
 	outputfiles = []
@@ -139,4 +139,5 @@ def convertor(pdf_input,res,croppage,multipage,margin):
 	return debugstring, outputpdf
 
 if __name__ == '__main__':
+	pdf_input = '/Users/jandevera/Desktop/testy/Vizitky2_raster.pdf'
 	convertor(pdf_input,72,croppage=0,multipage=True,margin=0)

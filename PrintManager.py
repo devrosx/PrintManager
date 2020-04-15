@@ -15,13 +15,15 @@ from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
 from libs.cc_module import cc_convert
+from libs.pdf_preview_module import pdf_preview_generator
+
 from libs.super_crop_module import *
 version = '0.27'
 import time
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
 mm = '0.3527777778'
-office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx']
+office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx', 'ppt']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'undefined']
 username = os.path.expanduser("~")
@@ -1579,7 +1581,6 @@ class Window(QMainWindow):
 			filetype=index.sibling(items.row(),3).data()
 			filepath=index.sibling(items.row(),8).data()
 		if not self.gb_preview.isHidden():
-			print ('Preview enabled')
 			self.labl_name.setText(filename+'.'+filetype)
 			if filetype.upper() in (name.upper() for name in image_ext):
 				self.image_label_pixmap = QPixmap(filepath)
@@ -1591,8 +1592,14 @@ class Window(QMainWindow):
 				self.image_label.setScaledContents(True)
 				# self.resize(self.image_label.width(), self.image_label.height())
 			else:
-				self.image_label_pixmap = QPixmap('')
+				filebytes = pdf_preview_generator(filepath)
+				self.image_label_pixmap.loadFromData(filebytes)
 				self.image_label.setPixmap(self.image_label_pixmap)
+				w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
+				w_l, h_l = self.image_label.width(), self.image_label.height()
+				print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
+				self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
+				self.image_label.setScaledContents(True)
 		if size[-2:] == 'px':
 			papers[5] = 'not supported'
 		else: 

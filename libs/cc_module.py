@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import cloudconvert
 import os
-# FIX for ssl bug...
 import ssl
+import subprocess
 ssl._create_default_https_context = ssl._create_unverified_context
 
-test = '/Users/jandevera/Desktop/1.doc'
 def cc_convert(file):
 	try:
 		f = open("cc.json","r")
@@ -42,7 +41,11 @@ def cc_convert(file):
 		import_task = cloudconvert.Task.find(id=import_task_id)
 		# do upload
 		uploaded = cloudconvert.Task.upload(
+			# file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
 			file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
+			# file_name = (file_name.replace(" ", "\\ "), task=import_task)
+			# print (file_name)
+		# 
 		if uploaded:
 			print("Uploaded file OK")
 			# get exported url
@@ -56,6 +59,14 @@ def cc_convert(file):
 	return res, warning
 
 if __name__ == '__main__':
+	# fix spaces in file
+	test = '/Users/jandevera/Desktop/X/pr 2.pdf'
+	# file_name=os.path.join(os.path.dirname(os.path.normpath(test)), test)
+	# # escape path
+	# file_name = file_name.replace(" ", "\\ ")
+
+	# print (file_name)
+	# subprocess.call(['open', file_name])
 	res, warning = cc_convert(test)
 	print (warning)
 	print (res)

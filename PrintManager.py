@@ -1615,9 +1615,7 @@ class Window(QMainWindow):
 				self.papersize.addItem(items)
 			self.papersize.update()
 			self.d_writer('Page size: ' + size,0, 'green')
-
 		except:
-			# else:
 				print ('OFF')
 				self.image_label.clear()
 				self.labl_name.setText('No file selected')

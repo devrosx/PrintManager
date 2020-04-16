@@ -172,13 +172,14 @@ def raster_this_file(original_file,resolution):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
-def file_info(inputs, file, *args):
+def file_info_new(inputs, file, *args):
 	_info = []
 	if file == 'pdf':
 		for item in inputs:
 			pdf_toread = PdfFileReader(open(item, "rb"))
 			pdf_ = pdf_toread.getDocumentInfo()
-			html_info = tablemaker(pdf_)
+			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
+			html_info = tablemaker(pdf_fixed)
 			_info.append(html_info)
 	else:
 		name_ = []
@@ -203,15 +204,15 @@ def file_info(inputs, file, *args):
 	return _info
 
 def tablemaker (inputs):
-	html = "<table width=100% table cellspacing=0 style='border-collapse: collapse' border = \"1\" >"
-	html += '<style>table, td, th {font-size: 12px;text-align:left;padding-left: 4px;}</style>'
+	html = "<table width=100% table cellspacing=0 style='border-collapse: collapse' border = \"0\" >"
+	html += '<style>table, td, th {font-size: 9px;border: none;padding-left: 6px;padding-bottom: 6px;}</style>'
 	for dict_item in inputs:
 		html += '<tr>'
 		key_values = dict_item.split(',')
 		# print (key_values) # [1:]
-		html += '<th>' + str(key_values[0]) + '</th>'
+		html += '<th><p style="text-align:right;color: #7e7e7e;">' + str(key_values[0]) + '</p></th>'
 		# print (inputs[dict_item])
-		html += '<th>' + inputs[dict_item] + '</th>'
+		html += '<th><p style="text-align:left;font-weight: normal">' + inputs[dict_item] + '</p></th>'
 		html += '</tr>'
 	html += '</table>'
 	return html
@@ -502,7 +503,10 @@ class PrefDialog(QDialog):
 
 class Window(QMainWindow):
 	def __init__(self, parent=None):
-		super().__init__(parent)
+		super(Window, self).__init__(parent)
+		self.setWindowTitle("PrintManager " + version)
+		self.setWindowFlags(Qt.WindowStaysOnTopHint) 
+		self.setAcceptDrops(True)
 		menubar = self.menuBar()
 		menubar.setNativeMenuBar(True)
 		file_menu = QMenu('File', self)
@@ -514,34 +518,31 @@ class Window(QMainWindow):
 		printing_setting_menu.setChecked(True)
 		printing_setting_menu.triggered.connect(self.togglePrintWidget)
 		win_menu.addAction(printing_setting_menu)
-
+		# DEBUG PANEL
 		debug_setting_menu  = QAction("Debug", self)
 		debug_setting_menu.setShortcut('Ctrl+D')
 		debug_setting_menu.setCheckable(True)
 		debug_setting_menu.setChecked(True)
 		debug_setting_menu.triggered.connect(self.toggleDebugWidget)
 		win_menu.addAction(debug_setting_menu)
-
-		# PREVIEW PANEL WIP
+		# PREVIEW PANEL
 		printing_setting_menu  = QAction("Preview panel", self)
 		printing_setting_menu.setShortcut('Ctrl+A')
 		printing_setting_menu.setCheckable(True)
 		printing_setting_menu.setChecked(False)
 		printing_setting_menu.triggered.connect(self.togglePreviewWidget)
 		win_menu.addAction(printing_setting_menu)
-
 		# PREVIEW
 		preview_menu  = QAction("Preview", self)
 		preview_menu.setShortcut('F1')
 		preview_menu.triggered.connect(self.preview)
 		win_menu.addAction(preview_menu)
-
 		# PREFERENCES
 		pref_action = QAction("Preferences", self)
 		pref_action.triggered.connect(self.open_dialog)
 		pref_action.setShortcut('Ctrl+W')
 		file_menu.addAction(pref_action)
-
+		# OPEN
 		open_action.triggered.connect(self.openFileNamesDialog)
 		open_action.setShortcut('Ctrl+O')
 		file_menu.addAction(open_action)
@@ -550,14 +551,11 @@ class Window(QMainWindow):
 		file_menu.addAction(close_action)
 		menubar.addMenu(file_menu)
 		menubar.addMenu(win_menu)
-
-		self.central_widget = QWidget()   
-		self.setCentralWidget(self.central_widget)    # set QMainWindow.centralWidget
-            # define central widget
-		self.mainLayout = QGridLayout()
-		self.centralWidget().setLayout(self.mainLayout)
-
 		self.files = []
+
+		"""Core Layouts"""
+		self.mainLayout = QGridLayout()
+
 		self.table_reload(self.files)
 		self.createPrinter_layout()
 		self.createDebug_layout()
@@ -565,26 +563,25 @@ class Window(QMainWindow):
 		pref_preview_state = self.createPreview_layout()
 		# HACK to window size on boot
 		if pref_preview_state == 1:
-			self.setFixedSize(620, 650)
-			self.resize(620, 650)
+			self.setFixedSize(617, 650)
+			self.resize(617, 650)
 		else:
 			self.setFixedSize(860, 650)
 			self.resize(860, 650)
 
-		# self.mainLayout.addWidget(self.table,1,0)
-		self.mainLayout.addLayout(self.printer_layout, 0,0)
-		self.mainLayout.addLayout(self.debug_layout, 2, 0)
-		# self.mainLayout.setRowStretch(2, 2)
-		# self.mainLayout.setColumnStretch(0, 3)
-		self.mainLayout.addLayout(self.preview_layout, 1, 1)
-		self.mainLayout.addLayout(self.buttons_layout, 3, 0)
-		self.setAcceptDrops(True)
-		# self.setFixedSize(self.mainLayout.sizeHint())
+		self.mainLayout.addLayout(self.printer_layout, 0,0,1,2)
+		self.mainLayout.addLayout(self.debug_layout, 2,0,1,2)
+		# self.mainLayout.setRowStretch(0, 2)
+		# self.mainLayout.setColumnStretch(0, 2)
+		self.mainLayout.addLayout(self.preview_layout, 0,3,0,3)
+		self.mainLayout.addLayout(self.buttons_layout, 3,0,1,2)
+		# self.setFixedSize(self.window.sizeHint())
 		# self.setFixedWidth(self.sizeHint().width())
-		self.setWindowTitle("PrintManager " + version)
-		# stay on top
-		self.setWindowFlags(Qt.WindowStaysOnTopHint) 
-		self.setLayout(self.mainLayout)
+
+		"""Initiating  mainLayout """
+		self.window = QWidget()
+		self.window.setLayout(self.mainLayout)
+		self.setCentralWidget(self.window)
 
 	def open_dialog(self):
 		# load setting first
@@ -868,7 +865,6 @@ class Window(QMainWindow):
 				Window.table_reload(self, self.files)
 
 	def table_reload(self, inputfile):
-		# print ('self.files:' + str(inputfile))
 		self.table = TableWidgetDragRows()
 		headers = ["", "File", "Size", "Kind", "File size", "Pages", "Price", "Colors", 'File path']
 		self.table.setColumnCount(len(headers))
@@ -877,8 +873,9 @@ class Window(QMainWindow):
 		self.table.itemSelectionChanged.connect(self.get_page_size)
 		self.table.doubleClicked.connect(self.open_tb)
 		self.table.verticalHeader().setDefaultSectionSize(35)
+		self.table.setFixedWidth(598)
 		self.table.setColumnWidth(0, 35)
-		self.table.setColumnWidth(1, 230)
+		self.table.setColumnWidth(1, 228)
 		self.table.setColumnWidth(3, 34)
 		self.table.setColumnWidth(4, 67)
 		self.table.setColumnWidth(5, 34)
@@ -886,7 +883,7 @@ class Window(QMainWindow):
 		self.table.setColumnWidth(7, 52)
 		self.table.verticalHeader().setVisible(False)
 		self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-		# icon wip
+		# ICONS
 		self.table.setIconSize(QSize(32, 32))
 		delegate = IconDelegate(self.table) 
 		self.table.setItemDelegate(delegate)
@@ -935,12 +932,11 @@ class Window(QMainWindow):
 				self.table.setItem(row,0, QTableWidgetItem(jpg_item))
 
 		self.table.selectionModel().selectionChanged.connect(
-			self.on_selection_changed
-		)
+			self.on_selection_changed)
 		# RIGHT CLICK MENU
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.customContextMenuRequested.connect(self.contextMenuEvent)	 	
-		self.mainLayout.addWidget(self.table,1,0)
+		self.mainLayout.addWidget(self.table,1,0,1,2)
 		self.update()
 
 	@pyqtSlot()
@@ -970,9 +966,6 @@ class Window(QMainWindow):
 			bool(self.table.selectionModel().selectedRows())
 		)
 		self.split_pdf_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.info_b.setEnabled(
 			bool(self.table.selectionModel().selectedRows())
 		)
 		self.gb_setting.setEnabled(
@@ -1011,7 +1004,6 @@ class Window(QMainWindow):
 						self.preview()
 
 	def togglePrintWidget(self):
-		print ('WTF')
 		print (self.gb_printers.isHidden())
 		self.gb_printers.setHidden(not self.gb_printers.isHidden())
 		self.gb_setting.setHidden(not self.gb_setting.isHidden())
@@ -1025,11 +1017,11 @@ class Window(QMainWindow):
 		self.gb_preview.setHidden(not self.gb_preview.isHidden())
 		print (self.gb_preview.isHidden())
 		if self.gb_preview.isHidden() == 1:
-			self.setFixedSize(620, 650)
-			self.resize(620, 650)
+			self.setFixedSize(617, 650)
+			self.resize(617, 650)
 		else:
-			self.setFixedSize(840, 650)
-			self.resize(840, 650)
+			self.setFixedSize(860, 650)
+			self.resize(860, 650)
 			try:
 				self.get_page_size()
 			except:
@@ -1054,17 +1046,29 @@ class Window(QMainWindow):
 		self.image_label.setPixmap(self.image_label_pixmap)
 		# name
 		self.labl_name = QLabel()
-		self.labl_name.setStyleSheet("QLabel { background-color : '#2c2c2c'; border-radius: 5px;}")
-		self.labl_name.setText('')
+		self.labl_name.setStyleSheet("QLabel { background-color : '#2c2c2c'; border-radius: 5px; font-size: 12px;}")
+		self.labl_name.setText('No file selected')
 		self.labl_name.setAlignment(Qt.AlignCenter)
 		self.labl_name.setFixedHeight(30)
 		self.labl_name.setWordWrap(True)
+		# infotable
+		self.infotable = QTextEdit()
+		self.infotable.setStyleSheet("QTextEdit { background-color : '#2c2c2c'; border-radius: 5px; font-size: 12px;}")
+		self.infotable.acceptRichText()
+		self.infotable.setText('Info')
+		self.infotable.setReadOnly(True)
+		self.infotable.setAlignment(Qt.AlignCenter)
+		self.infotable.setFixedHeight(250)
+
 		self.gb_preview.setLayout(pbox)
 		# self.gb_preview.setFixedHeight(350)
-		self.gb_preview.setFixedWidth(200)
+		# ZZZZ
+		self.gb_preview.setFixedWidth(235)
 		# self.printer_layout.addStretch()
 		pbox.addWidget(self.image_label)
 		pbox.addWidget(self.labl_name)
+		pbox.addWidget(self.infotable)
+
 		self.preview_layout.addWidget(self.gb_preview)
 		self.setFixedWidth(self.sizeHint().width()+300)
 		return pref_preview_state
@@ -1081,7 +1085,8 @@ class Window(QMainWindow):
 		self.gb_debug.setVisible(not pref_debug_state)
 		self.gb_debug.setChecked(True)
 		self.gb_debug.setTitle('')
-		self.gb_debug.setFixedHeight(91)
+		self.gb_debug.setFixedHeight(90)
+		self.gb_debug.setFixedWidth(597)
 		self.gb_debug.setContentsMargins(0, 0, 0, 0)
 		self.gb_debug.setStyleSheet("border: 0px; border-radius: 0px; padding: 0px 0px 0px 0px;")
 		dbox = QVBoxLayout()
@@ -1090,10 +1095,11 @@ class Window(QMainWindow):
 		# debug
 		self.debuglist = QTextEdit(self)
 		self.d_writer('DEBUG:', 0, 'green')
-		self.debuglist.setAlignment(Qt.AlignJustify)
+		# self.debuglist.setAlignment(Qt.AlignJustify)
 		self.debuglist.acceptRichText()
 		self.debuglist.setReadOnly(True)
 		self.debuglist.setFixedHeight(90)
+		self.debuglist.setFixedWidth(597)
 		dbox.addWidget(self.debuglist)
 		self.gb_debug.toggled.connect(self.toggleDebugWidget)
 
@@ -1159,11 +1165,11 @@ class Window(QMainWindow):
 		self.buttons_layout.addWidget(self.extract_b)
 		self.extract_b.setDisabled(True)
 
-		# POCITANI TABULKY PDF
-		self.info_b = QPushButton('Info', self)
-		self.info_b.clicked.connect(self.info_tb)
-		self.buttons_layout.addWidget(self.info_b)
-		self.info_b.setDisabled(True)
+		# # POCITANI TABULKY PDF
+		# self.info_b = QPushButton('Info', self)
+		# self.info_b.clicked.connect(self.info_tb)
+		# self.buttons_layout.addWidget(self.info_b)
+		# self.info_b.setDisabled(True)
 
 		# # # PRINT SCRIPT
 		# self.print_b = QPushButton('Print', self)
@@ -1302,6 +1308,7 @@ class Window(QMainWindow):
 			self.d_writer(' '.join(_files),0,'green')
 			self.d_writer(jpg_info,1)
 
+
 	def split_pdf(self):
 		green_ = (QColor(10, 200, 50))
 		for items in sorted(self.table.selectionModel().selectedRows()):
@@ -1393,7 +1400,7 @@ class Window(QMainWindow):
 		vbox = QVBoxLayout()
 		self.gb_printers.setLayout(vbox)
 		self.gb_printers.setFixedHeight(150)
-		self.gb_printers.setFixedWidth(210)
+		self.gb_printers.setFixedWidth(202)
 		self.gb_printers.setVisible(not pref_printers_state)
 		self.printer_tb = QListWidget()
 		self.printer_tb.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -1410,7 +1417,7 @@ class Window(QMainWindow):
 		self.gb_setting = QGroupBox("Printer setting")
 		self.vbox2 = QGridLayout()
 		self.gb_setting.setFixedHeight(150)
-		self.gb_setting.setFixedWidth(387)
+		self.gb_setting.setFixedWidth(391)
 		self.gb_setting.setVisible(not pref_printers_state)
 		self.gb_setting.setDisabled(True)
 
@@ -1589,21 +1596,24 @@ class Window(QMainWindow):
 				self.image_label.show()
 				self.labl_name.setText(filename+'.'+filetype)
 				if filetype.upper() in (name.upper() for name in image_ext):
+					image_info = file_info_new(filepath.split(','), 'image')
+					self.infotable.setText(image_info)
 					self.image_label_pixmap = QPixmap(filepath)
 					self.image_label.setPixmap(self.image_label_pixmap)
 					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
 					w_l, h_l = self.image_label.width(), self.image_label.height()
-					print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
+					print ('photo size:' + str(w) + 'x' + str(h) + '/ border size:' + str(w_l) + 'x' + str(h_l))
 					self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
 					self.image_label.setScaledContents(True)
-					# self.resize(self.image_label.width(), self.image_label.height())
 				if filetype == 'pdf':
+					pdf_info = file_info_new(filepath.split(','), 'pdf')
+					self.infotable.setText(' '.join(pdf_info))
 					filebytes = pdf_preview_generator(filepath)
 					self.image_label_pixmap.loadFromData(filebytes)
 					self.image_label.setPixmap(self.image_label_pixmap)
 					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
 					w_l, h_l = self.image_label.width(), self.image_label.height()
-					print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
+					print ('photo size:' + str(w) + 'x' + str(h) + '/ border size:' + str(w_l) + 'x' + str(h_l))
 					self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
 					self.image_label.setScaledContents(True)
 			if size[-2:] == 'px':
@@ -1615,8 +1625,9 @@ class Window(QMainWindow):
 				self.papersize.addItem(items)
 			self.papersize.update()
 			self.d_writer('Page size: ' + size,0, 'green')
-		except:
+		except Exception as e:
 				print ('OFF')
+				print (e)
 				self.image_label.clear()
 				self.labl_name.setText('No file selected')
 
@@ -1648,9 +1659,9 @@ if __name__ == '__main__':
 	app = QApplication(sys.argv)
 	path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')
 	app.setWindowIcon(QIcon(path))
-	form = Window()
+	w = Window()
 	darkmode()
 	log = ('OS: '  + system + ': ' + sys_support + ' / boot time: ' + str((time.time() - start_time))[:5] + ' seconds')
-	form.d_writer(log,1)
-	form.show()
+	w.d_writer(log,1)
+	w.showNormal()
 	sys.exit(app.exec_())

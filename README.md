@@ -42,7 +42,8 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.27
-- Initial work on preview (commad+A) still WIP, should work on PDF and images
+- Optional preview (commad+A) , should work on PDF and images with info like finder (with all atributes) - todo fix aspect ratio on images :)
+- cleaned code
 - Fixes spaces in CloudConvert
 - Fixed printing with (exmpty string bug)
 

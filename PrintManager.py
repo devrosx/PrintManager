@@ -874,7 +874,7 @@ class Window(QMainWindow):
 		self.table.setColumnCount(len(headers))
 		self.table.setHorizontalHeaderLabels(headers)
 		# better is preview (printig etc)
-		self.table.cellClicked.connect(self.get_page_size)
+		self.table.itemSelectionChanged.connect(self.get_page_size)
 		self.table.doubleClicked.connect(self.open_tb)
 		self.table.verticalHeader().setDefaultSectionSize(35)
 		self.table.setColumnWidth(0, 35)
@@ -1030,6 +1030,10 @@ class Window(QMainWindow):
 		else:
 			self.setFixedSize(840, 650)
 			self.resize(840, 650)
+			try:
+				self.get_page_size()
+			except:
+				pass
 
 	def toggleDebugWidget(self):
 		self.gb_debug.setHidden(not self.gb_debug.isHidden())
@@ -1580,35 +1584,43 @@ class Window(QMainWindow):
 			filename=index.sibling(items.row(),1).data()
 			filetype=index.sibling(items.row(),3).data()
 			filepath=index.sibling(items.row(),8).data()
-		if not self.gb_preview.isHidden():
-			self.labl_name.setText(filename+'.'+filetype)
-			if filetype.upper() in (name.upper() for name in image_ext):
-				self.image_label_pixmap = QPixmap(filepath)
-				self.image_label.setPixmap(self.image_label_pixmap)
-				w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
-				w_l, h_l = self.image_label.width(), self.image_label.height()
-				print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
-				self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
-				self.image_label.setScaledContents(True)
-				# self.resize(self.image_label.width(), self.image_label.height())
-			else:
-				filebytes = pdf_preview_generator(filepath)
-				self.image_label_pixmap.loadFromData(filebytes)
-				self.image_label.setPixmap(self.image_label_pixmap)
-				w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
-				w_l, h_l = self.image_label.width(), self.image_label.height()
-				print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
-				self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
-				self.image_label.setScaledContents(True)
-		if size[-2:] == 'px':
-			papers[5] = 'not supported'
-		else: 
-			papers[5] = size[:-3]
-		self.papersize.clear()
-		for items in papers:
-			self.papersize.addItem(items)
-		self.papersize.update()
-		self.d_writer('Page size: ' + size,0, 'green')
+		try:
+			if not self.gb_preview.isHidden():
+				self.image_label.show()
+				self.labl_name.setText(filename+'.'+filetype)
+				if filetype.upper() in (name.upper() for name in image_ext):
+					self.image_label_pixmap = QPixmap(filepath)
+					self.image_label.setPixmap(self.image_label_pixmap)
+					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
+					w_l, h_l = self.image_label.width(), self.image_label.height()
+					print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
+					self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
+					self.image_label.setScaledContents(True)
+					# self.resize(self.image_label.width(), self.image_label.height())
+				if filetype == 'pdf':
+					filebytes = pdf_preview_generator(filepath)
+					self.image_label_pixmap.loadFromData(filebytes)
+					self.image_label.setPixmap(self.image_label_pixmap)
+					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
+					w_l, h_l = self.image_label.width(), self.image_label.height()
+					print ('velikosti fotky:' + str(w) + 'x' + str(h) + '/ velikosti ramu:' + str(w_l) + 'x' + str(h_l))
+					self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
+					self.image_label.setScaledContents(True)
+			if size[-2:] == 'px':
+				papers[5] = 'not supported'
+			else: 
+				papers[5] = size[:-3]
+			self.papersize.clear()
+			for items in papers:
+				self.papersize.addItem(items)
+			self.papersize.update()
+			self.d_writer('Page size: ' + size,0, 'green')
+
+		except:
+			# else:
+				print ('OFF')
+				self.image_label.clear()
+				self.labl_name.setText('No file selected')
 
 	def keyPressEvent(self,e):
 		if e.key() == Qt.Key_Delete:

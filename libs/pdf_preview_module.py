@@ -5,7 +5,7 @@ res = 72
 
 def pdf_preview_generator(input_file):
 	print (input_file)
-	cmd = ["convert", "-density", str(res), "+antialias", input_file, "jpg:-"]
+	cmd = ["convert", "-density", str(res), "+antialias", input_file+'[0]', "jpg:-"]
 	fconvert = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	stdout, stderr = fconvert.communicate()
 	assert fconvert.returncode == 0, stderr

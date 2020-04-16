@@ -1151,7 +1151,7 @@ class Window(QMainWindow):
 		self.raster_b.setDisabled(True)
 
 		# CROP PDF WIP
-		self.crop_b = QPushButton('Crop', self)
+		self.crop_b = QPushButton('SmartCrop', self)
 		self.crop_b.clicked.connect(self.crop_pdf)
 		# self.crop_b.clicked.connect(self.InputDialog_PDFcut)
 
@@ -1625,9 +1625,7 @@ class Window(QMainWindow):
 				self.papersize.addItem(items)
 			self.papersize.update()
 			self.d_writer('Page size: ' + size,0, 'green')
-		except Exception as e:
-				print ('OFF')
-				print (e)
+		except:
 				self.image_label.clear()
 				self.labl_name.setText('No file selected')
 

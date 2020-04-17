@@ -179,6 +179,11 @@ def file_info_new(inputs, file, *args):
 			pdf_toread = PdfFileReader(open(item, "rb"))
 			pdf_ = pdf_toread.getDocumentInfo()
 			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
+			pdf_fixed.update( {'Filesize' : humansize(os.path.getsize(item))} )
+			# z = dict(list(x.items()) + list(y.items()))
+			# pdf_fixed.update({'a':'B'})
+			# pdf_fixed.update(dict(a=1))
+			# pdf_fixed.update(a=1)
 			html_info = tablemaker(pdf_fixed)
 			_info.append(html_info)
 	else:
@@ -200,12 +205,13 @@ def file_info_new(inputs, file, *args):
 		tolist = dict(zip(name_, val_))
 		unwanted = ['', [], '(', '0', '(null)']
 		img_ = {k: v for k, v in tolist.items() if v not in unwanted}
+		img_.update( {'Filesize' : humansize(os.path.getsize(item))} )
 		_info = tablemaker(img_)
 	return _info
 
 def tablemaker (inputs):
 	html = "<table width=100% table cellspacing=0 style='border-collapse: collapse' border = \"0\" >"
-	html += '<style>table, td, th {font-size: 9px;border: none;padding-left: 6px;padding-bottom: 6px;}</style>'
+	html += '<style>table, td, th {font-size: 9px;border: none;padding-left: 2px;padding-right: 2px;ppadding-bottom: 4px;}</style>'
 	for dict_item in inputs:
 		html += '<tr>'
 		key_values = dict_item.split(',')
@@ -566,8 +572,8 @@ class Window(QMainWindow):
 			self.setFixedSize(617, 650)
 			self.resize(617, 650)
 		else:
-			self.setFixedSize(860, 650)
-			self.resize(860, 650)
+			self.setFixedSize(875, 650)
+			self.resize(875, 650)
 
 		self.mainLayout.addLayout(self.printer_layout, 0,0,1,2)
 		self.mainLayout.addLayout(self.debug_layout, 2,0,1,2)
@@ -1020,8 +1026,8 @@ class Window(QMainWindow):
 			self.setFixedSize(617, 650)
 			self.resize(617, 650)
 		else:
-			self.setFixedSize(860, 650)
-			self.resize(860, 650)
+			self.setFixedSize(875, 650)
+			self.resize(875, 650)
 			try:
 				self.get_page_size()
 			except:
@@ -1044,6 +1050,7 @@ class Window(QMainWindow):
 		self.image_label = QLabel(self)
 		self.image_label_pixmap = QPixmap('')
 		self.image_label.setPixmap(self.image_label_pixmap)
+		self.image_label.setAlignment(Qt.AlignCenter)
 		# name
 		self.labl_name = QLabel()
 		self.labl_name.setStyleSheet("QLabel { background-color : '#2c2c2c'; border-radius: 5px; font-size: 12px;}")
@@ -1058,12 +1065,12 @@ class Window(QMainWindow):
 		self.infotable.setText('Info')
 		self.infotable.setReadOnly(True)
 		self.infotable.setAlignment(Qt.AlignCenter)
-		self.infotable.setFixedHeight(250)
+		self.infotable.setFixedHeight(230)
 
 		self.gb_preview.setLayout(pbox)
 		# self.gb_preview.setFixedHeight(350)
 		# ZZZZ
-		self.gb_preview.setFixedWidth(235)
+		self.gb_preview.setFixedWidth(250)
 		# self.printer_layout.addStretch()
 		pbox.addWidget(self.image_label)
 		pbox.addWidget(self.labl_name)
@@ -1603,8 +1610,10 @@ class Window(QMainWindow):
 					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
 					w_l, h_l = self.image_label.width(), self.image_label.height()
 					print ('photo size:' + str(w) + 'x' + str(h) + '/ border size:' + str(w_l) + 'x' + str(h_l))
-					self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
-					self.image_label.setScaledContents(True)
+					# self.image_label.setScaledContents(True)
+					self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
+					self.image_label.setMinimumSize(1, 1)
+
 				if filetype == 'pdf':
 					pdf_info = file_info_new(filepath.split(','), 'pdf')
 					self.infotable.setText(' '.join(pdf_info))
@@ -1614,18 +1623,21 @@ class Window(QMainWindow):
 					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
 					w_l, h_l = self.image_label.width(), self.image_label.height()
 					print ('photo size:' + str(w) + 'x' + str(h) + '/ border size:' + str(w_l) + 'x' + str(h_l))
-					self.image_label_pixmap.scaled(w, h, Qt.KeepAspectRatio)
-					self.image_label.setScaledContents(True)
+					# self.image_label.setScaledContents(True)
+					self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
+					self.image_label.setMinimumSize(1, 1)
 			if size[-2:] == 'px':
 				papers[5] = 'not supported'
 			else: 
 				papers[5] = size[:-3]
-			self.papersize.clear()
+				self.papersize.clear()
 			for items in papers:
 				self.papersize.addItem(items)
 			self.papersize.update()
 			self.d_writer('Page size: ' + size,0, 'green')
 		except:
+				# print ('error')
+				self.infotable.clear()
 				self.image_label.clear()
 				self.labl_name.setText('No file selected')
 

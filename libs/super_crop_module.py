@@ -6,32 +6,40 @@ import os
 import subprocess
 from PyPDF2 import PdfFileWriter,PdfFileReader,PdfFileMerger
 
-debug_mode = False
+debug_mode = True
 window_name = 'debug'
 
-
-def raster_this_file(pdf_input, res, croppage, multipage, pages):
-	outputfiles = []
-	outputdir = "/private/tmp/"
-	head, ext = os.path.splitext(pdf_input)
-	filename = os.path.basename(pdf_input)
-	file, ext = os.path.splitext(filename)
-	outputfile = outputdir + file + '_r.jpg'
-	outputpdf = head + 'croped' + ext
-	if multipage == 1 and pages > 1:
-		print ('converting all pages in PDF (multipage)')
-		command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
-		for i in range(pages):
-			newfile = outputdir + (str(os.path.splitext(file)[0])+'_r-'+str(i)+'.jpg')
-			outputfiles.append(newfile)
-	else:
-		multipages = 0
-		print ('converting only specific pages (singlepage)')
-		pdf_input = pdf_input+'['+str(croppage)+']'
-		command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
-		outputfiles.append(outputfile)
-	subprocess.run(command)
-	return outputfiles, outputpdf
+def raster_this_file(input_file, res, croppage, multipage, pages):
+	# outputfiles = []
+	# outputdir = "/private/tmp/"
+	# head, ext = os.path.splitext(pdf_input)
+	file_name = os.path.basename(input_file)
+	file, ext = os.path.splitext(file_name)
+	# outputfile = outputdir + file + '_r.jpg'
+	# outputpdf = head + 'croped' + ext
+	# if multipage == 1 and pages > 1:
+	# 	print ('converting all pages in PDF (multipage)')
+	# 	command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
+	# 	for i in range(pages):
+	# 		newfile = outputdir + (str(os.path.splitext(file)[0])+'_r-'+str(i)+'.jpg')
+	# 		outputfiles.append(newfile)
+	# else:
+	# 	multipages = 0
+	# 	print ('converting only specific pages (singlepage)')
+	# 	pdf_input = pdf_input+'['+str(croppage)+']'
+	# 	command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
+	# 	outputfiles.append(outputfile)
+	# subprocess.run(command)
+	# return outputfiles, outputpdf
+	print (input_file)
+	cmd = ["convert", "-density", str(res), "+antialias", input_file+'[0]', "jpg:-"]
+	fconvert = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	stdout, stderr = fconvert.communicate()
+	assert fconvert.returncode == 0, stderr
+	
+	# now stdout is TIF image. let's load it with OpenCV
+	file_data = np.asarray(bytearray(stdout), dtype=np.uint8)
+	return file_name, file_data
 
 def get_image_width_height(image):
 	image_width = image.shape[1]  # current image's width
@@ -39,7 +47,8 @@ def get_image_width_height(image):
 	return image_width, image_height
 
 def detect_box(image, margin):
-	image_yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
+	images = cv2.imdecode(image, cv2.IMREAD_COLOR)
+	image_yuv = cv2.cvtColor(images, cv2.COLOR_BGR2YUV)
 	image_y = np.zeros(image_yuv.shape[0:2], np.uint8)
 	image_y[:, :] = image_yuv[:, :, 0]
 	image_blurred = cv2.GaussianBlur(image_y, (3, 3), 0)
@@ -67,7 +76,8 @@ def detect_box(image, margin):
 	cv2.rectangle(image, (best_box[0]-margin, best_box[1]-margin), (best_box[2]+margin, best_box[3]+margin), (255, 255, 0), 2)
 	cropbox = ([best_box[1]-margin,best_box[3]+margin, best_box[0]-margin,best_box[2]+margin])
 	if (debug_mode):
-		show_image(image, window_name)
+		print (cropbox)
+		# show_image(image, window_name)
 	return image, cropbox
 
 # Show image for debug
@@ -110,34 +120,45 @@ def pdf_get_num_pages(pdf_input):
 	pages = pdf_file.getNumPages()
 	return pages
 
-def detect_cropboxes(pages,file,margin,multipage):
+def detect_cropboxes(file_data, margin):
 	cropboxes = []
-	if multipage == True:
-		for i in range(pages):
-			# print (file[i])
-			images = cv2.imread(file[i])
-			image, cropbox = detect_box(images, margin)
-			cropboxes.append(cropbox)
-		return cropboxes
-	else:
-		for i in range(pages):
-			# print (file[0])
-			images = cv2.imread(file[0])
-			image, cropbox = detect_box(images, margin)
-			cropboxes.append(cropbox)
-		return cropboxes		
+	image, cropbox = detect_box(file_data, margin)
+	return cropboxes
+	# if multipage == True:
+	# 	for i in range(pages):
+	# 		# print (file[i])
+	# 		images = cv2.imread(file[i])
+	# 		image, cropbox = detect_box(images, margin)
+	# 		cropboxes.append(cropbox)
+	# 	return cropboxes
+	# else:
+	# 	for i in range(pages):
+	# 		# print (file[0])
+	# 		images = cv2.imread(file[0])
+	# 		image, cropbox = detect_box(images, margin)
+	# 		cropboxes.append(cropbox)
+				
 
 def convertor(pdf_input,res,croppage,multipage,margin):
 	# print ('starting supercrop / ' + 'margin je: ' + str(margin))
 	pages = pdf_get_num_pages(pdf_input)
-	file,outputpdf = raster_this_file(pdf_input, res, croppage, multipage, pages)
-	print ('Rasterized file (JPG): ' + str(file))
-	cropboxes = detect_cropboxes(pages,file,margin,multipage)
+	file_name,file_data = raster_this_file(pdf_input, res, croppage, multipage, pages)
+	# print ('Rasterized file (JPG): ' + str(file_name))
+	cropboxes = detect_cropboxes(file_data, margin)
+	# debug
+	# image_yuv = cv2.imdecode(file_data, cv2.COLOR_BGR2YUV)
+	# cv2.imshow('test',image_yuv)
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
+
+	# cropboxes = detect_cropboxes(pages,file,margin,multipage)
 	# print (cropboxes)
-	pdf_cropper(pdf_input,cropboxes,multipage,outputpdf)
-	debugstring = 'file croped'
-	return debugstring, outputpdf
+	# pdf_cropper(pdf_input,cropboxes,multipage,outputpdf)
+	# debugstring = 'file croped'
+	# return debugstring, outputpdf
 
 if __name__ == '__main__':
-	pdf_input = '/Users/jandevera/Desktop/testy/Vizitky2_raster.pdf'
+	pdf_input = '/Users/jandevera/Desktop/testy/024_usti_nahled6.pdf'
+
+	# pdf_input = '/Users/jandevera/Desktop/testy/Vizitky2_raster.pdf'
 	convertor(pdf_input,72,croppage=0,multipage=True,margin=0)

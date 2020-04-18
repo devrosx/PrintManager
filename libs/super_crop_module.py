@@ -10,9 +10,6 @@ debug_mode = True
 window_name = 'debug'
 
 def raster_this_file(input_file, res, croppage, multipage, pages):
-	# outputfiles = []
-	# outputdir = "/private/tmp/"
-	# head, ext = os.path.splitext(pdf_input)
 	file_name = os.path.basename(input_file)
 	file, ext = os.path.splitext(file_name)
 	# outputfile = outputdir + file + '_r.jpg'
@@ -77,8 +74,8 @@ def detect_box(image, margin):
 	cropbox = ([best_box[1]-margin,best_box[3]+margin, best_box[0]-margin,best_box[2]+margin])
 	if (debug_mode):
 		print (cropbox)
-		# show_image(image, window_name)
-	return image, cropbox
+		show_image(images, window_name)
+	return images, cropbox
 
 # Show image for debug
 def show_image(image, window_name):
@@ -94,26 +91,35 @@ def pdf_cropper(pdf_input,cropboxes, multipage,outputpdf):
 	pdf_file = PdfFileReader(open(pdf_input, 'rb'))
 	output = PdfFileWriter()
 	pages = pdf_file.getNumPages()
-	if multipage == 1:
-		for i in range(pages):
-			# print (cropboxes[i][0])
+	print (pages-1)
+	for i in range(pages-1):
 			page = pdf_file.getPage(i)
 			page.cropBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
 			page.cropBox.lowerRight = (cropboxes[i][2], cropboxes[i][0])
 			output.addPage(page)
-		with open(outputpdf, "wb") as out_f:
-			output.write(out_f)
-			# print ('Saved file: '+outputpdf)
-	else:
-		for i in range(pages):
-			print (cropboxes[0][0])
-			page = pdf_file.getPage(i)
-			page.cropBox.upperLeft = (cropboxes[0][3], cropboxes[0][1])
-			page.cropBox.lowerRight = (cropboxes[0][2], cropboxes[0][0])
-			output.addPage(page)
-		with open(outputpdf, "wb") as out_f:
-			output.write(out_f)
-			# print ('Saved file: '+ outputpdf)
+	with open(outputpdf, "wb") as out_f:
+		output.write(out_f)
+		print ('Saved file: '+outputpdf)
+	# if multipage == 1:
+	# 	for i in range(pages):
+	# 		# print (cropboxes[i][0])
+	# 		page = pdf_file.getPage(i)
+	# 		page.cropBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
+	# 		page.cropBox.lowerRight = (cropboxes[i][2], cropboxes[i][0])
+	# 		output.addPage(page)
+	# 	with open(outputpdf, "wb") as out_f:
+	# 		output.write(out_f)
+	# 		# print ('Saved file: '+outputpdf)
+	# else:
+	# 	for i in range(pages):
+	# 		print (cropboxes[0][0])
+	# 		page = pdf_file.getPage(i)
+	# 		page.cropBox.upperLeft = (cropboxes[0][3], cropboxes[0][1])
+	# 		page.cropBox.lowerRight = (cropboxes[0][2], cropboxes[0][0])
+	# 		output.addPage(page)
+	# 	with open(outputpdf, "wb") as out_f:
+	# 		output.write(out_f)
+	# 		# print ('Saved file: '+ outputpdf)
 
 def pdf_get_num_pages(pdf_input):
 	pdf_file = PdfFileReader(open(pdf_input, 'rb'))
@@ -150,15 +156,18 @@ def convertor(pdf_input,res,croppage,multipage,margin):
 	# cv2.imshow('test',image_yuv)
 	# cv2.waitKey(0)
 	# cv2.destroyAllWindows()
-
+	head, ext = os.path.splitext(pdf_input)
+	# file_name = os.path.basename(input_file)
+	# file, ext = os.path.splitext(file_name)
+	# outputfile = outputdir + file + '_r.jpg'
+	outputpdf = head + '_croped' + ext
+	print (outputpdf)
 	# cropboxes = detect_cropboxes(pages,file,margin,multipage)
 	# print (cropboxes)
-	# pdf_cropper(pdf_input,cropboxes,multipage,outputpdf)
+	pdf_cropper(pdf_input,cropboxes,multipage,outputpdf)
 	# debugstring = 'file croped'
 	# return debugstring, outputpdf
 
 if __name__ == '__main__':
-	pdf_input = '/Users/jandevera/Desktop/testy/024_usti_nahled6.pdf'
-
-	# pdf_input = '/Users/jandevera/Desktop/testy/Vizitky2_raster.pdf'
+	pdf_input = '/Users/jandevera/Desktop/X/Vizitky.pdf'
 	convertor(pdf_input,72,croppage=0,multipage=True,margin=0)

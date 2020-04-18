@@ -172,6 +172,12 @@ def raster_this_file(original_file,resolution):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+def get_boxes(input_file):
+		pdf_reader = PdfFileReader(input_file)
+		page = pdf_reader.getPage(0)
+		pageNumbers = pdf_reader.getNumPages()
+		return pageNumbers
+
 def file_info_new(inputs, file, *args):
 	_info = []
 	if file == 'pdf':
@@ -180,6 +186,8 @@ def file_info_new(inputs, file, *args):
 			pdf_ = pdf_toread.getDocumentInfo()
 			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
 			pdf_fixed.update( {'Filesize' : humansize(os.path.getsize(item))} )
+			boxes = get_boxes(item)
+			print (boxes)
 			# z = dict(list(x.items()) + list(y.items()))
 			# pdf_fixed.update({'a':'B'})
 			# pdf_fixed.update(dict(a=1))
@@ -541,7 +549,7 @@ class Window(QMainWindow):
 		# PREVIEW
 		preview_menu  = QAction("Preview", self)
 		preview_menu.setShortcut('F1')
-		preview_menu.triggered.connect(self.preview)
+		preview_menu.triggered.connect(self.preview_window)
 		win_menu.addAction(preview_menu)
 		# PREFERENCES
 		pref_action = QAction("Preferences", self)
@@ -1016,8 +1024,7 @@ class Window(QMainWindow):
 		return True
 
 	def togglePreviewWidget(self):
-		# ag = QDesktopWidget().availableGeometry()
-		# sg = QDesktopWidget().screenGeometry()
+
 		PreviewWidget = 1
 		# self.move(50, 50)
 		self.gb_preview.setHidden(not self.gb_preview.isHidden())
@@ -1032,6 +1039,67 @@ class Window(QMainWindow):
 				self.get_page_size()
 			except:
 				pass
+	def preview_window(self):
+		if not self.table.selectionModel().selectedRows():
+			pass
+		else:
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				row = items.row()
+				index=(self.table.selectionModel().currentIndex())
+				size=index.sibling(items.row(),2).data()
+				filename=index.sibling(items.row(),1).data()
+				filetype=index.sibling(items.row(),3).data()
+				filepath=index.sibling(items.row(),8).data()
+			self.widget = QDialog(self)
+			self.widget.setWindowTitle("Preview");
+			self.im_p = QLabel('Image_P',self.widget)
+			self.im_p.setText('PREVIEW')
+			self.im_pixmap = QPixmap('')
+			if filetype.upper() in (name.upper() for name in image_ext):
+				print ('IMAGE')
+				self.im_pixmap = QPixmap(filepath)
+				self.im_p.setPixmap(self.im_pixmap)
+			if filetype == 'pdf':
+				print ('PDF')
+				filebytes = pdf_preview_generator(filepath,generate_marks=1)
+				self.im_pixmap.loadFromData(filebytes)
+				self.im_p.setPixmap(self.im_pixmap)
+			sizeObject = QDesktopWidget().screenGeometry(0)# monitor size
+			res = [(sizeObject.width()*92/100),(sizeObject.height()*92/100)]
+			w, h = self.im_pixmap.width(), self.im_pixmap.height()
+			print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
+			self.widget.setFixedSize(w, h)
+			if w > res[0]:
+				print ('zmensuju sirka je veci')
+				wpercent = (res[0] / float(w))
+				print (wpercent)
+				self.widget.setFixedSize(w*wpercent, h*wpercent)
+			if h > res[1]:
+				print ('zmensuju vyska je veci')
+				wpercent = (res[1] / float(h))
+				print (wpercent)
+				self.widget.setFixedSize(w*wpercent, h*wpercent)
+			print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
+			self.im_p.setPixmap(self.im_pixmap.scaled(self.widget.size(),Qt.KeepAspectRatio))
+			self.im_p.setMinimumSize(1, 1)
+			self.labl_name = QLabel('Image_name',self.widget)
+			self.labl_name.setStyleSheet("QLabel { background-color: '#2c2c2c'; font-size: 11px; height: 16px; padding: 5,5,5,5;}")
+			self.labl_name.setText(filename)
+			# self.labl_name.setFixedHeight(30)
+			self.widget.exec_()
+
+	class ExtendedQLabel(QLabel):
+		def __init(self, parent):
+			super().__init__(parent)
+	
+		clicked = pyqtSignal()
+		rightClicked = pyqtSignal()
+
+		def mousePressEvent(self, ev):
+			if ev.button() == Qt.RightButton:
+				self.rightClicked.emit()
+			else:
+				self.clicked.emit()
 
 	def toggleDebugWidget(self):
 		self.gb_debug.setHidden(not self.gb_debug.isHidden())
@@ -1047,11 +1115,11 @@ class Window(QMainWindow):
 		self.gb_preview.setVisible(not pref_preview_state)
 		pbox = QVBoxLayout()
 		# image
-		self.image_label = QLabel(self)
+		self.image_label = self.ExtendedQLabel(self)
 		self.image_label_pixmap = QPixmap('')
 		self.image_label.setPixmap(self.image_label_pixmap)
 		self.image_label.setAlignment(Qt.AlignCenter)
-		# name
+		self.image_label.clicked.connect(self.preview_window)
 		self.labl_name = QLabel()
 		self.labl_name.setStyleSheet("QLabel { background-color : '#2c2c2c'; border-radius: 5px; font-size: 12px;}")
 		self.labl_name.setText('No file selected')
@@ -1066,7 +1134,6 @@ class Window(QMainWindow):
 		self.infotable.setReadOnly(True)
 		self.infotable.setAlignment(Qt.AlignCenter)
 		self.infotable.setFixedHeight(230)
-
 		self.gb_preview.setLayout(pbox)
 		# self.gb_preview.setFixedHeight(350)
 		# ZZZZ
@@ -1075,11 +1142,9 @@ class Window(QMainWindow):
 		pbox.addWidget(self.image_label)
 		pbox.addWidget(self.labl_name)
 		pbox.addWidget(self.infotable)
-
 		self.preview_layout.addWidget(self.gb_preview)
 		self.setFixedWidth(self.sizeHint().width()+300)
 		return pref_preview_state
-
 
 	def createDebug_layout(self):
 		self.debug_layout = QHBoxLayout()
@@ -1226,8 +1291,6 @@ class Window(QMainWindow):
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s) converted to grayscale:', 1, 'green')
 		self.d_writer(', '.join(debugstring),1)
-
-
 
 	def rasterize_pdf(self):
 		outputfiles = []
@@ -1551,25 +1614,6 @@ class Window(QMainWindow):
 		self.d_writer('Printing setting:',0,'green')
 		self.d_writer(debugstring,1,'white')
 
-	def preview(self):
-		outputfiles = []
-		filetypes = []
-		try:
-			for items in sorted(self.table.selectionModel().selectedRows()):
-				row = items.row()
-				index=(self.table.selectionModel().currentIndex())
-				file_path=index.sibling(items.row(),8).data()
-				filetype=index.sibling(items.row(),3).data()
-				filetypes.append(filetype)
-				print (filetype)
-				outputfiles.append(file_path)
-			if filetypes[0] == 'jpg':
-				openfile(file_path)
-			else:
-				previewimage(file_path)
-		except Exception as e:
-			return
-
 	def open_tb(self):
 		green_ = (QColor(80, 80, 80))
 		black_ = (QBrush(QColor(0, 0, 0)))
@@ -1607,25 +1651,17 @@ class Window(QMainWindow):
 					self.infotable.setText(image_info)
 					self.image_label_pixmap = QPixmap(filepath)
 					self.image_label.setPixmap(self.image_label_pixmap)
-					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
-					w_l, h_l = self.image_label.width(), self.image_label.height()
-					print ('photo size:' + str(w) + 'x' + str(h) + '/ border size:' + str(w_l) + 'x' + str(h_l))
-					# self.image_label.setScaledContents(True)
-					self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
-					self.image_label.setMinimumSize(1, 1)
-
 				if filetype == 'pdf':
 					pdf_info = file_info_new(filepath.split(','), 'pdf')
 					self.infotable.setText(' '.join(pdf_info))
-					filebytes = pdf_preview_generator(filepath)
+					filebytes = pdf_preview_generator(filepath,generate_marks=1)
 					self.image_label_pixmap.loadFromData(filebytes)
 					self.image_label.setPixmap(self.image_label_pixmap)
-					w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
-					w_l, h_l = self.image_label.width(), self.image_label.height()
-					print ('photo size:' + str(w) + 'x' + str(h) + '/ border size:' + str(w_l) + 'x' + str(h_l))
-					# self.image_label.setScaledContents(True)
-					self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
-					self.image_label.setMinimumSize(1, 1)
+			w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
+			w_l, h_l = self.image_label.width(), self.image_label.height()
+			self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
+			self.image_label.setMinimumSize(1, 1)
+			self.labl_name.setText(filename+'.'+filetype)
 			if size[-2:] == 'px':
 				papers[5] = 'not supported'
 			else: 
@@ -1635,7 +1671,8 @@ class Window(QMainWindow):
 				self.papersize.addItem(items)
 			self.papersize.update()
 			self.d_writer('Page size: ' + size,0, 'green')
-		except:
+		except Exception as e:
+				# print (e)
 				# print ('error')
 				self.infotable.clear()
 				self.image_label.clear()
@@ -1649,7 +1686,8 @@ class Window(QMainWindow):
 			Window.table_reload(self, self.files)
 
 		if e.key() == Qt.Key_F1:
-			self.preview()
+			self.preview_window()
+			# self.preview()
 
 	def deleteClicked(self):
 		row = self.table.currentRow()

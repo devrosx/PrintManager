@@ -29,6 +29,8 @@ I'm a newbie with python and PyQt5 :)
 
  # Todo
 - Fix bugs
+- Optimize code
+- Add cropregions info 
 - Interface polishing
 - app bundle configuration
 - drag and drop on app icon
@@ -42,13 +44,15 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.27
-- Optional preview (commad+A) , should work on PDF and images with info like finder (with all atributes) - todo fix aspect ratio on images :)
-preview on click on preview window, fixes
+- Optional preview (commad+A) , should work on PDF and images with info like finder (with all atributes)
 - rewrited preview
 - supercrop isnt working
 - cleaned code
 - Fixes spaces in CloudConvert
 - Fixed printing with (exmpty string bug)
+- updates button states for image/ pdf files
+- added grayscale for images support
+- imroved preview detail
 
 0.26
 - Big feature # SuperCrop

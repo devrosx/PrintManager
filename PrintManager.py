@@ -141,12 +141,15 @@ def resizeimage(original_file, percent):
 	# outputfiles.append(outputfile)
 	return command, outputfile
 
-def gray_this_file(original_file):
+def gray_this_file(original_file,filetype):
 	outputfiles = []
 	for item in original_file:
 		head, ext = os.path.splitext(item)
 		outputfile = head + '_gray' + ext
-		command = ["gs", "-sDEVICE=pdfwrite", "-dProcessColorModel=/DeviceGray", "-dColorConversionStrategy=/Gray", "-dPDFUseOldCMS=false", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile="+outputfile, item]
+		if filetype == 'pdf':
+			command = ["gs", "-sDEVICE=pdfwrite", "-dProcessColorModel=/DeviceGray", "-dColorConversionStrategy=/Gray", "-dPDFUseOldCMS=false", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile="+outputfile, item]
+		else:
+			command = ["convert", item, "-colorspace", "Gray", outputfile]
 		subprocess.run(command)
 		outputfiles.append(outputfile)
 	return command, outputfiles
@@ -391,7 +394,7 @@ def price_check(pages, velikost):
 
 def darkmode():
 	app.setStyle("Fusion")
-	app.setStyleSheet('QPushButton:disabled {color: #696969;background-color:#272727;}')
+
 	palette = QPalette()
 	palette.setColor(QPalette.Window, QColor(53, 53, 53))
 	palette.setColor(QPalette.WindowText, Qt.white)
@@ -406,6 +409,7 @@ def darkmode():
 	palette.setColor(QPalette.Link, QColor(42, 130, 218))
 	palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
 	palette.setColor(QPalette.HighlightedText, Qt.black)
+	app.setStyleSheet('QPushButton:enabled {color: #ffffff;background-color:#2c2c2c;}QPushButton:disabled {color: #696969;background-color:#272727;}')
 	app.setPalette(palette)
 
 class TableWidgetDragRows(QTableWidget):
@@ -764,7 +768,7 @@ class Window(QMainWindow):
 					parse_files = []
 					self.files = parse_img(self, soubor)
 					Window.table_reload(self, self.files)
-					self.d_writer('Imported: ' + ' '.join(soubor), 0)
+					# self.d_writer('Imported: ' + ' '.join(soubor), 0)
 				if text == 'Resize':
 					resize_files = []
 					percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
@@ -955,39 +959,31 @@ class Window(QMainWindow):
 
 	@pyqtSlot()
 	def on_selection_changed(self):
-		self.print_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.color_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.merge_pdf_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.split_pdf_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.compres_pdf_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.gray_pdf_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.raster_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.extract_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.split_pdf_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.gb_setting.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
-		self.crop_b.setEnabled(
-			bool(self.table.selectionModel().selectedRows())
-		)
+		self.debuglist.clear()
+		if self.selected_file_check() == 'pdf':
+			self.print_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.merge_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.split_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.extract_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.crop_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+		if self.selected_file_check() == 'image':
+			self.print_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.merge_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			self.split_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			self.compres_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.raster_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			self.extract_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+		else:
+			pass
 
 	def contextMenuEvent(self, pos):
 			if self.table.selectionModel().selection().indexes():
@@ -1056,11 +1052,11 @@ class Window(QMainWindow):
 			self.im_p.setText('PREVIEW')
 			self.im_pixmap = QPixmap('')
 			if filetype.upper() in (name.upper() for name in image_ext):
-				print ('IMAGE')
+				# print ('IMAGE')
 				self.im_pixmap = QPixmap(filepath)
 				self.im_p.setPixmap(self.im_pixmap)
 			if filetype == 'pdf':
-				print ('PDF')
+				# print ('PDF')
 				filebytes = pdf_preview_generator(filepath,generate_marks=1)
 				self.im_pixmap.loadFromData(filebytes)
 				self.im_p.setPixmap(self.im_pixmap)
@@ -1286,10 +1282,14 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-		debugstring, outputfiles = gray_this_file(outputfiles)
-		self.files = pdf_parse(self,outputfiles)
+		if self.selected_file_check() == 'pdf':
+			debugstring, outputfiles = gray_this_file(outputfiles,'pdf')
+			self.files = pdf_parse(self,outputfiles)
+		else:
+			debugstring, outputfiles = gray_this_file(outputfiles,'jpg')
+			self.files = parse_img(self,outputfiles)
 		Window.table_reload(self, self.files)
-		self.d_writer('File(s) converted to grayscale:', 1, 'green')
+		self.d_writer('Converted '+ str(len(outputfiles)) + ' pdf files to grayscale:', 0, 'green')
 		self.d_writer(', '.join(debugstring),1)
 
 	def rasterize_pdf(self):
@@ -1303,7 +1303,6 @@ class Window(QMainWindow):
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
 			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		# debugstring, outputfiles = raster_this_file(file_path, self.resolution)
 		debugstring, outputfiles = raster_this_file(outputfiles, default_pref[1])
 		self.files = pdf_parse(self,outputfiles)
 		Window.table_reload(self, self.files)
@@ -1355,6 +1354,18 @@ class Window(QMainWindow):
 		self.d_writer('Extracted images:', 1, 'green')
 		self.d_writer(str(outputfiles),1)
 
+	def selected_file_check(self):
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			ftype=index.sibling(items.row(),3).data()
+			if ftype == 'pdf':
+				return 'pdf'
+			if ftype == '':
+				pass
+			else:
+				return 'image'
+
 	def info_tb(self):
 		soucet = []
 		stranky = []
@@ -1391,7 +1402,7 @@ class Window(QMainWindow):
 				file_path=index.sibling(items.row(),8).data()
 				split_pdf = splitfiles(file_path)
 				self.files = pdf_parse(self,split_pdf)
-				self.d_writer('Splited pdf files:', 1, 'green')
+				self.d_writer('Created '+ str(len(split_pdf)) + ' pdf files:', 0, 'green')
 				self.d_writer(split_pdf, 1)
 				Window.table_reload(self, self.files)
 				# self.table.item((len(rows)-1), 1).setForeground(green_)
@@ -1454,8 +1465,17 @@ class Window(QMainWindow):
 						self.d_writer(' ' +  ', '.join(map(str, nc)), 1)
 						self.table.clearSelection()
 		else:
-			self.d_writer('Error: Not supported', 0, 'red')
-			return			
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				row = items.row()
+				index=(self.table.selectionModel().currentIndex())
+				file_path=index.sibling(items.row(),8).data()
+				outputfiles.append(file_path)
+				for items in outputfiles:
+					image_info = getimageinfo(items)
+					print (image_info)
+					print (items)
+					self.d_writer(str(image_info[1]), 0, 'green')
+					return			
 
 	def createPrinter_layout(self):
 		self.printer_layout = QHBoxLayout()
@@ -1670,7 +1690,7 @@ class Window(QMainWindow):
 			for items in papers:
 				self.papersize.addItem(items)
 			self.papersize.update()
-			self.d_writer('Page size: ' + size,0, 'green')
+			# self.d_writer('Page size: ' + size,0, 'green')
 		except Exception as e:
 				# print (e)
 				# print ('error')

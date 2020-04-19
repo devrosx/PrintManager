@@ -12,29 +12,10 @@ window_name = 'debug'
 def raster_this_file(input_file, res, croppage, multipage, pages):
 	file_name = os.path.basename(input_file)
 	file, ext = os.path.splitext(file_name)
-	# outputfile = outputdir + file + '_r.jpg'
-	# outputpdf = head + 'croped' + ext
-	# if multipage == 1 and pages > 1:
-	# 	print ('converting all pages in PDF (multipage)')
-	# 	command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
-	# 	for i in range(pages):
-	# 		newfile = outputdir + (str(os.path.splitext(file)[0])+'_r-'+str(i)+'.jpg')
-	# 		outputfiles.append(newfile)
-	# else:
-	# 	multipages = 0
-	# 	print ('converting only specific pages (singlepage)')
-	# 	pdf_input = pdf_input+'['+str(croppage)+']'
-	# 	command = ["convert", "-density", str(res), "+antialias", str(pdf_input), str(outputfile)]
-	# 	outputfiles.append(outputfile)
-	# subprocess.run(command)
-	# return outputfiles, outputpdf
-	print (input_file)
 	cmd = ["convert", "-density", str(res), "+antialias", input_file+'[0]', "jpg:-"]
 	fconvert = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	stdout, stderr = fconvert.communicate()
 	assert fconvert.returncode == 0, stderr
-	
-	# now stdout is TIF image. let's load it with OpenCV
 	file_data = np.asarray(bytearray(stdout), dtype=np.uint8)
 	return file_name, file_data
 
@@ -44,8 +25,8 @@ def get_image_width_height(image):
 	return image_width, image_height
 
 def detect_box(image, margin):
-	images = cv2.imdecode(image, cv2.IMREAD_COLOR)
-	image_yuv = cv2.cvtColor(images, cv2.COLOR_BGR2YUV)
+	image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+	image_yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
 	image_y = np.zeros(image_yuv.shape[0:2], np.uint8)
 	image_y[:, :] = image_yuv[:, :, 0]
 	image_blurred = cv2.GaussianBlur(image_y, (3, 3), 0)
@@ -70,19 +51,20 @@ def detect_box(image, margin):
 				best_box[2] = x + w
 			if y + h > best_box[3]:
 				best_box[3] = y + h
-	cv2.rectangle(image, (best_box[0]-margin, best_box[1]-margin), (best_box[2]+margin, best_box[3]+margin), (255, 255, 0), 2)
+	cv2.rectangle(image, (best_box[0]-margin, best_box[1]-margin), (best_box[2]+margin, best_box[3]+margin), (255, 50, 0), 2)
 	cropbox = ([best_box[1]-margin,best_box[3]+margin, best_box[0]-margin,best_box[2]+margin])
 	if (debug_mode):
 		print (cropbox)
-		show_image(images, window_name)
-	return images, cropbox
+		show_image(image, window_name)
+	return image, cropbox
 
 # Show image for debug
 def show_image(image, window_name):
 	cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 	cv2.imshow(window_name, image)
 	image_width, image_height = get_image_width_height(image)
-	print ('velikost obrazku:' + str(image_width) + ' x ' +  str(image_height) + ' points')
+	print (image_width, image_height)
+	# print ('velikost obrazku:' + str(image_width) + ' x ' +  str(image_height) + ' points')
 	cv2.resizeWindow(window_name, image_width, image_height)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
@@ -91,7 +73,7 @@ def pdf_cropper(pdf_input,cropboxes, multipage,outputpdf):
 	pdf_file = PdfFileReader(open(pdf_input, 'rb'))
 	output = PdfFileWriter()
 	pages = pdf_file.getNumPages()
-	print (pages-1)
+	# print (pages-1)
 	for i in range(pages-1):
 			page = pdf_file.getPage(i)
 			page.cropBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
@@ -129,7 +111,7 @@ def pdf_get_num_pages(pdf_input):
 def detect_cropboxes(file_data, margin):
 	cropboxes = []
 	image, cropbox = detect_box(file_data, margin)
-	return cropboxes
+	return cropbox
 	# if multipage == True:
 	# 	for i in range(pages):
 	# 		# print (file[i])
@@ -146,11 +128,15 @@ def detect_cropboxes(file_data, margin):
 				
 
 def convertor(pdf_input,res,croppage,multipage,margin):
-	# print ('starting supercrop / ' + 'margin je: ' + str(margin))
 	pages = pdf_get_num_pages(pdf_input)
+	print ('STARTING SUPERCROP MODULE / ' + 'margin is: ' + str(margin) + ' / pages:' +str(pages) + ' / multipage is: ' +str(multipage))
+	print ('INPUT FILE: ' +str(pdf_input))
 	file_name,file_data = raster_this_file(pdf_input, res, croppage, multipage, pages)
-	# print ('Rasterized file (JPG): ' + str(file_name))
 	cropboxes = detect_cropboxes(file_data, margin)
+	print ('FILE NAME: ' +str(file_name))
+	print ('CROPBOX: ' +str(cropboxes))
+
+	# print ('Rasterized file (JPG): ' + str(file_name))
 	# debug
 	# image_yuv = cv2.imdecode(file_data, cv2.COLOR_BGR2YUV)
 	# cv2.imshow('test',image_yuv)

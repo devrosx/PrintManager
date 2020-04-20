@@ -186,6 +186,7 @@ def file_info_new(inputs, file, *args):
 			pdf_ = pdf_toread.getDocumentInfo()
 			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
 			pdf_fixed.update( {'Filesize' : humansize(os.path.getsize(item))} )
+			print (pdf_fixed)
 			boxes = get_boxes(item)
 			# z = dict(list(x.items()) + list(y.items()))
 			# pdf_fixed.update({'a':'B'})
@@ -219,6 +220,18 @@ def file_info_new(inputs, file, *args):
 def tablemaker (inputs):
 	html = "<table width=100% table cellspacing=0 style='border-collapse: collapse' border = \"0\" >"
 	html += '<style>table, td, th {font-size: 9px;border: none;padding-left: 2px;padding-right: 2px;ppadding-bottom: 4px;}</style>'
+	# fix this
+	inputs = {k.replace(u'D:', ' ') : v.replace(u'D:', ' ') for k, v in inputs.items()}
+	inputs = {k.replace(u"+01'00'", ' ') : v.replace(u"+01'00'", ' ') for k, v in inputs.items()}
+	inputs = {k.replace(u" +0000", ' ') : v.replace(u" +0000", ' ') for k, v in inputs.items()}
+	inputs = {k.replace(u"Item", ' ') : v.replace(u"Item", ' ') for k, v in inputs.items()}
+	inputs = {k.replace(u" 00:00:00", ' ') : v.replace(u" 00:00:00", ' ') for k, v in inputs.items()}
+
+	print (inputs)
+	# for i in inputs:
+	# 	print (i)
+	# 	i = dt.datetime.strptime(dict[i],'%m/%d/%y').month
+    # alert['alert_date'] = datetime.strptime(alert['alert_date'], "%Y-%m-%d %H:%M:%S")
 	for dict_item in inputs:
 		html += '<tr>'
 		key_values = dict_item.split(',')

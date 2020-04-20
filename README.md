@@ -4,14 +4,15 @@ PrintManager for Macosx (written in Python and PyQt5, with some handy features).
 ![alt text](https://raw.githubusercontent.com/devrosx/PrintManager/master/wiki/screenshot.png)
 
 ## Features
-- Print PDF files from table (LP command)
+- Fast print PDF and image files from table (LP command)
 - Debug text window with informations
+- Preview window with page preview and detailed infotable
 - Basic printing settings (format, collating, fit to page, twosided, number of copies)
-- Basic pdf operations (split, merge, compress, view, rasterize)
+- Basic pdf operations (split, merge, compress, view, rasterize,crop, ocr)
 - PDF info in table (number of pages, colors, filesize, name, size)
 - Convert various formats to PDF (OpenOffice and Cloudconvert supported)
 - Extract images from PDF without resampling
-- Simple winmail dat extraction
+- Simple winmail data extraction
 - Basic image operations
  - OCR (thanks to pytesseract)
  - Convert to PDF
@@ -40,6 +41,7 @@ I'm a newbie with python and PyQt5 :)
 - Support other platforms
 - rewrite process to QProcess
 - Rework pricing
+- Support native printing presets
 - ...
 
 # Updates:

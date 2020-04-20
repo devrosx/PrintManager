@@ -1076,11 +1076,9 @@ class Window(QMainWindow):
 			self.im_p.setText('PREVIEW')
 			self.im_pixmap = QPixmap('')
 			if filetype.upper() in (name.upper() for name in image_ext):
-				# print ('IMAGE')
 				self.im_pixmap = QPixmap(filepath)
 				self.im_p.setPixmap(self.im_pixmap)
 			if filetype == 'pdf':
-				# print ('PDF')
 				filebytes = pdf_preview_generator(filepath,generate_marks=1)
 				self.im_pixmap.loadFromData(filebytes)
 				self.im_p.setPixmap(self.im_pixmap)

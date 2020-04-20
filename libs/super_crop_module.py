@@ -84,22 +84,27 @@ def pdf_cropper(pdf_input,cropboxes, multipage,outputpdf,pages):
 	pdf_file = PdfFileReader(open(pdf_input, 'rb'))
 	output = PdfFileWriter()
 	if multipage == 1:
-		for i in range(pages-1):
-			# print (cropboxes[i][0])
+		for i in range(pages):
 			page = pdf_file.getPage(i)
-			page.cropBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
-			page.cropBox.lowerRight = (cropboxes[i][2], cropboxes[i][0])
-			output.addPage(page)
+			print ('TRIMBOX' +str(page.trimBox))
+			print ('CROPBOX' +str(page.cropBox))
+			print ('cropbox to crop' + str(cropboxes[0]))
+			page.trimBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
+			page.trimBox.lowerRight = (cropboxes[i][2], cropboxes[i][0])
+			print (page.trimBox.upperLeft, page.trimBox.lowerRight)
+			print ('output cropbox XXXX' +str(page.cropBox))
+
 		with open(outputpdf, "wb") as out_f:
 			output.write(out_f)
 			# print ('Saved file: '+outputpdf)
 	else:
-		for i in range(pages-1):
+		for i in range(pages):
 			print (cropboxes[0][0])
 			page = pdf_file.getPage(i)
-			print (cropboxes[0])
-			page.cropBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
-			page.cropBox.lowerRight = (cropboxes[i][2], cropboxes[i][0])
+			print (page)
+			# print ('XXXXX' +str(page.TrimBox))
+			page.trimBox.upperLeft = (cropboxes[i][3], cropboxes[i][1])
+			page.trimBox.lowerRight = (cropboxes[i][2], cropboxes[i][0])
 			output.addPage(page)
 		with open(outputpdf, "wb") as out_f:
 			output.write(out_f)
@@ -139,5 +144,5 @@ def convertor(pdf_input,res,croppage,multipage,margin):
 	return debugstring, outputpdf
 
 if __name__ == '__main__':
-	pdf_input = '/Users/jandevera/Desktop/testy/19_raster.pdf'
+	pdf_input = '/Users/jandevera/Desktop/X/pr_2.pdf'
 	convertor(pdf_input,72,croppage=0,multipage=True,margin=10)

@@ -4,7 +4,6 @@ import os
 import ssl
 import subprocess
 ssl._create_default_https_context = ssl._create_unverified_context
-
 def cc_convert(file):
 	try:
 		f = open("cc.json","r")
@@ -41,7 +40,7 @@ def cc_convert(file):
 		import_task = cloudconvert.Task.find(id=import_task_id)
 
 		# fix spaces WIP
-		file.rename(file, file.replace(" ", "_"))
+		os.rename(file, file.replace(" ", "_"))
 		file = file.replace(" ", "_")
 		# do upload
 		uploaded = cloudconvert.Task.upload(
@@ -49,7 +48,6 @@ def cc_convert(file):
 			file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
 			# file_name = (file_name.replace(" ", "\\ "), task=import_task)
 			# print (file_name)
-		# 
 		if uploaded:
 			print("Uploaded file OK")
 			# get exported url
@@ -64,7 +62,7 @@ def cc_convert(file):
 
 if __name__ == '__main__':
 	# fix spaces in file
-	test = '/Users/jandevera/Desktop/X/pr 2.pdf'
+	test = '/Users/jandevera/Desktop/1.\ texty\ pro\ obálku.docx'
 	res, warning = cc_convert(test)
 	print (warning)
 	print (res)

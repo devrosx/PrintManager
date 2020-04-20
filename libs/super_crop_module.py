@@ -10,7 +10,7 @@ debug_mode = False
 window_name = 'debug'
 
 
-def raster_this_file(pdf_input, res, croppage, multipage, pages):
+def raster_this_file_(pdf_input, res, croppage, multipage, pages):
 	outputfiles = []
 	outputdir = "/private/tmp/"
 	head, ext = os.path.splitext(pdf_input)
@@ -135,7 +135,7 @@ def detect_cropboxes(pages,file,margin,multipage):
 def convertor(pdf_input,res,croppage,multipage,margin):
 	# print ('starting supercrop / ' + 'margin je: ' + str(margin))
 	pages = pdf_get_num_pages(pdf_input)
-	file,outputpdf = raster_this_file(pdf_input, res, croppage, multipage, pages)
+	file,outputpdf = raster_this_file_(pdf_input, res, croppage, multipage, pages)
 	print ('Rasterized file (JPG): ' + str(file))
 	cropboxes = detect_cropboxes(pages,file,margin,multipage)
 	# print (cropboxes)

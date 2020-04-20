@@ -172,6 +172,7 @@ def raster_this_file(original_file,resolution):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+
 def get_boxes(input_file):
 		pdf_reader = PdfFileReader(input_file)
 		page = pdf_reader.getPage(0)
@@ -186,7 +187,7 @@ def file_info_new(inputs, file, *args):
 			pdf_ = pdf_toread.getDocumentInfo()
 			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
 			pdf_fixed.update( {'Filesize' : humansize(os.path.getsize(item))} )
-			print (pdf_fixed)
+			# print (pdf_fixed)
 			boxes = get_boxes(item)
 			# z = dict(list(x.items()) + list(y.items()))
 			# pdf_fixed.update({'a':'B'})
@@ -226,8 +227,7 @@ def tablemaker (inputs):
 	inputs = {k.replace(u" +0000", ' ') : v.replace(u" +0000", ' ') for k, v in inputs.items()}
 	inputs = {k.replace(u"Item", ' ') : v.replace(u"Item", ' ') for k, v in inputs.items()}
 	inputs = {k.replace(u" 00:00:00", ' ') : v.replace(u" 00:00:00", ' ') for k, v in inputs.items()}
-
-	print (inputs)
+	# print (inputs)
 	# for i in inputs:
 	# 	print (i)
 	# 	i = dt.datetime.strptime(dict[i],'%m/%d/%y').month
@@ -754,7 +754,7 @@ class Window(QMainWindow):
 						ocr = ocr_core(items, self.localization)
 						ocr_output.append(ocr)
 					ocr_output =  ''.join(ocr_output)
-					self.d_writer(str(ocr_output), 0)
+					self.d_writer(str(ocr_output), 1)
 					if self.gb_debug.isHidden():
 						self.toggleDebugWidget()
 				if text == 'SmartCut':
@@ -969,6 +969,7 @@ class Window(QMainWindow):
 	def on_selection_changed(self):
 		self.debuglist.clear()
 		if self.selected_file_check() == 'pdf':
+			print ('pdf')
 			self.print_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.merge_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
@@ -979,7 +980,9 @@ class Window(QMainWindow):
 			self.extract_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.crop_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-		if self.selected_file_check() == 'image':
+			self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+		elif self.selected_file_check() == 'image':
+			print ('image')
 			self.print_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.merge_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
@@ -990,8 +993,21 @@ class Window(QMainWindow):
 			self.extract_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
 			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 		else:
-			pass
+			print ('else')
+			self.print_b.setDisabled(True)
+			self.color_b.setDisabled(True)
+			self.merge_pdf_b.setDisabled(True)
+			self.split_pdf_b.setDisabled(True)
+			self.compres_pdf_b.setDisabled(True)
+			self.gray_pdf_b.setDisabled(True)
+			self.raster_b.setDisabled(True)
+			self.extract_b.setDisabled(True)
+			self.gb_setting.setDisabled(True)
+			self.crop_b.setDisabled(True)
+			self.OCR_b.setDisabled(True)
+		# pass
 
 	def contextMenuEvent(self, pos):
 			if self.table.selectionModel().selection().indexes():
@@ -1055,7 +1071,7 @@ class Window(QMainWindow):
 				filetype=index.sibling(items.row(),3).data()
 				filepath=index.sibling(items.row(),8).data()
 			self.widget = QDialog(self)
-			self.widget.setWindowTitle("Preview");
+			self.widget.setWindowTitle(filepath + ' / ' + str(size));
 			self.im_p = QLabel('Image_P',self.widget)
 			self.im_p.setText('PREVIEW')
 			self.im_pixmap = QPixmap('')
@@ -1071,19 +1087,19 @@ class Window(QMainWindow):
 			sizeObject = QDesktopWidget().screenGeometry(0)# monitor size
 			res = [(sizeObject.width()*92/100),(sizeObject.height()*92/100)]
 			w, h = self.im_pixmap.width(), self.im_pixmap.height()
-			print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
+			# print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
 			self.widget.setFixedSize(w, h)
 			if w > res[0]:
-				print ('zmensuju sirka je veci')
+				# print ('zmensuju sirka je veci')
 				wpercent = (res[0] / float(w))
-				print (wpercent)
+				# print (wpercent)
 				self.widget.setFixedSize(w*wpercent, h*wpercent)
 			if h > res[1]:
-				print ('zmensuju vyska je veci')
+				# print ('zmensuju vyska je veci')
 				wpercent = (res[1] / float(h))
-				print (wpercent)
+				# print (wpercent)
 				self.widget.setFixedSize(w*wpercent, h*wpercent)
-			print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
+			# print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
 			self.im_p.setPixmap(self.im_pixmap.scaled(self.widget.size(),Qt.KeepAspectRatio))
 			self.im_p.setMinimumSize(1, 1)
 			self.labl_name = QLabel('Image_name',self.widget)
@@ -1182,86 +1198,58 @@ class Window(QMainWindow):
 
 	def createButtons_layout(self):
 		self.buttons_layout = QHBoxLayout()
-		# self.buttons_layout.setContentsMargins(0,0,0,0)
-		# self.buttons_layout.setSpacing(-5)
-		# self.buttons_layout.setFixedHeight(350)
-		# OPEN FILES
-		# self.preview_b = QPushButton('Preview', self)
-		# self.preview_b.clicked.connect(self.preview)
-		# self.buttons_layout.addWidget(self.preview_b)
-		# LOAD COLORS INFO
+
 		self.color_b = QPushButton('Colors', self)
 		self.color_b.clicked.connect(self.loadcolors)
 		self.buttons_layout.addWidget(self.color_b)
 		self.color_b.setDisabled(True)
-
 		# SPOJ PDF
 		self.merge_pdf_b = QPushButton('Merge', self)
 		self.merge_pdf_b.clicked.connect(self.merge_pdf)
 		self.buttons_layout.addWidget(self.merge_pdf_b)
 		self.merge_pdf_b.setDisabled(True)
-
 		# ROZDEL PDF
 		self.split_pdf_b = QPushButton('Split', self)
 		self.split_pdf_b.clicked.connect(self.split_pdf)
 		self.buttons_layout.addWidget(self.split_pdf_b)
 		self.split_pdf_b.setDisabled(True)
-
 		# COMPRES PDF
 		self.compres_pdf_b = QPushButton('Compres', self)
 		self.compres_pdf_b.clicked.connect(self.compres_pdf)
 		self.buttons_layout.addWidget(self.compres_pdf_b)
 		self.compres_pdf_b.setDisabled(True)
-
 		# GRAY PDF
 		self.gray_pdf_b = QPushButton('To Gray', self)
 		self.gray_pdf_b.clicked.connect(self.gray_pdf)
 		self.buttons_layout.addWidget(self.gray_pdf_b)
 		self.gray_pdf_b.setDisabled(True)
-
 		# RASTROVANI PDF
 		self.raster_b = QPushButton('Rasterize', self)
 		self.raster_b.clicked.connect(self.rasterize_pdf)
 		self.buttons_layout.addWidget(self.raster_b)
 		self.raster_b.setDisabled(True)
-
 		# CROP PDF WIP
 		self.crop_b = QPushButton('SmartCrop', self)
 		self.crop_b.clicked.connect(self.crop_pdf)
 		# self.crop_b.clicked.connect(self.InputDialog_PDFcut)
-
 		# InputDialog_PDFcut
 		self.buttons_layout.addWidget(self.crop_b)
 		self.crop_b.setDisabled(True)
-
 		# EXTRACT IMAGES
 		self.extract_b = QPushButton('Extract', self)
 		self.extract_b.clicked.connect(self.extract_pdf)
 		self.buttons_layout.addWidget(self.extract_b)
 		self.extract_b.setDisabled(True)
-
+		# OCR
+		self.OCR_b = QPushButton('OCR', self)
+		self.OCR_b.clicked.connect(self.ocr_maker)
+		self.buttons_layout.addWidget(self.OCR_b)
+		self.OCR_b.setDisabled(True)
 		# # POCITANI TABULKY PDF
 		# self.info_b = QPushButton('Info', self)
 		# self.info_b.clicked.connect(self.info_tb)
 		# self.buttons_layout.addWidget(self.info_b)
 		# self.info_b.setDisabled(True)
-
-		# # # PRINT SCRIPT
-		# self.print_b = QPushButton('Print', self)
-		# self.print_b.clicked.connect(self.table_print)
-		# self.buttons_layout.addWidget(self.print_b)
-		# self.print_b.setDisabled(True)
-		# # # SPACE
-		# self.labl = QLabel()
-		# self.labl.setText(version)
-		# self.labl.setAlignment(Qt.AlignCenter)
-		# self.labl.setFixedSize(50, 10)
-		# self.buttons_layout.addWidget(self.labl)
-
-		self.print_b = QPushButton('Print', self)
-		self.print_b.clicked.connect(self.table_print)
-		self.print_b.setDisabled(True)
-		self.buttons_layout.addWidget(self.print_b)
 
 	def compres_pdf(self):
 		outputfiles = []
@@ -1298,6 +1286,30 @@ class Window(QMainWindow):
 		Window.table_reload(self, self.files)
 		self.d_writer('Converted '+ str(len(outputfiles)) + ' pdf files to grayscale:', 0, 'green')
 		self.d_writer(', '.join(debugstring),1)
+
+	def ocr_maker(self):
+		outputfiles = []
+		if self.table.currentItem() == None:
+			self.d_writer('Error - No files selected', 1, 'red')
+			return
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			pages=index.sibling(items.row(),5).data()
+			outputfiles.append(file_path)
+		if self.selected_file_check() == 'pdf':
+			file,outputpdf = raster_this_file_(', '.join(outputfiles), 300,0,True,int(pages))
+			for items in file:
+				ocr = ocr_core(items, self.localization)
+				self.d_writer(str(ocr), 1)
+			debugstring, outputfiles = gray_this_file(outputfiles,'pdf')
+			self.files = pdf_parse(self,outputfiles)
+		else:
+			# only singe item for now
+			for items in outputfiles:
+				ocr = ocr_core(items, self.localization)
+				self.d_writer(str(ocr), 1)
 
 	def rasterize_pdf(self):
 		outputfiles = []
@@ -1560,15 +1572,18 @@ class Window(QMainWindow):
 		self.btn_collate.setChecked(True)
 		self.btn_collate.toggled.connect(lambda: self.icon_change('icons/collate_on.png','icons/collate_off.png',self.btn_collate))
 
-		# COLORS
+		# # COLORS
 		btn_colors_Label = QLabel("Color:")
-
-		# # SPACE
 		self.btn_colors = QComboBox(self)
 		self.btn_colors.addItem('Auto')
 		self.btn_colors.addItem('Color')
 		self.btn_colors.addItem('Gray')
 		self.btn_colors.activated[str].connect(self.color_box_change)
+
+		self.print_b = QPushButton('Print', self)
+		self.print_b.clicked.connect(self.table_print)
+		self.print_b.setDisabled(True)
+		# self.buttons_layout.addWidget(self.print_b)
 		# self.btn_colors= QPushButton()
 		# self._icon_colors = QIcon()
 		# self._icon_colors.addPixmap(QPixmap('icons/colors_auto.png'))
@@ -1587,6 +1602,7 @@ class Window(QMainWindow):
 		self.vbox2.addWidget(self.btn_collate, 1,2)
 		self.vbox2.addWidget(btn_colors_Label, 2,0)
 		self.vbox2.addWidget(self.btn_colors, 2,1)
+		self.vbox2.addWidget(self.print_b, 2,3)
 		self.vbox2.addWidget(self.fit_to_size, 1,3)
 
 

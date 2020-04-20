@@ -16,9 +16,8 @@ from libs.crop_module import processFile
 from libs.pdfextract_module import extractfiles
 from libs.cc_module import cc_convert
 from libs.pdf_preview_module import pdf_preview_generator
-
 from libs.super_crop_module import *
-version = '0.27'
+version = '0.28'
 import time
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
@@ -61,7 +60,6 @@ def load_preferences():
 			printers = load_printers()
 	except Exception as e:
 		print (e)
-		print ('json loading error')
 		printers = load_printers()
 		json_pref = [0,0,0,0,0,0,0]
 		default_pref = ['eng',300,'OpenOffice']
@@ -98,7 +96,6 @@ def previewimage(original_file):
 	return command
 
 def mergefiles(list_path,save_dir):
-	print (save_dir)
 	base = os.path.basename(list_path[0])
 	file = os.path.splitext(base)
 	folder_path = os.path.dirname(list_path[0])
@@ -190,7 +187,6 @@ def file_info_new(inputs, file, *args):
 			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
 			pdf_fixed.update( {'Filesize' : humansize(os.path.getsize(item))} )
 			boxes = get_boxes(item)
-			print (boxes)
 			# z = dict(list(x.items()) + list(y.items()))
 			# pdf_fixed.update({'a':'B'})
 			# pdf_fixed.update(dict(a=1))
@@ -237,7 +233,7 @@ def tablemaker (inputs):
 def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate, colors):
 	# https://www.cups.org/doc/options.html
 	# COLATE
-	print ('XXXXX: ' + str(colors))
+	# print ('XXXXX: ' + str(colors))
 	if collate == 1:
 		print ('collate ON')
 		collate =  ('-o collate=true')
@@ -272,7 +268,6 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 		_p_size = '-o media=Custom.' + p_size + 'mm'
 	# na canonu nefunguje pocet kopii... vyhodit -o sides=one-sided
 	if lp_two_sided == 1:
-		# print ('two sided')
 		lp_two_sided_ = ('-o sides=two-sided')
 		if orientation == 1:
 			lp_two_sided_ = ('-o sides=two-sided-long-edge')
@@ -1011,7 +1006,7 @@ class Window(QMainWindow):
 						file_path=index.sibling(row,8).data()
 						self.table_print()
 					if action == previewAction:
-						self.preview()
+						self.preview_window()
 
 	def togglePrintWidget(self):
 		print (self.gb_printers.isHidden())
@@ -1132,7 +1127,6 @@ class Window(QMainWindow):
 		self.infotable.setFixedHeight(230)
 		self.gb_preview.setLayout(pbox)
 		# self.gb_preview.setFixedHeight(350)
-		# ZZZZ
 		self.gb_preview.setFixedWidth(250)
 		# self.printer_layout.addStretch()
 		pbox.addWidget(self.image_label)
@@ -1323,8 +1317,7 @@ class Window(QMainWindow):
 		pdf_dialog = InputDialog_PDFcut()
 		if pdf_dialog.exec():
 			multipage, croppage, margin = pdf_dialog.getInputs()
-			print (multipage, croppage, margin)
-			debugstring, outputfile = convertor(file_path,72,croppage=croppage-1,multipage=multipage,margin=margin)
+			debugstring, outputfile = convertor(file_path,72,croppage=croppage,multipage=multipage,margin=margin)
 			outputfiles.append(outputfile)
 			print (outputfiles)
 			self.files = pdf_parse(self,outputfiles)
@@ -1707,7 +1700,6 @@ class Window(QMainWindow):
 
 		if e.key() == Qt.Key_F1:
 			self.preview_window()
-			# self.preview()
 
 	def deleteClicked(self):
 		row = self.table.currentRow()
@@ -1718,7 +1710,6 @@ class Window(QMainWindow):
 		soubor, _ = QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "",";Pdf Files (*.pdf)", options=options)
 		if soubor:
 			self.files = pdf_parse(self,soubor)
-			print (self.files)
 			self.table_reload(self.files)
 			self.d_writer('Loaded: ' + str(soubor),0,'green')
 

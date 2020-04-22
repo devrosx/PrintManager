@@ -553,7 +553,7 @@ class Window(QMainWindow):
 		win_menu.addAction(debug_setting_menu)
 		# PREVIEW PANEL
 		printing_setting_menu  = QAction("Preview panel", self)
-		printing_setting_menu.setShortcut('Ctrl+A')
+		printing_setting_menu.setShortcut('Ctrl+T')
 		printing_setting_menu.setCheckable(True)
 		printing_setting_menu.setChecked(False)
 		printing_setting_menu.triggered.connect(self.togglePreviewWidget)

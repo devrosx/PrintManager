@@ -334,13 +334,13 @@ def pdf_parse(self, inputs, *args):
 	return self.rows
 
 def getimageinfo (filename):
-	output = (subprocess.check_output(["identify", filename]))
+	output = (subprocess.check_output(["identify", '-format', '%wx%hpx %m', filename]))
 	outputlist = (output.splitlines())
 	getimageinfo = []
 	for num in outputlist:  # prochazeni listem
-		first, *middle, last = num.split()
-		getimageinfo.append(str(middle[1].decode()) + ' px')
-		getimageinfo.append(str(middle[4].decode()))
+		first, middle = num.split()
+		getimageinfo.append(str(first.decode()))
+		getimageinfo.append(str(middle.decode()))
 	return getimageinfo
 	
 def parse_img(self, inputs, *args):
@@ -688,6 +688,7 @@ class Window(QMainWindow):
 		for url in event.mimeData().urls():
 			extension = os.path.splitext(url.toLocalFile())[1][1:].lower()
 			input_pdf = []
+			print (url)
 			if extension == 'pdf':
 				for url in event.mimeData().urls():
 					file = (url.toLocalFile())

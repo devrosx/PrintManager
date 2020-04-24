@@ -231,7 +231,7 @@ def tablemaker (inputs):
 	# for i in inputs:
 	# 	print (i)
 	# 	i = dt.datetime.strptime(dict[i],'%m/%d/%y').month
-    # alert['alert_date'] = datetime.strptime(alert['alert_date'], "%Y-%m-%d %H:%M:%S")
+	# alert['alert_date'] = datetime.strptime(alert['alert_date'], "%Y-%m-%d %H:%M:%S")
 	for dict_item in inputs:
 		html += '<tr>'
 		key_values = dict_item.split(',')
@@ -422,12 +422,17 @@ def darkmode():
 
 class TableWidgetDragRows(QTableWidget):
 	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+		QTableWidget.__init__(self, *args, **kwargs)
 		self.setAcceptDrops(True)
+		# self.setDragEnabled(True)
 		self.viewport().setAcceptDrops(True)
+		self.setDragDropOverwriteMode(False)
+		# self.setDropIndicatorShown(True)
+
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSelectionBehavior(QAbstractItemView.SelectRows)
-		self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+		# self.setDragDropMode(QAbstractItemView.InternalMove)
+		self.setSortingEnabled(True)
 # for icons
 class IconDelegate(QStyledItemDelegate):
 	def initStyleOption(self, option, index):
@@ -1704,8 +1709,8 @@ class Window(QMainWindow):
 			# Change box according to aspect ratio...
 			self.image_label.setFixedHeight(325)
 			self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
-			print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).width())
-			print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height())
+			# print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).width())
+			# print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height())
 			height_ = self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height() - 325
 			self.infotable.setFixedHeight(230 - height_)
 			self.image_label.setMinimumSize(1, 1)

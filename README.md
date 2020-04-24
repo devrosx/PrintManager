@@ -47,6 +47,7 @@ I'm a newbie with python and PyQt5 :)
 # Updates:
 0.28
 - Added OCR button (now supports PDF images and multiple files convert)
+- Table sorting, fixed preview size height
 
 0.27
 - Optional preview (commad+A) , should work on PDF and images with info like finder (with all atributes)

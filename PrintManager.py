@@ -1687,6 +1687,7 @@ class Window(QMainWindow):
 			if not self.gb_preview.isHidden():
 				self.image_label.show()
 				self.labl_name.setText(filename+'.'+filetype)
+				# self.infotable.setFixedHeight(230)
 				if filetype.upper() in (name.upper() for name in image_ext):
 					image_info = file_info_new(filepath.split(','), 'image')
 					self.infotable.setText(image_info)
@@ -1700,8 +1701,15 @@ class Window(QMainWindow):
 					self.image_label.setPixmap(self.image_label_pixmap)
 			w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
 			w_l, h_l = self.image_label.width(), self.image_label.height()
+			# Change box according to aspect ratio...
+			self.image_label.setFixedHeight(325)
 			self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
+			print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).width())
+			print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height())
+			height_ = self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height() - 325
+			self.infotable.setFixedHeight(230 - height_)
 			self.image_label.setMinimumSize(1, 1)
+			# change with of info
 			self.labl_name.setText(filename+'.'+filetype)
 			if size[-2:] == 'px':
 				papers[5] = 'not supported'

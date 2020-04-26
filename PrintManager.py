@@ -343,7 +343,7 @@ def pdf_parse(self, inputs, *args):
 				filepath.append(item)
 				info.append('')
 				colors.append('')
-				extension.append(ext_file[1][1:])
+				extension.append(ext_file[1][1:].lower())
 	self.rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	# print (self.rows)
 	return self.rows
@@ -368,7 +368,7 @@ def parse_img(self, inputs, *args):
 		image_info = getimageinfo(item)
 		name.append(ext_file[0])
 		size.append(str(image_info[0]))
-		extension.append(ext_file[1][1:])
+		extension.append(ext_file[1][1:].lower())
 		file_size.append(humansize(os.path.getsize(item)))
 		pages.append(1)
 		price.append('')
@@ -713,21 +713,22 @@ class Window(QMainWindow):
 		for url in event.mimeData().urls():
 			path = url.toLocalFile()
 			extension = os.path.splitext(path)[1][1:].strip().lower()
+			print (extension)
 			# handle file
 			if os.path.isfile(path):
 				if extension == 'pdf':
-					# print ('Filetype: ' + str(extension))
+					print ('Filetype: ' + str(extension))
 					self.files = pdf_parse(self, path)
 					self.d_writer(path, 0,'green')
 					Window.table_reload(self, self.files)
 				# handle images to list
 				if extension in image_ext:
 					image_files.append(path)
-					# print ('Image path:' + path)
+					print ('Image path:' + path)
 				# handle offices files to list
 				if extension in office_ext:
 					office_files.append(path)
-					# print ('Office path:' + path)
+					print ('Office path:' + path)
 				if extension not in office_ext and extension not in image_ext and extension not in pdf_ext:
 						unknown_files.append(path)
 				if extension == 'dat':

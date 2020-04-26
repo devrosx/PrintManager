@@ -24,6 +24,7 @@ info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[
 mm = '0.3527777778'
 office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx', 'ppt']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
+pdf_ext = ['pdf']
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'undefined']
 username = os.path.expanduser("~")
 
@@ -52,7 +53,7 @@ def load_preferences():
 		with open('config.json', encoding='utf-8') as data_file:
 			json_pref = json.loads(data_file.read())
 		if json_pref[0][8] == username:
-			print ('preferences OK - using saved printers')
+			print ('preferences okPressed - using saved printers')
 			printers = json_pref[0][9]
 			default_pref = [json_pref[0][10],json_pref[0][11],json_pref[0][12]]
 		else: 
@@ -168,6 +169,17 @@ def raster_this_file(original_file,resolution):
 		outputfile = head + '_raster' + ext
 		command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-sColorConversionStrategy=/LeaveColorUnchanged", "-dAutoFilterColorImages=true", "-dAutoFilterGrayImages=true", "-dDownsampleMonoImages=true", "-dDownsampleGrayImages=true", "-dDownsampleColorImages=true", "-sOutputFile="+outputfile, original_file]
 		command = ["convert", "-density", str(resolution), "+antialias", str(item), str(outputfile)]
+		subprocess.run(command)
+		outputfiles.append(outputfile)
+	return command, outputfiles
+
+def convert_this_file(original_file,resolution):
+	outputfiles = []
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '.pdf'
+		command = ["convert", str(resolution), '-density',  '300', str(item), str(outputfile)]
+		print (command)
 		subprocess.run(command)
 		outputfiles.append(outputfile)
 	return command, outputfiles
@@ -301,6 +313,9 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 
 def pdf_parse(self, inputs, *args):
 	self.rows = []
+	if type(inputs) is str:
+		inputs = [inputs]
+	print (inputs)
 	# print ('ROWS:' + str(self.rows))
 	for item in inputs:
 		# print ('item' + str(item))
@@ -402,7 +417,6 @@ def price_check(pages, velikost):
 
 def darkmode():
 	app.setStyle("Fusion")
-
 	palette = QPalette()
 	palette.setColor(QPalette.Window, QColor(53, 53, 53))
 	palette.setColor(QPalette.WindowText, Qt.white)
@@ -428,7 +442,7 @@ class TableWidgetDragRows(QTableWidget):
 		self.viewport().setAcceptDrops(True)
 		self.setDragDropOverwriteMode(False)
 		# self.setDropIndicatorShown(True)
-
+		self.setEditTriggers(QAbstractItemView.NoEditTriggers)
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSelectionBehavior(QAbstractItemView.SelectRows)
 		# self.setDragDropMode(QAbstractItemView.InternalMove)
@@ -676,11 +690,14 @@ class Window(QMainWindow):
 		self.d_writer('',0)
 # ;border: 2px solid #001033;
 	def dragEnterEvent(self, event):
-		self.d_writer(event.mimeData().text(),0)
 		event.setDropAction(Qt.MoveAction)
 		if event.mimeData().hasUrls():
+			self.d_writer(event.mimeData().text(),0)
 			self.table.setStyleSheet("QTableView {border: 2px solid #00aeff;background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c; }" )
 			event.accept()
+		else:
+			event.ignore()
+			print ('Ignore')
 
 	def dropEvent(self, event):
 		self.d_writer("Loading files - please wait...", 0,'green')
@@ -690,77 +707,61 @@ class Window(QMainWindow):
 		except:
 			self.localization = default_pref[0]
 			self.convertor = default_pref[2]
+		image_files = []
+		office_files = []
+		unknown_files = []
 		for url in event.mimeData().urls():
-			extension = os.path.splitext(url.toLocalFile())[1][1:].lower()
-			input_pdf = []
-			print (url)
-			if extension == 'pdf':
-				for url in event.mimeData().urls():
-					file = (url.toLocalFile())
-					input_pdf.append(file)
-				self.files = pdf_parse(self, input_pdf)
-				self.d_writer(', '.join(input_pdf), 0,'green')
-				Window.table_reload(self, self.files)
-				break
-			if extension == 'dat':
-				for url in event.mimeData().urls():
-					file = (url.toLocalFile())
-				dirname = (os.path.dirname(file) + '/')
-				dirname = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-				with open(file, "rb") as tneffile:
-					t = TNEF(tneffile.read())
-					for a in t.attachments:
-						with open(os.path.join(dirname,a.name.decode("utf-8")), "wb") as afp:
-							afp.write(a.data)
-					self.d_writer("Successfully wrote %i files" % len(t.attachments) + ' to: ' + dirname, 0)
-				break
-			# office etc file 
-			elif extension in office_ext:
-				soubor = []
-				for url in event.mimeData().urls():
-					file = (url.toLocalFile())
-					soubor.append(file)
-				if len(soubor) > 1:
-					items = ["Convert to PDF","Combine to PDF"]
-					text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
-					if text == 'Convert to PDF':
-						self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
-						files = self.external_convert(extension, soubor, 'convert')
-						break
-					if text == 'Combine to PDF':
-						files = self.external_convert(extension, soubor, 'combine')
-						break
-					if not ok:
-						break
-				else:
-					self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
-					files = self.external_convert(extension, soubor, 'convert')
-					break
-			# for images.... 
-			elif extension in image_ext:
-				soubor = []
-				for url in event.mimeData().urls():
-					file = (url.toLocalFile())
-					soubor.append(file)
-				if len(soubor) > 1:
-					items = ["Convert to PDF","Combine to PDF", "SmartCut", "Resize", "Parse"]
-					text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
-				else:
-					items = ["Convert to PDF", "SmartCut", "OCR", "Resize", "Parse"]
-					text, ok = QInputDialog.getItem(self, "Action", "Action", items, 0, False)					
-				if not ok:
-					break
+			path = url.toLocalFile()
+			extension = os.path.splitext(path)[1][1:].strip().lower()
+			# handle file
+			if os.path.isfile(path):
+				if extension == 'pdf':
+					# print ('Filetype: ' + str(extension))
+					self.files = pdf_parse(self, path)
+					self.d_writer(path, 0,'green')
+					Window.table_reload(self, self.files)
+				# handle images to list
+				if extension in image_ext:
+					image_files.append(path)
+					# print ('Image path:' + path)
+				# handle offices files to list
+				if extension in office_ext:
+					office_files.append(path)
+					# print ('Office path:' + path)
+				if extension not in office_ext and extension not in image_ext and extension not in pdf_ext:
+						unknown_files.append(path)
+				if extension == 'dat':
+					dirname_ = (os.path.dirname(path) + '/')
+					dirname = str(QFileDialog.getExistingDirectory(self, "Save file",dirname_))
+					if dirname:
+						with open(path, "rb") as tneffile:
+							t = TNEF(tneffile.read())
+							for a in t.attachments:
+								with open(os.path.join(dirname,a.name.decode("utf-8")), "wb") as afp:
+									afp.write(a.data)
+							self.d_writer("Successfully wrote %i files" % len(t.attachments) + ' to: ' + dirname, 0)
+		if image_files:
+			if len(image_files) > 1:
+				items = ["Convert to PDF " + (self.convertor),"Combine to PDF " + (self.convertor), "SmartCut", "Resize", "Parse"]
+				text, okPressed = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
+				if not okPressed:
+					return
+			else:
+				items = ["Convert to PDF", "SmartCut", "OCR", "Resize", "Parse"]
+				text, okPressed = QInputDialog.getItem(self, "Action", "Action", items, 0, False)					
+				if not okPressed:
+					return
 				if text == 'Convert to PDF':
-					files = self.external_convert(extension, soubor, 'convert')
+					files = self.external_convert(extension, image_files, 'convert')
 				if text == 'Combine to PDF':
-					files = self.external_convert(extension, soubor, 'combine')
+					files = self.external_convert(extension, image_files, 'combine')
 				if text == 'OCR':
 					ocr_output = []
-					for items in soubor:
+					for items in image_files:
 						ocr = ocr_core(items, self.localization)
 						ocr_output.append(ocr)
 					ocr_output =  ''.join(ocr_output)
-					self.d_writer(str(ocr_output), 1)
+					self.d_writer(str(ocr_output), 0)
 					if self.gb_debug.isHidden():
 						self.toggleDebugWidget()
 				if text == 'SmartCut':
@@ -768,7 +769,7 @@ class Window(QMainWindow):
 					dialog = InputDialog_SmartCut()
 					if dialog.exec():
 						n_images, tresh = dialog.getInputs()
-						for items in soubor:
+						for items in image_files:
 							outputfiles = processFile(items, n_images, tresh)
 							smartcut_files.append(outputfiles)
 						# merge lists inside lists 
@@ -780,34 +781,45 @@ class Window(QMainWindow):
 						dialog.close()
 				if text == 'Parse':
 					parse_files = []
-					self.files = parse_img(self, soubor)
+					self.files = parse_img(self, image_files)
 					Window.table_reload(self, self.files)
-					# self.d_writer('Imported: ' + ' '.join(soubor), 0)
+					# self.d_writer('Imported: ' + ' '.join(image_files), 0)
 				if text == 'Resize':
 					resize_files = []
-					percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
-					for items in soubor:
+					percent,okPressed = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
+					for items in image_files:
 						command, outputfiles = resizeimage(items, percent)
 						resize_files.append(outputfiles)
 					self.files = parse_img(self, resize_files)
 					Window.table_reload(self, self.files)
 					self.d_writer(str(resize_files), 0)
-				break
+		# fix long names
+		if office_files:
+			if len(office_files) > 1:
+				items = ["Convert to PDF","Combine to PDF"]
+				text, okPressed = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
+				if not okPressed:
+					return
+				if text == 'Convert to PDF':
+					self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
+					files = self.external_convert(extension, office_files, 'convert')
+				if text == 'Combine to PDF':
+					files = self.external_convert(extension, office_files, 'combine')
 			else:
-				soubor = []
-				for url in event.mimeData().urls():
-					file = (url.toLocalFile())
-					soubor.append(file)				
-				# self.d_writer("Warning One of files isnt propably supported." + extension, 0, 'red')
-				conv = QMessageBox()
-				conv.setText("Warning One of files isnt propably supported. Do you still want to try import to PDF? (Clouconvert importer recomended)")
-				conv.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-				conv = conv.exec()
-				if conv == QMessageBox.Yes:
-					files = self.external_convert(extension, soubor, 'convert')
-				else:
-					event.ignore()
-			break
+				self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
+				files = self.external_convert(extension, office_files, 'convert')
+		# handle images
+		if unknown_files:
+			conv = QMessageBox()
+			conv.setText("Warning One of files isnt propably supported. Do you still want to try import to PDF? (Clouconvert importer recomended)")
+			conv.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+			conv = conv.exec()
+			if conv == QMessageBox.Yes:
+				for items in unknown_files:
+					self.external_convert(extension, items, 'convert')
+			else:
+				event.ignore()
+		self.table.setStyleSheet("QTableView {background-image:none}" )
 
 	def d_writer(self, message, append, *args):
 	# fix for list input
@@ -874,7 +886,7 @@ class Window(QMainWindow):
 				new_file, warning = cc_convert(items)
 				if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
 					self.d_writer('missing API_KEY',0,'red')
-					API_KEY,ok = QInputDialog.getText(self,"Warning ","Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
+					API_KEY,okPressed = QInputDialog.getText(self,"Warning ","Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
 					with open("cc.json", "w") as text_file:
 						text_file.write(API_KEY)
 					self.d_writer('API_KEY saved - Try import again', 0, 'red')
@@ -983,6 +995,8 @@ class Window(QMainWindow):
 			self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.extract_b.show()
+			self.Convert_b.hide()
 			self.extract_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.crop_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
@@ -996,7 +1010,7 @@ class Window(QMainWindow):
 			self.compres_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
 			self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.raster_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			self.extract_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			self.Convert_b.show()
 			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
 			self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
@@ -1249,6 +1263,10 @@ class Window(QMainWindow):
 		self.OCR_b.clicked.connect(self.ocr_maker)
 		self.buttons_layout.addWidget(self.OCR_b)
 		self.OCR_b.setDisabled(True)
+		# CONVERT (only for image files)
+		self.Convert_b = QPushButton('Convert', self)
+		self.Convert_b.clicked.connect(self.convert_image)
+		self.buttons_layout.addWidget(self.Convert_b)
 		# # POCITANI TABULKY PDF
 		# self.info_b = QPushButton('Info', self)
 		# self.info_b.clicked.connect(self.info_tb)
@@ -1330,6 +1348,22 @@ class Window(QMainWindow):
 		self.files = pdf_parse(self,outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s) rasterized:', 1, 'green')
+		self.d_writer(', '.join(debugstring),1)
+
+	def convert_image(self):
+		outputfiles = []
+		if self.table.currentItem() == None:
+			self.d_writer('Error - No files selected', 1, 'red')
+			return
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
+		debugstring, outputfiles = convert_this_file(outputfiles, default_pref[1])
+		self.files = pdf_parse(self,outputfiles)
+		Window.table_reload(self, self.files)
+		self.d_writer('File(s) converted:', 1, 'green')
 		self.d_writer(', '.join(debugstring),1)
 
 	def crop_pdf(self):
@@ -1654,8 +1688,8 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-			tiskarna_ok = self.printer_tb.currentItem()
-			tiskarna_ok = (tiskarna_ok.text())
+			tiskarna_okPressed = self.printer_tb.currentItem()
+			tiskarna_okPressed = (tiskarna_ok.text())
 		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked(), self.btn_colors.currentText())
 		self.d_writer('Printing setting:',0,'green')
 		self.d_writer(debugstring,1,'white')

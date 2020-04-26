@@ -38,14 +38,15 @@ def cc_convert(file):
 		export_task_id = export_task.get("id")
 		# fetch the finished task
 		import_task = cloudconvert.Task.find(id=import_task_id)
-
+		# /TEST
 		# fix spaces WIP
-		os.rename(file, file.replace(" ", "_"))
-		file = file.replace(" ", "_")
+		# os.rename(file, file.replace(" ", "_"))
+		# file = file.replace(" ", "_")
 		# do upload
 		uploaded = cloudconvert.Task.upload(
 			# file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
-			file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
+			file_name = (os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
+			# file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
 			# file_name = (file_name.replace(" ", "\\ "), task=import_task)
 			# print (file_name)
 		if uploaded:

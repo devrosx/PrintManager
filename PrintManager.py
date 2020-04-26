@@ -816,8 +816,7 @@ class Window(QMainWindow):
 			conv.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
 			conv = conv.exec()
 			if conv == QMessageBox.Yes:
-				for items in unknown_files:
-					self.external_convert(extension, items, 'convert')
+				self.external_convert(extension, unknown_files, 'convert')
 			else:
 				event.ignore()
 		self.table.setStyleSheet("QTableView {background-image:none}" )
@@ -857,13 +856,13 @@ class Window(QMainWindow):
 		# self.process = QProcess(self)
 		# self.process.readyRead.connect(self.dataReady)
 			for items in inputfile:
+				print (items)
 				command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]
-				# self.process.setProcessChannelMode(QProcess.MergedChannels)
-				# self.process.readyReadStandardOutput.connect(self.readStdOutput)
-				# self.process.start("/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to pdf" + items + "--outdir" + outputdir)
-				# self.process.start(["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir])
-				# conv_output = (subprocess.check_output()
-				conv_output = (subprocess.check_output(command))
+				p = subprocess.Popen(command, stderr=subprocess.PIPE)
+				output, err = p.communicate()
+				if err == b'Error: source file could not be loaded\n':
+					QMessageBox.about(self, "Error", "File: " + str(items) + " not supported.")
+					break
 				base = os.path.basename(items)
 				base = os.path.splitext(base)[0]
 				new_file = outputdir + base + '.pdf'

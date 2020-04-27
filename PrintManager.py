@@ -25,7 +25,7 @@ info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[
 mm = '0.3527777778'
 office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx', 'ppt']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
-pdf_ext = ['pdf']
+next_ext = ['pdf','dat']
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'undefined']
 username = os.path.expanduser("~")
 
@@ -737,7 +737,7 @@ class Window(QMainWindow):
 				if extension in office_ext:
 					office_files.append(path)
 					print ('Office path:' + path)
-				if extension not in office_ext and extension not in image_ext and extension not in pdf_ext:
+				if extension not in office_ext and extension not in image_ext and extension not in next_ext:
 						unknown_files.append(path)
 				if extension == 'dat':
 					dirname_ = (os.path.dirname(path) + '/')

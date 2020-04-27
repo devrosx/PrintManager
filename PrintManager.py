@@ -17,6 +17,7 @@ from libs.pdfextract_module import extractfiles
 from libs.cc_module import cc_convert
 from libs.pdf_preview_module import pdf_preview_generator
 from libs.super_crop_module import *
+import webbrowser
 version = '0.28'
 import time
 start_time = time.time()
@@ -556,6 +557,7 @@ class Window(QMainWindow):
 		menubar.setNativeMenuBar(True)
 		file_menu = QMenu('File', self)
 		win_menu = QMenu('Windows', self)
+		about_menu = QMenu('About', self)
 		open_action = QAction("Open file", self) 
 		printing_setting_menu  = QAction("Printers", self)
 		printing_setting_menu.setShortcut('Ctrl+P')
@@ -587,6 +589,10 @@ class Window(QMainWindow):
 		pref_action.triggered.connect(self.open_dialog)
 		pref_action.setShortcut('Ctrl+W')
 		file_menu.addAction(pref_action)
+		# GITHUB PAGE
+		url_action = QAction("PrintManager Github", self)
+		url_action.triggered.connect(lambda: webbrowser.open('http://github.com/devrosx/PrintManager/'))
+		about_menu.addAction(url_action)
 		# OPEN
 		open_action.triggered.connect(self.openFileNamesDialog)
 		open_action.setShortcut('Ctrl+O')
@@ -596,6 +602,8 @@ class Window(QMainWindow):
 		file_menu.addAction(close_action)
 		menubar.addMenu(file_menu)
 		menubar.addMenu(win_menu)
+		menubar.addMenu(about_menu)
+
 		self.files = []
 
 		"""Core Layouts"""

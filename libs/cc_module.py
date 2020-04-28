@@ -33,22 +33,11 @@ def cc_convert(file):
 				import_task = task
 			if task_name == "export-it":
 				export_task = task
-		
 		import_task_id = import_task.get("id")
 		export_task_id = export_task.get("id")
 		# fetch the finished task
 		import_task = cloudconvert.Task.find(id=import_task_id)
-		# /TEST
-		# fix spaces WIP
-		# os.rename(file, file.replace(" ", "_"))
-		# file = file.replace(" ", "_")
-		# do upload
-		uploaded = cloudconvert.Task.upload(
-			# file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
-			file_name = (os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
-			# file_name=os.path.join(os.path.dirname(os.path.realpath(__file__)), file), task=import_task)
-			# file_name = (file_name.replace(" ", "\\ "), task=import_task)
-			# print (file_name)
+		uploaded = cloudconvert.Task.upload(file_name=file, task=import_task)
 		if uploaded:
 			print("Uploaded file OK")
 			# get exported url
@@ -63,7 +52,7 @@ def cc_convert(file):
 
 if __name__ == '__main__':
 	# fix spaces in file
-	test = '/Users/jandevera/Desktop/1.\ texty\ pro\ obálku.docx'
+	test = '/Users/jandevera/Desktop/test\ a\ test/19_soutez\ a\ x.docx'
 	res, warning = cc_convert(test)
 	print (warning)
 	print (res)

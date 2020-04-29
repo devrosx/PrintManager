@@ -1331,10 +1331,14 @@ class Window(QMainWindow):
 		if self.selected_file_check() == 'pdf':
 			file,outputpdf = raster_this_file_(', '.join(outputfiles), 300,0,True,int(pages))
 			for items in file:
+				print (items)
 				ocr = ocr_core(items, self.localization)
 				self.d_writer(str(ocr), 1)
-			debugstring, outputfiles = gray_this_file(outputfiles,'pdf')
-			self.files = pdf_parse(self,outputfiles)
+				# self.d_writer('WTF', 1)
+				print (ocr)
+
+			# debugstring, outputfiles = gray_this_file(outputfiles,'pdf')
+			# self.files = pdf_parse(self,outputfiles)
 		else:
 			# only singe item for now
 			for items in outputfiles:

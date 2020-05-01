@@ -64,7 +64,7 @@ def get_pdf_images(pdf_fp):
 def CMYKInvert(img) :
     return Image.merge(img.mode, [PIL.ImageOps.invert(b.convert('L')) for b in img.split()])
 
-def extractfiles(original_file):
+def extractfiles(original_file,cmyk):
     x = 0
     fileslist = []
     head, ext = os.path.splitext(original_file)
@@ -73,7 +73,8 @@ def extractfiles(original_file):
         try:
             img = Image.open(StringIO(data))
             # CMYK CONVERT
-            img = CMYKInvert(img)
+            if cmyk == 1:
+                img = CMYKInvert(img)
             x += 1
             # input_path = os.path.splitext(input_files)
             # files = input_path+str(x)+'.jpg'

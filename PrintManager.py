@@ -9,6 +9,7 @@ from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixm
 from PyQt5.QtCore import *
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
 from tnefparse.mapi import TNEFMAPI_Attribute
+from unidecode import unidecode
 # my modules import
 from libs.colordetector import *
 from libs.ocr_module import ocr_core
@@ -17,8 +18,9 @@ from libs.pdfextract_module import extractfiles
 from libs.cc_module import cc_convert
 from libs.pdf_preview_module import pdf_preview_generator
 from libs.super_crop_module import *
+from libs.image_grabber_module import *
 import webbrowser
-version = '0.28'
+version = '0.29'
 import time
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
@@ -28,7 +30,6 @@ image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
 next_ext = ['pdf','dat']
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'undefined']
 username = os.path.expanduser("~")
-
 # other os support
 system = str(sys.platform)
 if system == 'darwin':
@@ -54,7 +55,7 @@ def load_preferences():
 		with open('config.json', encoding='utf-8') as data_file:
 			json_pref = json.loads(data_file.read())
 		if json_pref[0][8] == username:
-			print ('preferences okPressed - using saved printers')
+			print ('pref. ok - using saved printers')
 			printers = json_pref[0][9]
 			default_pref = [json_pref[0][10],json_pref[0][11],json_pref[0][12]]
 		else: 
@@ -67,6 +68,13 @@ def load_preferences():
 		default_pref = ['eng',300,'OpenOffice']
 	return json_pref, printers, default_pref
 
+def fix_filename(item):
+	oldfilename = (os.path.basename(item))
+	dirname = (os.path.dirname(item) + '/')
+	newfilename = unidecode(oldfilename)
+	os.system('mv ' + "'" + dirname + oldfilename + "'" + ' ' + "'" + dirname + newfilename + "'")
+	return dirname + newfilename
+
 def save_preferences(*settings):
 	print ('JSON save on exit')
 	preferences = []
@@ -77,13 +85,12 @@ def save_preferences(*settings):
 	startup = 1
 	return startup
 
-
 def humansize(size):
 	filesize = ('%.1f' % float(size/1000000) + 'MB')
 	return filesize
 
 def open_printer(file):
-	subprocess.call(['subl', '/private/etc/cups/ppd/'+file+'.ppd'])
+	subprocess.call(['open', "-t", '/private/etc/cups/ppd/'+file+'.ppd'])
 
 def revealfile(list_path,reveal): #reveal and convert
 	if isinstance (list_path, list):
@@ -131,14 +138,15 @@ def splitfiles(file):
 	pdf_file.close()
 	return outputfiles
 
-def resizeimage(original_file, percent):
-	# outputfiles = []
-	head, ext = os.path.splitext(original_file)
-	outputfile = head + '_' + str(percent) + ext
-	command = ["convert", original_file, "-resize", str(percent)+'%', outputfile]
-	subprocess.run(command)
-	# outputfiles.append(outputfile)
-	return command, outputfile
+def resize_this_image(original_file, percent):
+	outputfiles = []
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '_' + str(percent) + ext
+		command = ["convert", item, "-resize", str(percent)+'%', outputfile]
+		subprocess.run(command)
+		outputfiles.append(outputfile)
+	return command, outputfiles
 
 def gray_this_file(original_file,filetype):
 	outputfiles = []
@@ -153,7 +161,7 @@ def gray_this_file(original_file,filetype):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
-def compres_this_file(original_file):
+def compres_this_file(original_file,resolution):
 	outputfiles = []
 	for item in original_file:
 		head, ext = os.path.splitext(item)
@@ -174,17 +182,41 @@ def raster_this_file(original_file,resolution):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+def fix_this_file(original_file,resolution):
+	outputfiles = []
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '_fixed' + ext
+		command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-dPDFSETTINGS=/prepress", "-sOutputFile="+outputfile, item]
+		subprocess.run(command_gs)
+		outputfiles.append(outputfile)
+	return command_gs, outputfiles
+
 def convert_this_file(original_file,resolution):
 	outputfiles = []
 	for item in original_file:
 		head, ext = os.path.splitext(item)
 		outputfile = head + '.pdf'
 		command = ["convert", str(resolution), '-density',  '300', str(item), str(outputfile)]
-		print (command)
 		subprocess.run(command)
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+def smart_cut_this_file(original_file, *args):
+	smartcut_files = []
+	outputfiles = []
+	dialog = InputDialog_SmartCut()
+	if dialog.exec():
+		n_images, tresh = dialog.getInputs()
+		for items in original_file:
+			outputfiles = processFile(items, n_images, tresh)
+			smartcut_files.append(outputfiles)
+		# merge lists inside lists 
+		smartcut_files = [j for i in smartcut_files for j in i]
+		command = 'OK'
+	else:
+		dialog.close()
+	return command, smartcut_files
 
 def get_boxes(input_file):
 		pdf_reader = PdfFileReader(input_file)
@@ -200,8 +232,13 @@ def file_info_new(inputs, file, *args):
 			pdf_ = pdf_toread.getDocumentInfo()
 			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
 			pdf_fixed.update( {'Filesize' : humansize(os.path.getsize(item))} )
+			pdf_fixed.update( {'Pages' : str(pdf_toread.getNumPages())} )
+			pdf_fixed.update( {'MediaBox' : get_pdf_size(pdf_toread.getPage(0).mediaBox)} )
+			pdf_fixed.update( {'CropBox' : get_pdf_size(pdf_toread.getPage(0).cropBox)} )
+			pdf_fixed.update( {'TrimBox' : get_pdf_size(pdf_toread.getPage(0).trimBox)} )
 			# print (pdf_fixed)
 			boxes = get_boxes(item)
+			print (boxes)
 			# z = dict(list(x.items()) + list(y.items()))
 			# pdf_fixed.update({'a':'B'})
 			# pdf_fixed.update(dict(a=1))
@@ -312,30 +349,38 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 		print ('printer not found')
 	return command
 
+def get_pdf_size(pdf_input):
+	qsizedoc = (pdf_input)
+	width = (float(qsizedoc[2]) * float(mm))
+	height = (float(qsizedoc[3]) * float(mm))
+	page_size = (str(round(width)) + 'x' + str(round(height)) + ' mm')
+	return page_size
+
 def pdf_parse(self, inputs, *args):
 	self.rows = []
+	# convert str to list
 	if type(inputs) is str:
 		inputs = [inputs]
-	print (inputs)
 	# print ('ROWS:' + str(self.rows))
 	for item in inputs:
 		# print ('item' + str(item))
 		oldfilename = (os.path.basename(item))
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
+
 		with open(item, mode='rb') as f:
 			pdf_input = PdfFileReader(f, strict=False)
 			if pdf_input.isEncrypted:
 				self.d_writer('File is encrypted...', 0, 'red')
 				break
 			else:
-				qsizedoc = (pdf_input.getPage(0).mediaBox)
-				sirka = (float(qsizedoc[2]) * float(mm))
-				vyska = (float(qsizedoc[3]) * float(mm))
-				page_size = (str(round(sirka)) + 'x' + str(round(vyska)) + ' mm')
+				page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
+				# qsizedoc = (pdf_input.getPage(0).mediaBox)
+				# sirka = (float(qsizedoc[2]) * float(mm))
+				# vyska = (float(qsizedoc[3]) * float(mm))
+				# page_size = (str(round(sirka)) + 'x' + str(round(vyska)) + ' mm')
 				pdf_pages = pdf_input.getNumPages()
 				velikost = size_check(page_size)
-				newfilename = ('[' + str(round(sirka)) + 'x' + str(round(vyska)) + 'mm_' + str(pdf_pages) + 'str]' + oldfilename)
 				name.append(ext_file[0])
 				size.append(size_check(page_size))
 				price.append(price_check(pdf_pages, velikost))
@@ -447,6 +492,7 @@ class TableWidgetDragRows(QTableWidget):
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSelectionBehavior(QAbstractItemView.SelectRows)
 		# self.setDragDropMode(QAbstractItemView.InternalMove)
+		self.setFocusPolicy(Qt.NoFocus)
 		self.setSortingEnabled(True)
 # for icons
 class IconDelegate(QStyledItemDelegate):
@@ -574,7 +620,7 @@ class Window(QMainWindow):
 		win_menu.addAction(debug_setting_menu)
 		# PREVIEW PANEL
 		printing_setting_menu  = QAction("Preview panel", self)
-		printing_setting_menu.setShortcut('Ctrl+T')
+		printing_setting_menu.setShortcut('Ctrl+I')
 		printing_setting_menu.setCheckable(True)
 		printing_setting_menu.setChecked(False)
 		printing_setting_menu.triggered.connect(self.togglePreviewWidget)
@@ -721,22 +767,21 @@ class Window(QMainWindow):
 		for url in event.mimeData().urls():
 			path = url.toLocalFile()
 			extension = os.path.splitext(path)[1][1:].strip().lower()
-			print (extension)
 			# handle file
 			if os.path.isfile(path):
 				if extension == 'pdf':
-					print ('Filetype: ' + str(extension))
+					# print ('Filetype: ' + str(extension))
 					self.files = pdf_parse(self, path)
 					self.d_writer(path, 0,'green')
 					Window.table_reload(self, self.files)
 				# handle images to list
 				if extension in image_ext:
 					image_files.append(path)
-					print ('Image path:' + path)
+					# print ('Image path:' + path)
 				# handle offices files to list
 				if extension in office_ext:
 					office_files.append(path)
-					print ('Office path:' + path)
+					# print ('Office path:' + path)
 				if extension not in office_ext and extension not in image_ext and extension not in next_ext:
 						unknown_files.append(path)
 				if extension == 'dat':
@@ -751,57 +796,28 @@ class Window(QMainWindow):
 							self.d_writer("Successfully wrote %i files" % len(t.attachments) + ' to: ' + dirname, 0)
 		if image_files:
 			if len(image_files) > 1:
-				items = ["Convert to PDF " + (self.convertor),"Combine to PDF " + (self.convertor), "SmartCut", "Resize", "Parse"]
-				text, okPressed = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
+				items = ["Convert to PDF " + (self.convertor),"Combine to PDF " + (self.convertor), "Import"]
+				text, okPressed = QInputDialog.getItem(self, "Image import", "Action", items, 0, False)
 				if not okPressed:
 					return
+				if text == "Combine to PDF " + (self.convertor):
+					files = self.external_convert(extension, image_files, 'combine')
+				if text == 'Import':
+					# parse_files = []
+					self.files = parse_img(self, image_files)
+					Window.table_reload(self, self.files)
 			else:
-				items = ["Convert to PDF", "SmartCut", "OCR", "Resize", "Parse"]
-				text, okPressed = QInputDialog.getItem(self, "Action", "Action", items, 0, False)					
+				items = ["Convert to PDF", "OCR", "Import"]
+				text, okPressed = QInputDialog.getItem(self, "Image import", "Action", items, 0, False)					
 				if not okPressed:
 					return
 				if text == 'Convert to PDF':
 					files = self.external_convert(extension, image_files, 'convert')
-				if text == 'Combine to PDF':
-					files = self.external_convert(extension, image_files, 'combine')
-				if text == 'OCR':
-					ocr_output = []
-					for items in image_files:
-						ocr = ocr_core(items, self.localization)
-						ocr_output.append(ocr)
-					ocr_output =  ''.join(ocr_output)
-					self.d_writer(str(ocr_output), 0)
-					if self.gb_debug.isHidden():
-						self.toggleDebugWidget()
-				if text == 'SmartCut':
-					smartcut_files = []
-					dialog = InputDialog_SmartCut()
-					if dialog.exec():
-						n_images, tresh = dialog.getInputs()
-						for items in image_files:
-							outputfiles = processFile(items, n_images, tresh)
-							smartcut_files.append(outputfiles)
-						# merge lists inside lists 
-						smartcut_files = [j for i in smartcut_files for j in i]
-						self.files = parse_img(self, smartcut_files)
-						Window.table_reload(self, self.files)
-						self.d_writer(str(smartcut_files), 0)
-					else:
-						dialog.close()
-				if text == 'Parse':
-					parse_files = []
+				if text == 'Import':
+					# parse_files = []
 					self.files = parse_img(self, image_files)
 					Window.table_reload(self, self.files)
 					# self.d_writer('Imported: ' + ' '.join(image_files), 0)
-				if text == 'Resize':
-					resize_files = []
-					percent,okPressed = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
-					for items in image_files:
-						command, outputfiles = resizeimage(items, percent)
-						resize_files.append(outputfiles)
-					self.files = parse_img(self, resize_files)
-					Window.table_reload(self, self.files)
-					self.d_writer(str(resize_files), 0)
 		# fix long names
 		if office_files:
 			if len(office_files) > 1:
@@ -855,16 +871,18 @@ class Window(QMainWindow):
 		converts = []
 		if setting == 'combine':
 			outputdir = "/tmp/"
-			print ('tmp folder selected')
+			# print ('tmp folder selected')
 			savedir = os.path.dirname(inputfile[0]) + '/'
+			# print ('this is savedir' + str(savedir))
 		else:
 			outputdir = os.path.dirname(inputfile[0]) + '/'
+			# print ('this is outputdir' + str(outputdir))
 
 		if self.convertor == 'OpenOffice':
 		# self.process = QProcess(self)
 		# self.process.readyRead.connect(self.dataReady)
 			for items in inputfile:
-				print (items)
+				# print (items)
 				command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]
 				p = subprocess.Popen(command, stderr=subprocess.PIPE)
 				output, err = p.communicate()
@@ -876,9 +894,12 @@ class Window(QMainWindow):
 				new_file = outputdir + base + '.pdf'
 				converts.append(new_file)
 			if setting == 'combine':
+				print ('converts: ' + str(converts))
 				merged_pdf = mergefiles(converts, savedir)
+				print ('this is merged_pdf: ' + str(merged_pdf))
 				# convert to list fix for later
-				merged_pdf = (merged_pdf.split())
+				# merged_pdf = (merged_pdf.split())
+				print ('this is merged_pdf with split: ' + str(merged_pdf))
 				self.files = pdf_parse(self,merged_pdf)
 				self.d_writer('OpenOffice combining files to:', 0, 'green')
 				self.d_writer(merged_pdf[0], 1)
@@ -891,6 +912,8 @@ class Window(QMainWindow):
 		elif self.convertor == 'CloudConvert':
 			print ('CloudConvert')
 			for items in inputfile:
+				# fix diacritics (check better fix later)
+				items = fix_filename(items)
 				new_file, warning = cc_convert(items)
 				if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
 					self.d_writer('missing API_KEY',0,'red')
@@ -995,46 +1018,66 @@ class Window(QMainWindow):
 	def on_selection_changed(self):
 		self.debuglist.clear()
 		if self.selected_file_check() == 'pdf':
-			print ('pdf')
-			self.print_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.merge_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.split_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.extract_b.show()
-			self.Convert_b.hide()
-			self.extract_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.crop_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.gb_debug.show()
+			self.pdf_button.show()
+			self.img_button.hide()
+			self.print_b.show()
+			self.my_info_label.setText(str(self.count_pages()) + ' PDF pages selected')
+			self.my_info_label.show()
+			
+			# self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.merge_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.split_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.extract_b.show()
+			# self.Convert_b.hide()
+			# self.extract_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.crop_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 		elif self.selected_file_check() == 'image':
-			print ('image')
-			self.print_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.merge_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			self.split_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			self.compres_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.raster_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			self.Convert_b.show()
-			self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# print ('image')
+			self.gb_debug.show()
+			self.pdf_button.hide()
+			self.img_button.show()
+			self.print_b.show()
+			self.my_info_label.setText("Image files selected")
+			self.my_info_label.show()
+			# self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.merge_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			# self.split_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			# self.compres_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.raster_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			# self.Convert_b.show()
+			# self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			# self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
+			# self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 		else:
-			print ('else')
-			self.print_b.setDisabled(True)
-			self.color_b.setDisabled(True)
-			self.merge_pdf_b.setDisabled(True)
-			self.split_pdf_b.setDisabled(True)
-			self.compres_pdf_b.setDisabled(True)
-			self.gray_pdf_b.setDisabled(True)
-			self.raster_b.setDisabled(True)
-			self.extract_b.setDisabled(True)
-			self.gb_setting.setDisabled(True)
-			self.crop_b.setDisabled(True)
-			self.OCR_b.setDisabled(True)
+			# print ('else')
+			self.gb_debug.hide()
+			self.pdf_button.hide()
+			self.img_button.hide()
+			self.print_b.hide()
+			self.my_info_label.hide()
+
+			# self.Colors_button.hide()
+			# self.MergeButton.hide()
+			# self.SplitButton.hide()
+
+			# self.print_b.setDisabled(True)
+			# self.color_b.setDisabled(True)
+			# self.merge_pdf_b.setDisabled(True)
+			# self.split_pdf_b.setDisabled(True)
+			# self.compres_pdf_b.setDisabled(True)
+			# self.gray_pdf_b.setDisabled(True)
+			# self.raster_b.setDisabled(True)
+			# self.extract_b.setDisabled(True)
+			# self.gb_setting.setDisabled(True)
+			# self.crop_b.setDisabled(True)
+			# self.OCR_b.setDisabled(True)
 		# pass
 
 	def contextMenuEvent(self, pos):
@@ -1046,6 +1089,7 @@ class Window(QMainWindow):
 					revealAction = menu.addAction('Reveal in finder')
 					printAction = menu.addAction('Print')
 					previewAction = menu.addAction('Preview')
+					fix_nameAction = menu.addAction('Remove special characters from filename')
 					action = menu.exec_(self.mapToGlobal(pos))
 					if action == openAction:
 						index=(self.table.selectionModel().currentIndex())
@@ -1056,7 +1100,12 @@ class Window(QMainWindow):
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
 						file_path=index.sibling(row,8).data()
-						revealfile(file_path,'-R')
+					if action == fix_nameAction:
+						index=(self.table.selectionModel().currentIndex())
+						row = self.table.currentRow()
+						file_path=index.sibling(row,8).data()
+						newname = fix_filename(file_path)
+						print (newname)
 					if action == printAction:
 						index=(self.table.selectionModel().currentIndex())
 						row = self.table.currentRow()
@@ -1229,59 +1278,152 @@ class Window(QMainWindow):
 		self.color_b.clicked.connect(self.loadcolors)
 		self.buttons_layout.addWidget(self.color_b)
 		self.color_b.setDisabled(True)
+		self.color_b.hide()
+
 		# SPOJ PDF
 		self.merge_pdf_b = QPushButton('Merge', self)
 		self.merge_pdf_b.clicked.connect(self.merge_pdf)
 		self.buttons_layout.addWidget(self.merge_pdf_b)
 		self.merge_pdf_b.setDisabled(True)
+		self.merge_pdf_b.hide()
+
 		# ROZDEL PDF
 		self.split_pdf_b = QPushButton('Split', self)
 		self.split_pdf_b.clicked.connect(self.split_pdf)
 		self.buttons_layout.addWidget(self.split_pdf_b)
 		self.split_pdf_b.setDisabled(True)
-		# COMPRES PDF
-		self.compres_pdf_b = QPushButton('Compres', self)
-		self.compres_pdf_b.clicked.connect(self.compres_pdf)
-		self.buttons_layout.addWidget(self.compres_pdf_b)
-		self.compres_pdf_b.setDisabled(True)
-		# GRAY PDF
-		self.gray_pdf_b = QPushButton('To Gray', self)
-		self.gray_pdf_b.clicked.connect(self.gray_pdf)
-		self.buttons_layout.addWidget(self.gray_pdf_b)
-		self.gray_pdf_b.setDisabled(True)
-		# RASTROVANI PDF
-		self.raster_b = QPushButton('Rasterize', self)
-		self.raster_b.clicked.connect(self.rasterize_pdf)
-		self.buttons_layout.addWidget(self.raster_b)
-		self.raster_b.setDisabled(True)
+		self.split_pdf_b.hide()
+		# # COMPRES PDF
+		# self.compres_pdf_b = QPushButton('Compres', self)
+		# self.compres_pdf_b.clicked.connect(self.compres_pdf)
+		# self.buttons_layout.addWidget(self.compres_pdf_b)
+		# self.compres_pdf_b.setDisabled(True)
+		# # GRAY PDF
+		# self.gray_pdf_b = QPushButton('To Gray', self)
+		# self.gray_pdf_b.clicked.connect(self.gray_pdf)
+		# self.buttons_layout.addWidget(self.gray_pdf_b)
+		# self.gray_pdf_b.setDisabled(True)
+		# # RASTROVANI PDF
+		# self.raster_b = QPushButton('Rasterize', self)
+		# self.raster_b.clicked.connect(self.rasterize_pdf)
+		# self.buttons_layout.addWidget(self.raster_b)
+		# self.raster_b.setDisabled(True)
 		# CROP PDF WIP
-		self.crop_b = QPushButton('SmartCrop', self)
-		self.crop_b.clicked.connect(self.crop_pdf)
-		# self.crop_b.clicked.connect(self.InputDialog_PDFcut)
-		# InputDialog_PDFcut
-		self.buttons_layout.addWidget(self.crop_b)
-		self.crop_b.setDisabled(True)
-		# EXTRACT IMAGES
-		self.extract_b = QPushButton('Extract', self)
-		self.extract_b.clicked.connect(self.extract_pdf)
-		self.buttons_layout.addWidget(self.extract_b)
-		self.extract_b.setDisabled(True)
+		# self.crop_b = QPushButton('SmartCrop', self)
+		# self.crop_b.clicked.connect(self.crop_pdf)
+		# # self.crop_b.clicked.connect(self.InputDialog_PDFcut)
+		# # InputDialog_PDFcut
+		# self.buttons_layout.addWidget(self.crop_b)
+		# self.crop_b.setDisabled(True)
+		# # EXTRACT IMAGES
+		# self.extract_b = QPushButton('Extract', self)
+		# self.extract_b.clicked.connect(self.extract_pdf)
+		# self.buttons_layout.addWidget(self.extract_b)
+		# self.extract_b.setDisabled(True)
 		# OCR
-		self.OCR_b = QPushButton('OCR', self)
-		self.OCR_b.clicked.connect(self.ocr_maker)
-		self.buttons_layout.addWidget(self.OCR_b)
-		self.OCR_b.setDisabled(True)
+		# self.OCR_b = QPushButton('OCR', self)
+		# self.OCR_b.clicked.connect(self.ocr_maker)
+		# self.buttons_layout.addWidget(self.OCR_b)
+		# self.OCR_b.setDisabled(True)
 		# CONVERT (only for image files)
-		self.Convert_b = QPushButton('Convert', self)
-		self.Convert_b.clicked.connect(self.convert_image)
-		self.buttons_layout.addWidget(self.Convert_b)
+		# self.Convert_b = QPushButton('Convert', self)
+		# self.Convert_b.clicked.connect(self.convert_image)
+		# self.buttons_layout.addWidget(self.Convert_b)
+
+		self.pdf_button = QPushButton('PDF Actions')
+		menu = QMenu()
+		colors_menu = QMenu('Colors', self)
+		menu.addMenu(colors_menu)
+		convert_menu = QMenu('Convert and crop', self)
+		menu.addMenu(convert_menu)
+		other_menu = QMenu('Other', self)
+		menu.addMenu(other_menu)
+		convert_menu.addAction('Extract images from PDF', self.extract_pdf)
+		convert_menu.addAction('Convert to image', self.convert_image)
+		convert_menu.addAction('SmartCrop', self.crop_pdf)
+		colors_menu.addAction('To CMYK')
+		colors_menu.addAction('To Grayscale',self.gray_pdf)
+		other_menu.addAction('Fix PDF',lambda: self.operate_file(fix_this_file, 'File(s) fixed:', default_pref[1]))
+		other_menu.addAction('Rasterize PDF',lambda: self.operate_file(raster_this_file, 'File(s) rasterized:', default_pref[1]))
+		other_menu.addAction('Compress PDF',lambda: self.operate_file(compres_this_file, 'File(s) compressed:', default_pref[1]))
+		other_menu.addAction('OCR', self.ocr_maker)
+		self.pdf_button.setMenu(menu)
+		self.buttons_layout.addWidget(self.pdf_button)
+		self.pdf_button.hide()
+
+		self.img_button = QPushButton('Image Actions')
+		menu = QMenu()
+		colors_menu = QMenu('Colors', self)
+		menu.addMenu(colors_menu)
+		convert_menu = QMenu('Convert and crop', self)
+		menu.addMenu(convert_menu)
+		other_menu = QMenu('Other', self)
+		menu.addMenu(other_menu)
+		convert_menu.addAction('SmartCrop',lambda: self.operate_file(smart_cut_this_file, 'Images(s) croped', default_pref[1]))
+
+		# convert_menu.addAction('Extract images from PDF', self.extract_pdf)
+		# convert_menu.addAction('Convert to image', self.convert_image)
+		# convert_menu.addAction('SmartCrop', self.crop_pdf)
+		colors_menu.addAction('To CMYK')
+		colors_menu.addAction('To Grayscale',self.gray_pdf)
+		# other_menu.addAction('Fix PDF',lambda: self.operate_pdf(fix_this_file, 'File(s) fixed:', default_pref[1]))
+		# other_menu.addAction('Rasterize PDF',lambda: self.operate_pdf(raster_this_file, 'File(s) rasterized:', default_pref[1]))
+		# other_menu.addAction('Compress PDF',lambda: self.operate_pdf(compres_this_file, 'File(s) compressed:', default_pref[1]))
+		other_menu.addAction('OCR', self.ocr_maker)
+		other_menu.addAction('Resize', self.resize_image)
+		other_menu.addAction('Find similar image on google',lambda: self.operate_file(find_this_file, 'Images(s) found', default_pref[1]))
+
+		self.img_button.setMenu(menu)
+		self.buttons_layout.addWidget(self.img_button)
+		self.img_button.hide()
+
+		self.print_b = QPushButton('Print selected', self)
+		self.print_b.clicked.connect(self.table_print)
+		# self.print_b.setDisabled(True)
+		self.print_b.hide()
+		self.buttons_layout.addWidget(self.print_b)
+		self.buttons_layout.addWidget(self.print_b)
+
+
+		# d = {'convert': [1,2,3], 'colors': [4,5,6], 'other': [7,8,9]}
+		# pdf_button = QToolButton()
+		# pdf_menu = QMenu()
+		# for k, vals in d.items():
+		# 	submenu = pdf_menu.addMenu(k)
+		# 	for v in vals:
+		# 		action = submenu.addAction(str(v))
+		# pdf_button.setMenu(pdf_menu)
+
+		# self.buttons_layout.addWidget(pdf_button)
+
+		self.my_info_label = QLabel()
+		self.my_info_label.setText("Files selected")
+		self.my_info_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+		self.buttons_layout.addWidget(self.my_info_label)
+		self.my_info_label.hide()
+
+		# self.actions_pdf = QComboBox(self)
+		# self.actions_pdf.addItem('Convert to image')
+		# self.actions_pdf.addItem('To Grayscale')
+		# self.actions_pdf.addItem('To CMYK')
+		# self.actions_pdf.addItem('Fix PDF')
+		# self.actions_pdf.addItem('Rasterize PDF')
+		# self.actions_pdf.addItem('OCR')
+		# self.actions_pdf.addItem('Compress PDF')
+		# self.actions_pdf.addItem('Extract images from PDF')
+		# self.actions_pdf.addItem('SmartCrop')
+
+
+		# self.actions_pdf.activated[str].connect(self.color_box_change)
+		# self.buttons_layout.addWidget(self.actions_pdf)
+
 		# # POCITANI TABULKY PDF
 		# self.info_b = QPushButton('Info', self)
 		# self.info_b.clicked.connect(self.info_tb)
 		# self.buttons_layout.addWidget(self.info_b)
 		# self.info_b.setDisabled(True)
 
-	def compres_pdf(self):
+	def operate_file(self, action, debug_text, resolution):
 		outputfiles = []
 		if self.table.currentItem() == None:
 			self.d_writer('Error - No files selected', 1, 'red')
@@ -1291,11 +1433,21 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-		debugstring, outputfiles = compres_this_file(outputfiles)
-		self.files = pdf_parse(self,outputfiles)
-		Window.table_reload(self, self.files)
-		self.d_writer('File(s) compresed:', 1, 'green')
-		self.d_writer(', '.join(debugstring),1)
+		if self.selected_file_check() == 'pdf':
+			debugstring, outputfiles = action(outputfiles, resolution)
+			self.d_writer(debug_text, 1, 'green')
+			self.d_writer(', '.join(debugstring),1)
+			if outputfiles != None:
+				self.d_writer(', '.join(debugstring),1)
+				self.files = pdf_parse(self,outputfiles)
+				Window.table_reload(self, self.files)
+		else:
+			debugstring, outputfiles = action(outputfiles, resolution)
+			self.d_writer(debug_text, 1, 'green')
+			if outputfiles != None:
+				self.d_writer(', '.join(debugstring),1)
+				self.files = parse_img(self,outputfiles)
+				Window.table_reload(self, self.files)
 
 	def gray_pdf(self):
 		outputfiles = []
@@ -1345,22 +1497,7 @@ class Window(QMainWindow):
 				ocr = ocr_core(items, self.localization)
 				self.d_writer(str(ocr), 1)
 
-	def rasterize_pdf(self):
-		outputfiles = []
-		if self.table.currentItem() == None:
-			self.d_writer('Error - No files selected', 1, 'red')
-			return
-		for items in sorted(self.table.selectionModel().selectedRows()):
-			row = items.row()
-			index=(self.table.selectionModel().currentIndex())
-			file_path=index.sibling(items.row(),8).data()
-			outputfiles.append(file_path)
-			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
-		debugstring, outputfiles = raster_this_file(outputfiles, default_pref[1])
-		self.files = pdf_parse(self,outputfiles)
-		Window.table_reload(self, self.files)
-		self.d_writer('File(s) rasterized:', 1, 'green')
-		self.d_writer(', '.join(debugstring),1)
+
 
 	def convert_image(self):
 		outputfiles = []
@@ -1377,6 +1514,22 @@ class Window(QMainWindow):
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s) converted:', 1, 'green')
 		self.d_writer(', '.join(debugstring),1)
+
+	def resize_image(self):
+		outputfiles = []
+		percent,okPressed = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
+		if self.table.currentItem() == None:
+			self.d_writer('Error - No files selected', 1, 'red')
+			return
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			outputfiles.append(file_path)
+		command, outputfiles = resize_this_image(outputfiles, percent)
+		self.files = parse_img(self, outputfiles)
+		Window.table_reload(self, self.files)
+		self.d_writer('File(s)' + str(outputfiles) +' resized', 1, 'green')
 
 	def crop_pdf(self):
 		outputfiles = []
@@ -1411,9 +1564,8 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-			desktop_icon = QIcon(QApplication.style().standardIcon(QStyle.SP_DialogResetButton))
 		try:
-			outputfiles = extractfiles(file_path)
+			outputfiles = extractfiles(file_path,cmyk=0)
 		except Exception as e:
 			self.d_writer('Error - Importing error' + str(e), 1, 'red')
 			return
@@ -1433,6 +1585,19 @@ class Window(QMainWindow):
 				pass
 			else:
 				return 'image'
+
+	def count_pages(self):
+		soucet = []
+		pages_count = []
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			soucet.append(row)
+			index=(self.table.selectionModel().currentIndex())
+			info=index.sibling(items.row(),5).data()
+			f_path=index.sibling(items.row(),8).data()
+			ftype=index.sibling(items.row(),3).data()
+			pages_count.append(int(info))
+		return sum(pages_count)
 
 	def info_tb(self):
 		soucet = []
@@ -1524,14 +1689,14 @@ class Window(QMainWindow):
 						self.table.item(row, 7).setForeground(black_)
 						self.d_writer("Document is all grayscale", 1, 'red')
 						self.table.item(row, 7).setFont(font)
-						self.table.clearSelection()
+						# self.table.clearSelection()
 					else:
 						self.table.item(row, 7).setText('CMYK')
 						self.table.item(row, 7).setForeground(green_)
 						self.table.item(row, 7).setFont(font)
 						self.d_writer("Color pages:", 0, 'green')
 						self.d_writer(' ' +  ', '.join(map(str, nc)), 1)
-						self.table.clearSelection()
+						# self.table.clearSelection()
 		else:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
@@ -1630,9 +1795,9 @@ class Window(QMainWindow):
 		self.btn_colors.addItem('Gray')
 		self.btn_colors.activated[str].connect(self.color_box_change)
 
-		self.print_b = QPushButton('Print', self)
-		self.print_b.clicked.connect(self.table_print)
-		self.print_b.setDisabled(True)
+		# self.print_b = QPushButton('Print', self)
+		# self.print_b.clicked.connect(self.table_print)
+		# self.print_b.setDisabled(True)
 		# self.buttons_layout.addWidget(self.print_b)
 		# self.btn_colors= QPushButton()
 		# self._icon_colors = QIcon()
@@ -1652,7 +1817,7 @@ class Window(QMainWindow):
 		self.vbox2.addWidget(self.btn_collate, 1,2)
 		self.vbox2.addWidget(btn_colors_Label, 2,0)
 		self.vbox2.addWidget(self.btn_colors, 2,1)
-		self.vbox2.addWidget(self.print_b, 2,3)
+		# self.vbox2.addWidget(self.print_b, 2,3)
 		self.vbox2.addWidget(self.fit_to_size, 1,3)
 
 
@@ -1700,8 +1865,8 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-			tiskarna_okPressed = self.printer_tb.currentItem()
-			tiskarna_okPressed = (tiskarna_ok.text())
+			tiskarna_ok = self.printer_tb.currentItem()
+			tiskarna_ok = (tiskarna_ok.text())
 		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked(), self.btn_colors.currentText())
 		self.d_writer('Printing setting:',0,'green')
 		self.d_writer(debugstring,1,'white')
@@ -1738,7 +1903,6 @@ class Window(QMainWindow):
 			if not self.gb_preview.isHidden():
 				self.image_label.show()
 				self.labl_name.setText(filename+'.'+filetype)
-				# self.infotable.setFixedHeight(230)
 				if filetype.upper() in (name.upper() for name in image_ext):
 					image_info = file_info_new(filepath.split(','), 'image')
 					self.infotable.setText(image_info)
@@ -1773,7 +1937,6 @@ class Window(QMainWindow):
 			# self.d_writer('Page size: ' + size,0, 'green')
 		except Exception as e:
 				# print (e)
-				# print ('error')
 				self.infotable.clear()
 				self.image_label.clear()
 				self.labl_name.setText('No file selected')

@@ -1,7 +1,6 @@
 import subprocess
 import re
 # path = '/Users/jandevera/Documents/cmyk_A4.pdf'
-
 RE_FLOAT = re.compile("[01].[0-9]+")
 CMYK_NCOLORS = 4
 
@@ -23,8 +22,6 @@ def count_page_types(pdf_file):
     if is_color(*page):
       nc.append(n)
   return nc
-
-
 
 if __name__ == '__main__':
   nc = count_page_types(path)

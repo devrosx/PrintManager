@@ -45,6 +45,16 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
+0.29
+- big rewrite (something may not work)
+- fixed extract image from PDF (CMYK/RGB)
+- new compact menu
+- cloudconvert should now finally work
+- Find similar image (works on image search on google for visual similar images...)
+- added function to remove diacritics from filename (context menu)
+- now you can open printer description (when you double click on printer name)
+- added info how much pdf pages is selected 
+
 0.28
 - Added OCR button (now supports PDF images and multiple files convert)
 - Table sorting, fixed preview size height

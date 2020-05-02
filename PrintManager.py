@@ -50,12 +50,11 @@ def load_printers():
 
 # PREFERENCES BASIC
 def load_preferences():
-	print ('JSON load on boot')
 	try:
 		with open('config.json', encoding='utf-8') as data_file:
 			json_pref = json.loads(data_file.read())
 		if json_pref[0][8] == username:
-			print ('pref. ok - using saved printers')
+			print ('saved pref. ok')
 			printers = json_pref[0][9]
 			default_pref = [json_pref[0][10],json_pref[0][11],json_pref[0][12]]
 		else: 
@@ -1147,6 +1146,7 @@ class Window(QMainWindow):
 				filename=index.sibling(items.row(),1).data()
 				filetype=index.sibling(items.row(),3).data()
 				filepath=index.sibling(items.row(),8).data()
+				pages=index.sibling(items.row(),5).data()
 			self.widget = QDialog(self)
 			self.widget.setWindowTitle(filepath + ' / ' + str(size));
 			self.im_p = QLabel('Image_P',self.widget)
@@ -1156,32 +1156,35 @@ class Window(QMainWindow):
 				self.im_pixmap = QPixmap(filepath)
 				self.im_p.setPixmap(self.im_pixmap)
 			if filetype == 'pdf':
-				filebytes = pdf_preview_generator(filepath,generate_marks=1)
+				self.move_page.value()
+				filebytes = pdf_preview_generator(filepath,generate_marks=1, page=self.move_page.value())
 				self.im_pixmap.loadFromData(filebytes)
 				self.im_p.setPixmap(self.im_pixmap)
-			sizeObject = QDesktopWidget().screenGeometry(0)# monitor size
-			res = [(sizeObject.width()*92/100),(sizeObject.height()*92/100)]
-			w, h = self.im_pixmap.width(), self.im_pixmap.height()
-			# print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
-			self.widget.setFixedSize(w, h)
-			if w > res[0]:
-				# print ('zmensuju sirka je veci')
-				wpercent = (res[0] / float(w))
-				# print (wpercent)
-				self.widget.setFixedSize(w*wpercent, h*wpercent)
-			if h > res[1]:
-				# print ('zmensuju vyska je veci')
-				wpercent = (res[1] / float(h))
-				# print (wpercent)
-				self.widget.setFixedSize(w*wpercent, h*wpercent)
-			# print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
-			self.im_p.setPixmap(self.im_pixmap.scaled(self.widget.size(),Qt.KeepAspectRatio))
-			self.im_p.setMinimumSize(1, 1)
-			self.labl_name = QLabel('Image_name',self.widget)
-			self.labl_name.setStyleSheet("QLabel { background-color: '#2c2c2c'; font-size: 11px; height: 16px; padding: 5,5,5,5;}")
-			self.labl_name.setText(filename)
-			# self.labl_name.setFixedHeight(30)
-			self.widget.exec_()
+			try:
+				sizeObject = QDesktopWidget().screenGeometry(0)# monitor size
+				res = [(sizeObject.width()*92/100),(sizeObject.height()*92/100)]
+				w, h = self.im_pixmap.width(), self.im_pixmap.height()
+				self.widget.setFixedSize(w, h)
+				if w > res[0]:
+					# print ('zmensuju sirka je veci')
+					wpercent = (res[0] / float(w))
+					# print (wpercent)
+					self.widget.setFixedSize(w*wpercent, h*wpercent)
+				if h > res[1]:
+					# print ('zmensuju vyska je veci')
+					wpercent = (res[1] / float(h))
+					# print (wpercent)
+					self.widget.setFixedSize(w*wpercent, h*wpercent)
+				# print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
+				self.im_p.setPixmap(self.im_pixmap.scaled(self.widget.size(),Qt.KeepAspectRatio))
+				self.im_p.setMinimumSize(1, 1)
+				self.labl_name = QLabel('Image_name',self.widget)
+				self.labl_name.setStyleSheet("QLabel { background-color: '#2c2c2c'; font-size: 11px; height: 16px; padding: 5,5,5,5;}")
+				self.labl_name.setText(filename +  ' / page: ' + str(self.move_page.value()))
+				# self.labl_name.setFixedHeight(30)
+				self.widget.exec_()
+			except:
+				print('err')
 
 	class ExtendedQLabel(QLabel):
 		def __init(self, parent):
@@ -1221,6 +1224,15 @@ class Window(QMainWindow):
 		self.labl_name.setAlignment(Qt.AlignCenter)
 		self.labl_name.setFixedHeight(30)
 		self.labl_name.setWordWrap(True)
+
+		self.move_page = QSpinBox()
+		self.move_page.setValue(1)
+		self.move_page.setMinimum(1)
+		self.move_page.setFixedWidth(70)
+		self.move_page.setFixedHeight(30)
+		self.move_page.setAlignment(Qt.AlignCenter)
+		self.move_page.setStyleSheet("QSpinBox{background-color:#343434;selection-background-color: '#343434';selection-color: white;}QSpinBox::down-button{subcontrol-origin:margin;subcontrol-position:center left;width:19px;border-width:1px}QSpinBox::down-arrow{image:url(icons/down.png);min-width:19px;min-height:14px;max-width:19px;max-height:14px;height:19px;width:14px}QSpinBox::down-button:pressed{top:1px}QSpinBox::up-button{subcontrol-origin:margin;subcontrol-position:center right;width:19px;border-width:1px}QSpinBox::up-arrow{image:url(icons/up.png);min-width:19px;min-height:14px;max-width:19px;max-height:14px;height:19px;width:14px}QSpinBox::up-button:pressed{top:1px}")
+		self.move_page.hide()
 		# infotable
 		self.infotable = QTextEdit()
 		self.infotable.setStyleSheet("QTextEdit { background-color : '#2c2c2c'; border-radius: 5px; font-size: 12px;}")
@@ -1228,13 +1240,17 @@ class Window(QMainWindow):
 		self.infotable.setText('Info')
 		self.infotable.setReadOnly(True)
 		self.infotable.setAlignment(Qt.AlignCenter)
-		self.infotable.setFixedHeight(230)
+		self.infotable.setFixedHeight(210-30)
 		self.gb_preview.setLayout(pbox)
 		# self.gb_preview.setFixedHeight(350)
 		self.gb_preview.setFixedWidth(250)
 		# self.printer_layout.addStretch()
 		pbox.addWidget(self.image_label)
 		pbox.addWidget(self.labl_name)
+		# pages_move
+		# pbox.addWidget(self.pages_move_left)
+		# pbox.addWidget(self.pages_move_right)
+		pbox.addWidget(self.move_page, alignment=Qt.AlignCenter)
 		pbox.addWidget(self.infotable)
 		self.preview_layout.addWidget(self.gb_preview)
 		self.setFixedWidth(self.sizeHint().width()+300)
@@ -1496,8 +1512,6 @@ class Window(QMainWindow):
 			for items in outputfiles:
 				ocr = ocr_core(items, self.localization)
 				self.d_writer(str(ocr), 1)
-
-
 
 	def convert_image(self):
 		outputfiles = []
@@ -1899,19 +1913,28 @@ class Window(QMainWindow):
 			filename=index.sibling(items.row(),1).data()
 			filetype=index.sibling(items.row(),3).data()
 			filepath=index.sibling(items.row(),8).data()
+			pages=int(index.sibling(items.row(),5).data())
 		try:
 			if not self.gb_preview.isHidden():
 				self.image_label.show()
 				self.labl_name.setText(filename+'.'+filetype)
 				if filetype.upper() in (name.upper() for name in image_ext):
+					# self.move_page.setValue(1)
+					# self.move_page.hide()
 					image_info = file_info_new(filepath.split(','), 'image')
 					self.infotable.setText(image_info)
 					self.image_label_pixmap = QPixmap(filepath)
 					self.image_label.setPixmap(self.image_label_pixmap)
 				if filetype == 'pdf':
+					if pages > 1:
+						self.move_page.show()
+						self.move_page.setMaximum(pages)
+						self.connect_signal()
+					else:
+						self.move_page.hide()
 					pdf_info = file_info_new(filepath.split(','), 'pdf')
 					self.infotable.setText(' '.join(pdf_info))
-					filebytes = pdf_preview_generator(filepath,generate_marks=1)
+					filebytes = pdf_preview_generator(filepath,generate_marks=1,page=0)
 					self.image_label_pixmap.loadFromData(filebytes)
 					self.image_label.setPixmap(self.image_label_pixmap)
 			w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
@@ -1922,7 +1945,7 @@ class Window(QMainWindow):
 			# print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).width())
 			# print (self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height())
 			height_ = self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height() - 325
-			self.infotable.setFixedHeight(230 - height_)
+			self.infotable.setFixedHeight(210 - height_ - 30)
 			self.image_label.setMinimumSize(1, 1)
 			# change with of info
 			self.labl_name.setText(filename+'.'+filetype)
@@ -1940,6 +1963,29 @@ class Window(QMainWindow):
 				self.infotable.clear()
 				self.image_label.clear()
 				self.labl_name.setText('No file selected')
+
+	# make simpler later
+	@pyqtSlot(int)
+	def move_page_changed(self, value):
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			size=index.sibling(items.row(),2).data()
+			filename=index.sibling(items.row(),1).data()
+			filepath=index.sibling(items.row(),8).data()
+		pdf_info = file_info_new(filepath.split(','), 'pdf')
+		self.infotable.setText(' '.join(pdf_info))
+		filebytes = pdf_preview_generator(filepath,generate_marks=1,page=value)
+		self.image_label_pixmap.loadFromData(filebytes)
+		self.image_label.setPixmap(self.image_label_pixmap)
+		w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
+		w_l, h_l = self.image_label.width(), self.image_label.height()
+		self.image_label.setFixedHeight(325)
+		self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
+		height_ = self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height() - 325
+
+	def connect_signal(self):
+		self.move_page.valueChanged.connect(self.move_page_changed)
 
 	def keyPressEvent(self,e):
 		if e.key() == Qt.Key_Delete:

@@ -20,9 +20,11 @@ PrintManager for Macosx (written in Python and PyQt5, with some handy features).
  - Identify images in image and extract (thanks to OpenCV)
 
 # Installation
-Use Pip3 to install these libraries
-pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5, tnefparse
+Use Pip3 to install these libraries: pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5, tnefparse, cloudconvert
 Use Brew or other installer to install Ghostscript
+to fix opencv and pyqt5 confict use:
+pip uninstall opencv-contrib-python
+pip install opencv-contrib-python-headless
 
  # Warning
 Some features are experimental unfinished and buggy
@@ -46,6 +48,7 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.29
+- added page selecter for preview panel and window
 - big rewrite (something may not work)
 - fixed extract image from PDF (CMYK/RGB)
 - new compact menu

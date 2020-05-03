@@ -1023,12 +1023,10 @@ class Window(QMainWindow):
 			self.print_b.show()
 			self.my_info_label.setText(str(self.count_pages()) + ' PDF pages selected')
 			self.my_info_label.show()
-			
-			# self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.merge_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			self.split_pdf_b.show()
-			self.merge_pdf_b.show()
-
+			if len(self.table.selectionModel().selectedRows()) > 1:
+				self.merge_pdf_b.show()
+			if int(self.count_pages()) > 1:
+				self.split_pdf_b.show()
 			# self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))

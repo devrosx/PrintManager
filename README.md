@@ -48,6 +48,7 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.29
+- merge and split pdf is back
 - added page selecter for preview panel and window
 - big rewrite (something may not work)
 - fixed extract image from PDF (CMYK/RGB)

@@ -107,10 +107,10 @@ def mergefiles(list_path,save_dir):
 	base = os.path.basename(list_path[0])
 	file = os.path.splitext(base)
 	folder_path = os.path.dirname(list_path[0])
-	# print (folder_path)
+	print (folder_path)
 	if folder_path == '/tmp':
 		folder_path = save_dir
-	outputfile = folder_path + file[0] +  '_m.pdf'
+	outputfile = folder_path + '/' + file[0] +  '_m.pdf'
 	# print (outputfile)
 	merger = PdfFileMerger()
 	for pdf in list_path:
@@ -1026,7 +1026,9 @@ class Window(QMainWindow):
 			
 			# self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.merge_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.split_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
+			self.split_pdf_b.show()
+			self.merge_pdf_b.show()
+
 			# self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
@@ -1044,6 +1046,9 @@ class Window(QMainWindow):
 			self.print_b.show()
 			self.my_info_label.setText("Image files selected")
 			self.my_info_label.show()
+			self.split_pdf_b.hide()
+			self.merge_pdf_b.hide()
+
 			# self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.merge_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
 			# self.split_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
@@ -1055,13 +1060,13 @@ class Window(QMainWindow):
 			# self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
 			# self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 		else:
-			# print ('else')
+			self.split_pdf_b.hide()
+			self.merge_pdf_b.hide()
 			self.gb_debug.hide()
 			self.pdf_button.hide()
 			self.img_button.hide()
 			self.print_b.hide()
 			self.my_info_label.hide()
-
 			# self.Colors_button.hide()
 			# self.MergeButton.hide()
 			# self.SplitButton.hide()
@@ -1224,7 +1229,6 @@ class Window(QMainWindow):
 		self.labl_name.setAlignment(Qt.AlignCenter)
 		self.labl_name.setFixedHeight(30)
 		self.labl_name.setWordWrap(True)
-
 		self.move_page = QSpinBox()
 		self.move_page.setValue(1)
 		self.move_page.setMinimum(1)
@@ -1242,15 +1246,10 @@ class Window(QMainWindow):
 		self.infotable.setAlignment(Qt.AlignCenter)
 		self.infotable.setFixedHeight(210-30)
 		self.gb_preview.setLayout(pbox)
-		# self.gb_preview.setFixedHeight(350)
 		self.gb_preview.setFixedWidth(250)
-		# self.printer_layout.addStretch()
 		pbox.addWidget(self.image_label)
-		pbox.addWidget(self.labl_name)
-		# pages_move
-		# pbox.addWidget(self.pages_move_left)
-		# pbox.addWidget(self.pages_move_right)
 		pbox.addWidget(self.move_page, alignment=Qt.AlignCenter)
+		pbox.addWidget(self.labl_name)
 		pbox.addWidget(self.infotable)
 		self.preview_layout.addWidget(self.gb_preview)
 		self.setFixedWidth(self.sizeHint().width()+300)
@@ -1258,7 +1257,6 @@ class Window(QMainWindow):
 
 	def createDebug_layout(self):
 		self.debug_layout = QHBoxLayout()
-		# load setting
 		try:
 			pref_debug_state = (json_pref[0][5])
 		except Exception as e:
@@ -1268,7 +1266,7 @@ class Window(QMainWindow):
 		self.gb_debug.setChecked(True)
 		self.gb_debug.setTitle('')
 		self.gb_debug.setFixedHeight(90)
-		self.gb_debug.setFixedWidth(597)
+		self.gb_debug.setFixedWidth(600)
 		self.gb_debug.setContentsMargins(0, 0, 0, 0)
 		self.gb_debug.setStyleSheet("border: 0px; border-radius: 0px; padding: 0px 0px 0px 0px;")
 		dbox = QVBoxLayout()
@@ -1277,19 +1275,16 @@ class Window(QMainWindow):
 		# debug
 		self.debuglist = QTextEdit(self)
 		self.d_writer('DEBUG:', 0, 'green')
-		# self.debuglist.setAlignment(Qt.AlignJustify)
 		self.debuglist.acceptRichText()
 		self.debuglist.setReadOnly(True)
-		self.debuglist.setFixedHeight(90)
+		self.debuglist.setFixedHeight(80)
 		self.debuglist.setFixedWidth(597)
 		dbox.addWidget(self.debuglist)
 		self.gb_debug.toggled.connect(self.toggleDebugWidget)
-
 		self.debug_layout.addWidget(self.gb_debug)
 
 	def createButtons_layout(self):
 		self.buttons_layout = QHBoxLayout()
-
 		self.color_b = QPushButton('Colors', self)
 		self.color_b.clicked.connect(self.loadcolors)
 		self.buttons_layout.addWidget(self.color_b)
@@ -1297,17 +1292,17 @@ class Window(QMainWindow):
 		self.color_b.hide()
 
 		# SPOJ PDF
-		self.merge_pdf_b = QPushButton('Merge', self)
+		self.merge_pdf_b = QPushButton('Merge files', self)
 		self.merge_pdf_b.clicked.connect(self.merge_pdf)
 		self.buttons_layout.addWidget(self.merge_pdf_b)
-		self.merge_pdf_b.setDisabled(True)
+		# self.merge_pdf_b.setDisabled(True)
 		self.merge_pdf_b.hide()
 
 		# ROZDEL PDF
-		self.split_pdf_b = QPushButton('Split', self)
+		self.split_pdf_b = QPushButton('Split pages', self)
 		self.split_pdf_b.clicked.connect(self.split_pdf)
 		self.buttons_layout.addWidget(self.split_pdf_b)
-		self.split_pdf_b.setDisabled(True)
+		# self.split_pdf_b.setDisabled(True)
 		self.split_pdf_b.hide()
 		# # COMPRES PDF
 		# self.compres_pdf_b = QPushButton('Compres', self)
@@ -1654,6 +1649,7 @@ class Window(QMainWindow):
 				Window.table_reload(self, self.files)
 				# self.table.item((len(rows)-1), 1).setForeground(green_)
 
+				# fix merged pdf files
 	def merge_pdf(self):
 		green_ = (QColor(10, 200, 50))
 		combinefiles = []
@@ -1669,9 +1665,11 @@ class Window(QMainWindow):
 				file_path=index.sibling(items.row(),8).data()
 				combinefiles.append(file_path)
 			merged_pdf = mergefiles(combinefiles, 0)
+			# print ('XXXXX' + str(merged_pdf))
 			self.d_writer('New combined PDF created:', 1,'green')
 			self.d_writer(merged_pdf, 1)
-			merged_pdf = (merged_pdf.split())
+			# merged_pdf = (merged_pdf.split())
+			# print ('XXXXX' + str(merged_pdf))
 			self.files = pdf_parse(self,merged_pdf)
 			Window.table_reload(self, self.files)
 			# self.table.item((len(rows)-1), 1).setForeground(green_)

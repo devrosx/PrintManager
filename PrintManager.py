@@ -394,14 +394,19 @@ def pdf_parse(self, inputs, *args):
 	return self.rows
 
 def getimageinfo (filename):
-	output = (subprocess.check_output(["identify", '-format', '%wx%hpx %m', filename]))
-	outputlist = (output.splitlines())
-	getimageinfo = []
-	for num in outputlist:  # prochazeni listem
-		first, middle = num.split()
-		getimageinfo.append(str(first.decode()))
-		getimageinfo.append(str(middle.decode()))
-	return getimageinfo
+	try:
+		output = (subprocess.check_output(["identify", '-format', '%wx%hpx %m', filename]))
+		outputlist = (output.splitlines())
+		getimageinfo = []
+		for num in outputlist:  # prochazeni listem
+			first, middle = num.split()
+			getimageinfo.append(str(first.decode()))
+			getimageinfo.append(str(middle.decode()))
+		error = 0
+	except Exception as e:
+		error = str(e)
+		getimageinfo = 0
+	return getimageinfo, error
 	
 def parse_img(self, inputs, *args):
 	for item in inputs:
@@ -410,7 +415,11 @@ def parse_img(self, inputs, *args):
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
 		info.append('')
-		image_info = getimageinfo(item)
+		image_info, error = getimageinfo(item)
+		if image_info == 0:
+			self.d_writer('Import file failed...' , 0, 'red')
+			self.d_writer(error , 1, 'white')
+			break
 		name.append(ext_file[0])
 		size.append(str(image_info[0]))
 		extension.append(ext_file[1][1:].lower())

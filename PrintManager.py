@@ -1036,11 +1036,11 @@ class Window(QMainWindow):
 				self.merge_pdf_b.show()
 			if int(self.count_pages()) > 1:
 				self.split_pdf_b.show()
+			self.Convert_b.hide()
 			# self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.extract_b.show()
-			# self.Convert_b.hide()
 			# self.extract_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.crop_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
@@ -1055,6 +1055,7 @@ class Window(QMainWindow):
 			self.my_info_label.show()
 			self.split_pdf_b.hide()
 			self.merge_pdf_b.hide()
+			self.Convert_b.show()
 
 			# self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.merge_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
@@ -1062,7 +1063,6 @@ class Window(QMainWindow):
 			# self.compres_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
 			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.raster_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			# self.Convert_b.show()
 			# self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
 			# self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
 			# self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
@@ -1074,6 +1074,8 @@ class Window(QMainWindow):
 			self.img_button.hide()
 			self.print_b.hide()
 			self.my_info_label.hide()
+			self.Convert_b.hide()
+
 			# self.Colors_button.hide()
 			# self.MergeButton.hide()
 			# self.SplitButton.hide()
@@ -1344,9 +1346,11 @@ class Window(QMainWindow):
 		# self.buttons_layout.addWidget(self.OCR_b)
 		# self.OCR_b.setDisabled(True)
 		# CONVERT (only for image files)
-		# self.Convert_b = QPushButton('Convert', self)
-		# self.Convert_b.clicked.connect(self.convert_image)
-		# self.buttons_layout.addWidget(self.Convert_b)
+		self.Convert_b = QPushButton('Convert to PDF', self)
+		self.Convert_b.clicked.connect(self.convert_image)
+		self.buttons_layout.addWidget(self.Convert_b)
+		self.Convert_b.hide()
+
 
 		self.pdf_button = QPushButton('PDF Actions')
 		menu = QMenu()

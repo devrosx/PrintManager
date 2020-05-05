@@ -85,7 +85,7 @@ def save_preferences(*settings):
 	return startup
 
 def humansize(size):
-	filesize = ('%.1f' % float(size/1000000) + 'MB')
+	filesize = ('%.1f' % float(size/1000000) + ' MB')
 	return filesize
 
 def open_printer(file):
@@ -1026,7 +1026,7 @@ class Window(QMainWindow):
 	def on_selection_changed(self):
 		self.debuglist.clear()
 		if self.selected_file_check() == 'pdf':
-			self.gb_debug.show()
+			# self.gb_debug.show()
 			self.pdf_button.show()
 			self.img_button.hide()
 			self.print_b.show()
@@ -1047,7 +1047,7 @@ class Window(QMainWindow):
 			# self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 		elif self.selected_file_check() == 'image':
 			# print ('image')
-			self.gb_debug.show()
+			# self.gb_debug.show()
 			self.pdf_button.hide()
 			self.img_button.show()
 			self.print_b.show()
@@ -1069,7 +1069,7 @@ class Window(QMainWindow):
 		else:
 			self.split_pdf_b.hide()
 			self.merge_pdf_b.hide()
-			self.gb_debug.hide()
+			# self.gb_debug.hide()
 			self.pdf_button.hide()
 			self.img_button.hide()
 			self.print_b.hide()
@@ -1466,10 +1466,15 @@ class Window(QMainWindow):
 		else:
 			debugstring, outputfiles = action(outputfiles, resolution)
 			self.d_writer(debug_text, 1, 'green')
+			print (debugstring)
 			if outputfiles != None:
+				# imagename
 				self.d_writer(', '.join(debugstring),1)
 				self.files = parse_img(self,outputfiles)
 				Window.table_reload(self, self.files)
+			if outputfiles == None:
+				self.d_writer(', '.join(debugstring),1)
+
 
 	def gray_pdf(self):
 		outputfiles = []

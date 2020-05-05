@@ -20,7 +20,7 @@ PrintManager for Macosx (written in Python and PyQt5, with some handy features).
  - Identify images in image and extract (thanks to OpenCV)
 
 # Installation
-Use Pip3 to install these libraries: pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5, tnefparse, cloudconvert
+Use Pip3 to install these libraries: pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5, tnefparse, cloudconvert, beautifulsoup
 Use Brew or other installer to install Ghostscript
 to fix opencv and pyqt5 confict use:
 pip uninstall opencv-contrib-python
@@ -54,7 +54,7 @@ I'm a newbie with python and PyQt5 :)
 - fixed extract image from PDF (CMYK/RGB)
 - new compact menu
 - cloudconvert should now finally work
-- Find similar image (works on image search on google for visual similar images...)
+- Find similar image (works on image search on google for visual similar images...) now even return picture name from google (beautifulsoup)
 - added function to remove diacritics from filename (context menu)
 - now you can open printer description (when you double click on printer name)
 - added info how much pdf pages is selected 

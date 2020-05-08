@@ -57,7 +57,7 @@ def load_preferences():
 		if json_pref[0][8] == username:
 			print ('saved pref. ok')
 			printers = json_pref[0][9]
-			default_pref = [json_pref[0][10],json_pref[0][11],json_pref[0][12]]
+			default_pref = [json_pref[0][10],json_pref[0][11],json_pref[0][12],json_pref[0][13]]
 		else: 
 			print ('other machine loading printers')
 			printers = load_printers()
@@ -65,7 +65,7 @@ def load_preferences():
 		print (e)
 		printers = load_printers()
 		json_pref = [0,0,0,0,0,0,0]
-		default_pref = ['eng',300,'OpenOffice']
+		default_pref = ['eng',300,'OpenOffice',False]
 	return json_pref, printers, default_pref
 
 def fix_filename(item):
@@ -576,23 +576,26 @@ class PrefDialog(QDialog):
 		self.layout = QFormLayout(self)
 		self.text_link = QLineEdit(prefs[0], self)
 		self.text_link.setMaxLength(3)
-		# self.text_link.setObjectName("text_lang")
-		# resolution rasterubg
+		# resolution raster
 		self.res_box = QSpinBox(self)
 		self.res_box.setRange(50, 1200)
 		self.res_box.setValue(prefs[1])
-		# self.res_box.setObjectName("text_res")
 		# file parser
 		self.btn_convertor = QComboBox(self)
 		self.btn_convertor.addItem('OpenOffice')
 		self.btn_convertor.addItem('CloudConvert')
 		self.btn_convertor.setCurrentText(prefs[2])
+		# ontop
+		self.ontop = QCheckBox(self)
+		self.ontop.setChecked(prefs[3])
 		# self.btn_convertor.setObjectName("btn_conv")
 		# self.btn_convertor.activated[str].connect(self.color_box_change) 
 		self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self);
 		self.layout.addRow("OCR language", self.text_link)
 		self.layout.addRow("File convertor", self.btn_convertor)
 		self.layout.addRow("Rastering resolution (DPI)", self.res_box)
+		self.layout.addRow("Window always on top", self.ontop)
+
 		self.layout.addWidget(self.buttonBox)
 
 		self.buttonBox.accepted.connect(self.accept)
@@ -600,13 +603,14 @@ class PrefDialog(QDialog):
 		self.resize(50, 200)
 	def getInputs(self):
 		self.destroy()
-		return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText()		
+		return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText(), self.ontop.isChecked()	
 
 class Window(QMainWindow):
 	def __init__(self, parent=None):
 		super(Window, self).__init__(parent)
 		self.setWindowTitle("PrintManager " + version)
-		self.setWindowFlags(Qt.WindowStaysOnTopHint) 
+		if default_pref[3] == 1:
+			self.setWindowFlags(Qt.WindowStaysOnTopHint) 
 		self.setAcceptDrops(True)
 		menubar = self.menuBar()
 		menubar.setNativeMenuBar(True)
@@ -698,21 +702,31 @@ class Window(QMainWindow):
 		form = PrefDialog(default_pref)
 		try:
 			if form.exec():
-				self.localization, self.resolution, self.convertor = form.getInputs()
+				self.localization, self.resolution, self.convertor, self.ontop = form.getInputs()
 				preferences = self.pref_generator()
 				save_preferences(preferences)
 				json_pref,printers,default_pref = load_preferences()
-		except:
+				# if default_pref[3] == 1:
+				# 	print ('ommm')
+				# 	self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+				# else:
+				# 	print ('off')
+				# 	self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+		except Exception as e:
+			print (e)
 			print ('pref canceled')
 
 	def pref_generator(self):
 		try:
 			print (self.localization)
 			print (self.resolution)
+			print (self.ontop)
+			print (self.convertor)
 		except:
 			self.localization = default_pref[0]
 			self.resolution = default_pref[1]
 			self.convertor = default_pref[2]
+			self.ontop = default_pref[3]
 		preferences = []
 		if self.printer_tb.currentItem() != None:
 			preferences.append('printer')
@@ -728,6 +742,7 @@ class Window(QMainWindow):
 			preferences.append(self.localization)
 			preferences.append(self.resolution)
 			preferences.append(self.convertor)
+			preferences.append(self.ontop)
 		return preferences
 
 	def closeEvent(self, event):

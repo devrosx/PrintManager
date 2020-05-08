@@ -50,8 +50,7 @@ I'm a newbie with python and PyQt5 :)
 0.30
 - added remove cropmarks from pdf files (works on multiple files at once all pagesizes are detected) :)
 - fixed counting pages, preview image, merging image files on import
-
-
+- preferences for alway on top (restart required)
 0.29
 - merge and split pdf is back
 - added page selecter for preview panel and window

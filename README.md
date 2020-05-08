@@ -47,6 +47,11 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
+0.30
+- added remove cropmarks from pdf files (works on multiple files at once all pagesizes are detected) :)
+- fixed counting pages, preview image, merging image files on import
+
+
 0.29
 - merge and split pdf is back
 - added page selecter for preview panel and window
@@ -57,7 +62,7 @@ I'm a newbie with python and PyQt5 :)
 - Find similar image (works on image search on google for visual similar images...) now even return picture name from google (beautifulsoup)
 - added function to remove diacritics from filename (context menu)
 - now you can open printer description (when you double click on printer name)
-- added info how much pdf pages is selected 
+- added info how much pdf pages is selected
 
 0.28
 - Added OCR button (now supports PDF images and multiple files convert)

@@ -10,6 +10,7 @@ from PyQt5.QtCore import *
 from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
 from tnefparse.mapi import TNEFMAPI_Attribute
 from unidecode import unidecode
+import webbrowser
 # my modules import
 from libs.colordetector import *
 from libs.ocr_module import ocr_core
@@ -19,8 +20,8 @@ from libs.cc_module import cc_convert
 from libs.pdf_preview_module import pdf_preview_generator
 from libs.super_crop_module import *
 from libs.image_grabber_module import *
-import webbrowser
-version = '0.29'
+from libs.remove_cropmarks_module import *
+version = '0.30'
 import time
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
@@ -759,7 +760,7 @@ class Window(QMainWindow):
 			event.accept()
 		else:
 			event.ignore()
-			print ('Ignore')
+			# print ('Ignore')
 
 	def dropEvent(self, event):
 		self.d_writer("Loading files - please wait...", 0,'green')
@@ -815,7 +816,7 @@ class Window(QMainWindow):
 					self.files = parse_img(self, image_files)
 					Window.table_reload(self, self.files)
 			else:
-				items = ["Convert to PDF", "OCR", "Import"]
+				items = ["Convert to PDF", "Import"]
 				text, okPressed = QInputDialog.getItem(self, "Image import", "Action", items, 0, False)					
 				if not okPressed:
 					return
@@ -938,7 +939,8 @@ class Window(QMainWindow):
 			if setting == 'combine':
 				merged_pdf = mergefiles(converts, savedir)
 				# convert to list fix for later
-				merged_pdf = (merged_pdf.split())
+				# merged_pdf = (merged_pdf.split())
+				merged_pdf = [merged_pdf]
 				self.files = pdf_parse(self,merged_pdf)
 				self.d_writer('CloudConvert combining files to:', 0, 'green')
 				self.d_writer(merged_pdf[0], 1)
@@ -1024,13 +1026,14 @@ class Window(QMainWindow):
 
 	@pyqtSlot()
 	def on_selection_changed(self):
+		self.my_info_label.setText(str(self.count_pages()) + ' pages selected')
 		self.debuglist.clear()
 		if self.selected_file_check() == 'pdf':
 			# self.gb_debug.show()
 			self.pdf_button.show()
 			self.img_button.hide()
 			self.print_b.show()
-			self.my_info_label.setText(str(self.count_pages()) + ' PDF pages selected')
+			print (self.count_pages())
 			self.my_info_label.show()
 			if len(self.table.selectionModel().selectedRows()) > 1:
 				self.merge_pdf_b.show()
@@ -1300,19 +1303,7 @@ class Window(QMainWindow):
 		self.color_b.setDisabled(True)
 		self.color_b.hide()
 
-		# SPOJ PDF
-		self.merge_pdf_b = QPushButton('Merge files', self)
-		self.merge_pdf_b.clicked.connect(self.merge_pdf)
-		self.buttons_layout.addWidget(self.merge_pdf_b)
-		# self.merge_pdf_b.setDisabled(True)
-		self.merge_pdf_b.hide()
 
-		# ROZDEL PDF
-		self.split_pdf_b = QPushButton('Split pages', self)
-		self.split_pdf_b.clicked.connect(self.split_pdf)
-		self.buttons_layout.addWidget(self.split_pdf_b)
-		# self.split_pdf_b.setDisabled(True)
-		self.split_pdf_b.hide()
 		# # COMPRES PDF
 		# self.compres_pdf_b = QPushButton('Compres', self)
 		# self.compres_pdf_b.clicked.connect(self.compres_pdf)
@@ -1363,6 +1354,7 @@ class Window(QMainWindow):
 		convert_menu.addAction('Extract images from PDF', self.extract_pdf)
 		convert_menu.addAction('Convert to image', self.convert_image)
 		convert_menu.addAction('SmartCrop', self.crop_pdf)
+		convert_menu.addAction('Remove Cropmarks', self.remove_cropmarks_pdf)
 		colors_menu.addAction('To CMYK')
 		colors_menu.addAction('To Grayscale',self.gray_pdf)
 		other_menu.addAction('Fix PDF',lambda: self.operate_file(fix_this_file, 'File(s) fixed:', default_pref[1]))
@@ -1398,6 +1390,20 @@ class Window(QMainWindow):
 		self.img_button.setMenu(menu)
 		self.buttons_layout.addWidget(self.img_button)
 		self.img_button.hide()
+
+		# SPOJ PDF
+		self.merge_pdf_b = QPushButton('Merge files', self)
+		self.merge_pdf_b.clicked.connect(self.merge_pdf)
+		self.buttons_layout.addWidget(self.merge_pdf_b)
+		# self.merge_pdf_b.setDisabled(True)
+		self.merge_pdf_b.hide()
+
+		# ROZDEL PDF
+		self.split_pdf_b = QPushButton('Split pages', self)
+		self.split_pdf_b.clicked.connect(self.split_pdf)
+		self.buttons_layout.addWidget(self.split_pdf_b)
+		# self.split_pdf_b.setDisabled(True)
+		self.split_pdf_b.hide()
 
 		self.print_b = QPushButton('Print selected', self)
 		self.print_b.clicked.connect(self.table_print)
@@ -1466,7 +1472,7 @@ class Window(QMainWindow):
 		else:
 			debugstring, outputfiles = action(outputfiles, resolution)
 			self.d_writer(debug_text, 1, 'green')
-			print (debugstring)
+			# print (debugstring)
 			if outputfiles != None:
 				# imagename
 				self.d_writer(', '.join(debugstring),1)
@@ -1510,11 +1516,11 @@ class Window(QMainWindow):
 		if self.selected_file_check() == 'pdf':
 			file,outputpdf = raster_this_file_(', '.join(outputfiles), 300,0,True,int(pages))
 			for items in file:
-				print (items)
+				# print (items)
 				ocr = ocr_core(items, self.localization)
 				self.d_writer(str(ocr), 1)
 				# self.d_writer('WTF', 1)
-				print (ocr)
+				# print (ocr)
 
 			# debugstring, outputfiles = gray_this_file(outputfiles,'pdf')
 			# self.files = pdf_parse(self,outputfiles)
@@ -1572,12 +1578,27 @@ class Window(QMainWindow):
 			multipage, croppage, margin = pdf_dialog.getInputs()
 			debugstring, outputfile = convertor(file_path,72,croppage=croppage-1,multipage=multipage,margin=margin)
 			outputfiles.append(outputfile)
-			print (outputfiles)
+			# print (outputfiles)
 			self.files = pdf_parse(self,outputfiles)
 			Window.table_reload(self, self.files)
 			self.d_writer(debugstring, 1, 'green')
 		else:
 			pdf_dialog.close()
+
+	def remove_cropmarks_pdf(self):
+		outputfiles = []
+		if self.table.currentItem() == None:
+			self.d_writer('Error - No files selected', 1, 'red')
+			return
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			debugstring, outputfile = remove_cropmarks_mod(file_path,multipage=True)
+			outputfiles.append(outputfile)
+		self.files = pdf_parse(self,outputfiles)
+		Window.table_reload(self, self.files)
+		self.d_writer(debugstring, 1, 'green')
 
 	def extract_pdf(self):
 		outputfiles = []
@@ -1733,8 +1754,8 @@ class Window(QMainWindow):
 				outputfiles.append(file_path)
 				for items in outputfiles:
 					image_info = getimageinfo(items)
-					print (image_info)
-					print (items)
+					# print (image_info)
+					# print (items)
 					self.d_writer(str(image_info[1]), 0, 'green')
 					return			
 
@@ -1933,8 +1954,6 @@ class Window(QMainWindow):
 				self.image_label.show()
 				self.labl_name.setText(filename+'.'+filetype)
 				if filetype.upper() in (name.upper() for name in image_ext):
-					# self.move_page.setValue(1)
-					# self.move_page.hide()
 					image_info = file_info_new(filepath.split(','), 'image')
 					self.infotable.setText(image_info)
 					self.image_label_pixmap = QPixmap(filepath)
@@ -1971,13 +1990,10 @@ class Window(QMainWindow):
 			for items in papers:
 				self.papersize.addItem(items)
 			self.papersize.update()
-			# self.d_writer('Page size: ' + size,0, 'green')
 		except Exception as e:
-				# print (e)
 				self.infotable.clear()
 				self.image_label.clear()
 				self.labl_name.setText('No file selected')
-
 	# make simpler later
 	@pyqtSlot(int)
 	def move_page_changed(self, value):
@@ -1994,7 +2010,6 @@ class Window(QMainWindow):
 		self.image_label.setPixmap(self.image_label_pixmap)
 		w, h = self.image_label_pixmap.width(), self.image_label_pixmap.height()
 		w_l, h_l = self.image_label.width(), self.image_label.height()
-		self.image_label.setFixedHeight(325)
 		self.image_label.setPixmap(self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio))
 		height_ = self.image_label_pixmap.scaled(self.image_label.size(),Qt.KeepAspectRatio).height() - 325
 

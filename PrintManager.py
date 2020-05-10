@@ -1367,7 +1367,7 @@ class Window(QMainWindow):
 		other_menu = QMenu('Other', self)
 		menu.addMenu(other_menu)
 		convert_menu.addAction('Extract images from PDF', self.extract_pdf)
-		convert_menu.addAction('Convert to image', self.convert_image)
+		convert_menu.addAction('Rasterize PDF (300dpi)', self.convert_image)
 		convert_menu.addAction('SmartCrop', self.crop_pdf)
 		convert_menu.addAction('Remove Cropmarks', self.remove_cropmarks_pdf)
 		colors_menu.addAction('To CMYK')

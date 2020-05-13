@@ -33,17 +33,15 @@ I'm a newbie with python and PyQt5 :)
  # Todo
 - Fix bugs
 - Optimize code
-- Add cropregions info 
 - Interface polishing
-- app bundle configuration
-- drag and drop on app icon
+- app bundle configuration (drag and drop on app icon)
+- pdf and image rotations
 - More image operations
-- Localizations..
 - Finish print settings
 - Support other platforms
 - rewrite process to QProcess
 - Rework pricing
-- Support native printing presets
+- Support native printing presets (dont know if possible)
 - ...
 
 # Updates:

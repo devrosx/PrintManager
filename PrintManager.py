@@ -615,6 +615,7 @@ class Window(QMainWindow):
 		menubar = self.menuBar()
 		menubar.setNativeMenuBar(True)
 		file_menu = QMenu('File', self)
+		edit_menu = QMenu('Edit', self)
 		win_menu = QMenu('Windows', self)
 		about_menu = QMenu('About', self)
 		open_action = QAction("Open file", self) 
@@ -638,6 +639,13 @@ class Window(QMainWindow):
 		printing_setting_menu.setChecked(False)
 		printing_setting_menu.triggered.connect(self.togglePreviewWidget)
 		win_menu.addAction(printing_setting_menu)
+
+		# EDIT PAGE
+		select_all = QAction("Select all", self)
+		select_all.setShortcut('Ctrl+A')
+		select_all.triggered.connect(self.select_all_action)
+		edit_menu.addAction(select_all)
+
 		# PREVIEW
 		preview_menu  = QAction("Preview", self)
 		preview_menu.setShortcut('F1')
@@ -660,6 +668,7 @@ class Window(QMainWindow):
 		close_action.triggered.connect(self.close)
 		file_menu.addAction(close_action)
 		menubar.addMenu(file_menu)
+		menubar.addMenu(edit_menu)
 		menubar.addMenu(win_menu)
 		menubar.addMenu(about_menu)
 
@@ -1563,7 +1572,7 @@ class Window(QMainWindow):
 
 	def resize_image(self):
 		outputfiles = []
-		percent,okPressed = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 100)
+		percent,okPressed = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 5000)
 		if self.table.currentItem() == None:
 			self.d_writer('Error - No files selected', 1, 'red')
 			return
@@ -2052,6 +2061,13 @@ class Window(QMainWindow):
 			self.files = pdf_parse(self,soubor)
 			self.table_reload(self.files)
 			self.d_writer('Loaded: ' + str(soubor),0,'green')
+
+	def select_all_action(self):
+		self.table.clearSelection()
+		self.table.setSelectionMode(QAbstractItemView.MultiSelection)
+		for row in range(self.table.rowCount()):
+			self.table.selectRow(row)
+		self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 if __name__ == '__main__':
 	json_pref,printers,default_pref = load_preferences()

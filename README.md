@@ -50,6 +50,8 @@ I'm a newbie with python and PyQt5 :)
 - fixed counting pages, preview image, merging image files on import
 - preferences for alway on top (restart required)
 - added select all for all items (ctr+A)
+- fixed duplicates bug
+- rotating files (only pdf supported yet) in edit menu
 
 0.29
 - merge and split pdf is back

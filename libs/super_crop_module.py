@@ -132,7 +132,7 @@ def detect_cropboxes(pages,file,margin,multipage):
 			cropboxes.append(cropbox)
 		return cropboxes		
 
-def convertor(pdf_input,res,croppage,multipage,margin):
+def super_crop(pdf_input,res,croppage,multipage,margin):
 	# print ('starting supercrop / ' + 'margin je: ' + str(margin))
 	pages = pdf_get_num_pages(pdf_input)
 	file,outputpdf = raster_this_file_(pdf_input, res, croppage, multipage, pages)
@@ -145,4 +145,4 @@ def convertor(pdf_input,res,croppage,multipage,margin):
 
 if __name__ == '__main__':
 	pdf_input = '/Users/jandevera/Desktop/X/pr_2.pdf'
-	convertor(pdf_input,72,croppage=0,multipage=True,margin=10)
+	super_crop(pdf_input,72,croppage=0,multipage=True,margin=10)

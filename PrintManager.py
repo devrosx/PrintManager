@@ -13,12 +13,12 @@ from unidecode import unidecode
 import webbrowser
 # my modules import
 from libs.colordetector import *
-from libs.ocr_module import ocr_core
+# from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
-from libs.pdfextract_module import extractfiles
-from libs.cc_module import cc_convert
+# from libs.pdfextract_module import extractfiles
+# from libs.cc_module import cc_convert
 from libs.pdf_preview_module import pdf_preview_generator
-from libs.super_crop_module import *
+# from libs.super_crop_module import *
 from libs.image_grabber_module import *
 from libs.remove_cropmarks_module import *
 version = '0.30'
@@ -222,6 +222,7 @@ def get_boxes(input_file):
 		pdf_reader = PdfFileReader(input_file)
 		page = pdf_reader.getPage(0)
 		pageNumbers = pdf_reader.getNumPages()
+		# input_file.close()
 		return pageNumbers
 
 def file_info_new(inputs, file, *args):
@@ -358,6 +359,15 @@ def get_pdf_size(pdf_input):
 
 def pdf_parse(self, inputs, *args):
 	self.rows = []
+	# # clear row on rewrite...
+	# # if clear == 1:
+	# # 	info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
+	# # else:
+	# # 	print ('x')
+	# print ('clear: ' + str(clear))
+	# print ('init:' + str(self.rows))
+	# print ('inputs:' + str(inputs))
+	# print ('name:' + str(name))
 	# convert str to list
 	if type(inputs) is str:
 		inputs = [inputs]
@@ -372,26 +382,37 @@ def pdf_parse(self, inputs, *args):
 			pdf_input = PdfFileReader(f, strict=False)
 			if pdf_input.isEncrypted:
 				self.d_writer('File is encrypted...', 0, 'red')
+				pdf_input.close()
 				break
 			else:
-				page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
-				# qsizedoc = (pdf_input.getPage(0).mediaBox)
-				# sirka = (float(qsizedoc[2]) * float(mm))
-				# vyska = (float(qsizedoc[3]) * float(mm))
-				# page_size = (str(round(sirka)) + 'x' + str(round(vyska)) + ' mm')
-				pdf_pages = pdf_input.getNumPages()
-				velikost = size_check(page_size)
-				name.append(ext_file[0])
-				size.append(size_check(page_size))
-				price.append(price_check(pdf_pages, velikost))
-				file_size.append(humansize(os.path.getsize(item)))
-				pages.append(int(pdf_pages))
-				filepath.append(item)
-				info.append('')
-				colors.append('')
-				extension.append(ext_file[1][1:].lower())
-	self.rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	# print (self.rows)
+				try:
+					page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
+					pdf_pages = pdf_input.getNumPages()
+					velikost = size_check(page_size)
+					name.append(ext_file[0])
+					size.append(size_check(page_size))
+					price.append(price_check(pdf_pages, velikost))
+					file_size.append(humansize(os.path.getsize(item)))
+					pages.append(int(pdf_pages))
+					filepath.append(item)
+					info.append('')
+					colors.append('')
+					extension.append(ext_file[1][1:].lower())
+				except Exception as e:
+					print (e)
+					err = QMessageBox()
+					err.setWindowTitle("Error")
+					err.setIcon(QMessageBox.Critical)
+					err.setText("Error")
+					err.setInformativeText(str(e))
+					err.exec_()
+					self.d_writer('Import error:' + str(e),1, 'red')
+			f.close()
+	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	self.rows = []
+	for ele in merged_list:
+		if set(ele) not in [set(x) for x in self.rows]:
+			self.rows.append(ele)
 	return self.rows
 
 def getimageinfo (filename):
@@ -595,9 +616,7 @@ class PrefDialog(QDialog):
 		self.layout.addRow("File convertor", self.btn_convertor)
 		self.layout.addRow("Rastering resolution (DPI)", self.res_box)
 		self.layout.addRow("Window always on top", self.ontop)
-
 		self.layout.addWidget(self.buttonBox)
-
 		self.buttonBox.accepted.connect(self.accept)
 		self.buttonBox.rejected.connect(self.reject)
 		self.resize(50, 200)
@@ -646,6 +665,16 @@ class Window(QMainWindow):
 		select_all.triggered.connect(self.select_all_action)
 		edit_menu.addAction(select_all)
 
+		rotate_90cw = QAction("Rotate 90cw", self)
+		rotate_90cw.setShortcut('Ctrl+R')
+		rotate_90cw.triggered.connect(lambda: self.rotator(angle=90, operation='pdf'))
+		edit_menu.addAction(rotate_90cw)
+
+		rotate_180 = QAction("Rotate 180", self)
+		rotate_180.setShortcut('Ctrl+Alt+Shift+R')
+		rotate_180.triggered.connect(lambda: self.rotator(angle=180, operation='pdf'))
+		edit_menu.addAction(rotate_180)
+
 		# PREVIEW
 		preview_menu  = QAction("Preview", self)
 		preview_menu.setShortcut('F1')
@@ -673,10 +702,8 @@ class Window(QMainWindow):
 		menubar.addMenu(about_menu)
 
 		self.files = []
-
 		"""Core Layouts"""
 		self.mainLayout = QGridLayout()
-
 		self.table_reload(self.files)
 		self.createPrinter_layout()
 		self.createDebug_layout()
@@ -944,6 +971,7 @@ class Window(QMainWindow):
 				Window.table_reload(self, self.files)				
 		elif self.convertor == 'CloudConvert':
 			print ('CloudConvert')
+			from libs.cc_module import cc_convert
 			for items in inputfile:
 				# fix diacritics (check better fix later)
 				items = fix_filename(items)
@@ -1527,6 +1555,7 @@ class Window(QMainWindow):
 		self.d_writer(', '.join(debugstring),1)
 
 	def ocr_maker(self):
+		from libs.ocr_module import ocr_core
 		outputfiles = []
 		if self.table.currentItem() == None:
 			self.d_writer('Error - No files selected', 1, 'red')
@@ -1587,6 +1616,7 @@ class Window(QMainWindow):
 		self.d_writer('File(s)' + str(outputfiles) +' resized', 1, 'green')
 
 	def crop_pdf(self):
+		from libs.super_crop_module import super_crop
 		outputfiles = []
 		if self.table.currentItem() == None:
 			self.d_writer('Error - No files selected', 1, 'red')
@@ -1600,7 +1630,7 @@ class Window(QMainWindow):
 		pdf_dialog = InputDialog_PDFcut()
 		if pdf_dialog.exec():
 			multipage, croppage, margin = pdf_dialog.getInputs()
-			debugstring, outputfile = convertor(file_path,72,croppage=croppage-1,multipage=multipage,margin=margin)
+			debugstring, outputfile = super_crop(file_path,72,croppage=croppage-1,multipage=multipage,margin=margin)
 			outputfiles.append(outputfile)
 			# print (outputfiles)
 			self.files = pdf_parse(self,outputfiles)
@@ -1625,6 +1655,7 @@ class Window(QMainWindow):
 		self.d_writer(debugstring, 1, 'green')
 
 	def extract_pdf(self):
+		from libs.pdfextract_module import extractfiles
 		outputfiles = []
 		if self.table.currentItem() == None:
 			self.d_writer('Error - No files selected', 1, 'red')
@@ -1964,6 +1995,39 @@ class Window(QMainWindow):
 		open_printer(tiskarna)
 		self.d_writer('Printing setting: ' + tiskarna,0, 'green')
 
+	def rotator(self, angle, operation):
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			filename=index.sibling(items.row(),1).data()
+			filetype=index.sibling(items.row(),3).data()
+			filepath=index.sibling(items.row(),8).data()
+			pages=int(index.sibling(items.row(),5).data())
+			# with open(filepath, 'rb') as pdf_file:
+			if filetype == 'pdf':
+				pdf_in = open(filepath, 'rb')
+				pdf_reader = PdfFileReader(pdf_in)
+				pdf_writer = PdfFileWriter()
+				for pagenum in range(pdf_reader.numPages):
+					page = pdf_reader.getPage(pagenum)
+					page.rotateClockwise(angle)
+					pdf_writer.addPage(page)
+				pdf_out = open(filepath + '_temp', 'wb')
+				pdf_writer.write(pdf_out)
+				pdf_out.close()
+				pdf_in.close()
+				os.rename(filepath + '_temp', filepath)
+				self.files = pdf_parse(self,filepath)
+				self.table_reload(self.files)
+				# reload files
+				self.table.clearSelection()
+				self.table.setSelectionMode(QAbstractItemView.MultiSelection)
+				self.table.selectRow(row)
+				self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+			else:
+				self.d_writer('not yet supported',1, 'red')
+			self.d_writer(filename + ' rotate:' + str(operation) + ' / angle: ' + str(angle),1, 'green')
+		
 	def get_page_size(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()

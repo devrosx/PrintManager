@@ -51,7 +51,7 @@ I'm a newbie with python and PyQt5 :)
 - preferences for alway on top (restart required)
 - added select all for all items (ctr+A)
 - fixed duplicates bug
-- rotating files (only pdf supported yet) in edit menu
+- rotating files (pdf and image files works) in edit menu
 
 0.29
 - merge and split pdf is back

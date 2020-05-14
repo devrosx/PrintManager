@@ -148,6 +148,16 @@ def resize_this_image(original_file, percent):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+def rotate_this_image(original_file, angle):
+	outputfiles = []
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + ext
+		command = ["convert", item, "-rotate", str(angle), outputfile]
+		subprocess.run(command)
+		outputfiles.append(outputfile)
+	return command, outputfiles
+
 def gray_this_file(original_file,filetype):
 	outputfiles = []
 	for item in original_file:
@@ -358,7 +368,7 @@ def get_pdf_size(pdf_input):
 	return page_size
 
 def pdf_parse(self, inputs, *args):
-	self.rows = []
+	rows = []
 	# # clear row on rewrite...
 	# # if clear == 1:
 	# # 	info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
@@ -409,11 +419,16 @@ def pdf_parse(self, inputs, *args):
 					self.d_writer('Import error:' + str(e),1, 'red')
 			f.close()
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	self.rows = []
-	for ele in merged_list:
-		if set(ele) not in [set(x) for x in self.rows]:
-			self.rows.append(ele)
-	return self.rows
+	rows = check_for_duplicates(merged_list)
+	return rows
+
+def check_for_duplicates(inputs):
+	rows = []
+	for ele in inputs:
+		print (set(ele))
+		if set(ele) not in [set(x) for x in rows]:
+			rows.append(ele)
+	return rows
 
 def getimageinfo (filename):
 	try:
@@ -431,6 +446,7 @@ def getimageinfo (filename):
 	return getimageinfo, error
 	
 def parse_img(self, inputs, *args):
+	rows = []
 	for item in inputs:
 		oldfilename = (os.path.basename(item))
 		filesize = humansize(os.path.getsize(item))
@@ -450,8 +466,9 @@ def parse_img(self, inputs, *args):
 		price.append('')
 		colors.append(str(image_info[1]))
 		filepath.append(item)
-	self.rows = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	return self.rows
+	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	rows = check_for_duplicates(merged_list)
+	return rows
 
 def size_check(page_size):
 	velikost = 0
@@ -667,12 +684,12 @@ class Window(QMainWindow):
 
 		rotate_90cw = QAction("Rotate 90cw", self)
 		rotate_90cw.setShortcut('Ctrl+R')
-		rotate_90cw.triggered.connect(lambda: self.rotator(angle=90, operation='pdf'))
+		rotate_90cw.triggered.connect(lambda: self.rotator(angle=90))
 		edit_menu.addAction(rotate_90cw)
 
 		rotate_180 = QAction("Rotate 180", self)
 		rotate_180.setShortcut('Ctrl+Alt+Shift+R')
-		rotate_180.triggered.connect(lambda: self.rotator(angle=180, operation='pdf'))
+		rotate_180.triggered.connect(lambda: self.rotator(angle=180))
 		edit_menu.addAction(rotate_180)
 
 		# PREVIEW
@@ -1130,6 +1147,7 @@ class Window(QMainWindow):
 			self.print_b.hide()
 			self.my_info_label.hide()
 			self.Convert_b.hide()
+			self.move_page.hide()
 
 			# self.Colors_button.hide()
 			# self.MergeButton.hide()
@@ -1995,7 +2013,7 @@ class Window(QMainWindow):
 		open_printer(tiskarna)
 		self.d_writer('Printing setting: ' + tiskarna,0, 'green')
 
-	def rotator(self, angle, operation):
+	def rotator(self, angle):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
@@ -2025,8 +2043,15 @@ class Window(QMainWindow):
 				self.table.selectRow(row)
 				self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
 			else:
-				self.d_writer('not yet supported',1, 'red')
-			self.d_writer(filename + ' rotate:' + str(operation) + ' / angle: ' + str(angle),1, 'green')
+				command, outputfiles = rotate_this_image([filepath], angle)
+				self.files = parse_img(self, outputfiles)
+				self.table_reload(self.files)
+				# reload files
+				self.table.clearSelection()
+				self.table.setSelectionMode(QAbstractItemView.MultiSelection)
+				self.table.selectRow(row)
+				self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+			self.d_writer(filename + ' / angle: ' + str(angle),1, 'green')
 		
 	def get_page_size(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):
@@ -2051,8 +2076,6 @@ class Window(QMainWindow):
 						self.move_page.show()
 						self.move_page.setMaximum(pages)
 						self.connect_signal()
-					else:
-						self.move_page.hide()
 					pdf_info = file_info_new(filepath.split(','), 'pdf')
 					self.infotable.setText(' '.join(pdf_info))
 					filebytes = pdf_preview_generator(filepath,generate_marks=1,page=0)

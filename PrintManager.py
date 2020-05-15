@@ -369,25 +369,12 @@ def get_pdf_size(pdf_input):
 
 def pdf_parse(self, inputs, *args):
 	rows = []
-	# # clear row on rewrite...
-	# # if clear == 1:
-	# # 	info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
-	# # else:
-	# # 	print ('x')
-	# print ('clear: ' + str(clear))
-	# print ('init:' + str(self.rows))
-	# print ('inputs:' + str(inputs))
-	# print ('name:' + str(name))
-	# convert str to list
 	if type(inputs) is str:
 		inputs = [inputs]
-	# print ('ROWS:' + str(self.rows))
 	for item in inputs:
-		# print ('item' + str(item))
 		oldfilename = (os.path.basename(item))
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
-
 		with open(item, mode='rb') as f:
 			pdf_input = PdfFileReader(f, strict=False)
 			if pdf_input.isEncrypted:
@@ -419,12 +406,55 @@ def pdf_parse(self, inputs, *args):
 					self.d_writer('Import error:' + str(e),1, 'red')
 			f.close()
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	rows = check_for_duplicates(merged_list)
-	return rows
+	return merged_list
+
+def pdf_update(self, inputs, index, *args):
+	rows = []
+	if type(inputs) is str:
+		inputs = [inputs]
+	for item in inputs:
+		oldfilename = (os.path.basename(item))
+		ext_file = os.path.splitext(oldfilename)
+		dirname = (os.path.dirname(item) + '/')
+		with open(item, mode='rb') as f:
+			pdf_input = PdfFileReader(f, strict=False)
+			if pdf_input.isEncrypted:
+				self.d_writer('File is encrypted...', 0, 'red')
+				pdf_input.close()
+				break
+			else:
+				try:
+					page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
+					pdf_pages = pdf_input.getNumPages()
+					velikost = size_check(page_size)
+					name[index] = ext_file[0]
+					size[index] = size_check(page_size)
+					price[index] = price_check(pdf_pages, velikost)
+					file_size[index] = humansize(os.path.getsize(item))
+					pages[index] = int(pdf_pages)
+					filepath[index] = item
+					info[index] = ''
+					colors[index] = ''
+					extension[index] = ext_file[1][1:].lower()
+				except Exception as e:
+					print (e)
+					err = QMessageBox()
+					err.setWindowTitle("Error")
+					err.setIcon(QMessageBox.Critical)
+					err.setText("Error")
+					err.setInformativeText(str(e))
+					err.exec_()
+					self.d_writer('Import error:' + str(e),1, 'red')
+			f.close()
+	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	# rows = check_for_duplicates(merged_list)
+	return merged_list
 
 def check_for_duplicates(inputs):
 	rows = []
 	for ele in inputs:
+		print (type(ele))
+		print ('XXXXX' + str(ele))
 		print (set(ele))
 		if set(ele) not in [set(x) for x in rows]:
 			rows.append(ele)
@@ -467,8 +497,31 @@ def parse_img(self, inputs, *args):
 		colors.append(str(image_info[1]))
 		filepath.append(item)
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	rows = check_for_duplicates(merged_list)
-	return rows
+	return merged_list
+
+def update_img(self, inputs, index, *args):
+	rows = []
+	for item in inputs:
+		oldfilename = (os.path.basename(item))
+		filesize = humansize(os.path.getsize(item))
+		ext_file = os.path.splitext(oldfilename)
+		dirname = (os.path.dirname(item) + '/')
+		info[index] = ('')
+		image_info, error = getimageinfo(item)
+		if image_info == 0:
+			self.d_writer('Import file failed...' , 0, 'red')
+			self.d_writer(error , 1, 'white')
+			break
+		name[index] = ext_file[0]
+		size[index] = str(image_info[0])
+		extension[index] = ext_file[1][1:].lower()
+		file_size[index] = humansize(os.path.getsize(item))
+		pages[index] = 1
+		price[index] = ''
+		colors[index] = str(image_info[1])
+		filepath[index] = item
+	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	return merged_list
 
 def size_check(page_size):
 	velikost = 0
@@ -2035,22 +2088,12 @@ class Window(QMainWindow):
 				pdf_out.close()
 				pdf_in.close()
 				os.rename(filepath + '_temp', filepath)
-				self.files = pdf_parse(self,filepath)
-				self.table_reload(self.files)
-				# reload files
-				self.table.clearSelection()
-				self.table.setSelectionMode(QAbstractItemView.MultiSelection)
-				self.table.selectRow(row)
-				self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+				self.files = pdf_update(self,filepath, row)
+				self.reload(row)
 			else:
 				command, outputfiles = rotate_this_image([filepath], angle)
-				self.files = parse_img(self, outputfiles)
-				self.table_reload(self.files)
-				# reload files
-				self.table.clearSelection()
-				self.table.setSelectionMode(QAbstractItemView.MultiSelection)
-				self.table.selectRow(row)
-				self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+				self.files = update_img(self, outputfiles, row)
+				self.reload(row)
 			self.d_writer(filename + ' / angle: ' + str(angle),1, 'green')
 		
 	def get_page_size(self):
@@ -2154,6 +2197,13 @@ class Window(QMainWindow):
 		self.table.setSelectionMode(QAbstractItemView.MultiSelection)
 		for row in range(self.table.rowCount()):
 			self.table.selectRow(row)
+		self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+	def reload(self, row):
+		self.table_reload(self.files)
+		self.table.clearSelection()
+		self.table.setSelectionMode(QAbstractItemView.MultiSelection)
+		self.table.selectRow(row)
 		self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 if __name__ == '__main__':

@@ -52,6 +52,7 @@ I'm a newbie with python and PyQt5 :)
 - added select all for all items (ctr+A)
 - fixed duplicates bug
 - rotating files (pdf and image files works) in edit menu
+- bugfixes in context menu and deleting from tab...
 
 0.29
 - merge and split pdf is back

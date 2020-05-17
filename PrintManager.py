@@ -367,6 +367,33 @@ def get_pdf_size(pdf_input):
 	page_size = (str(round(width)) + 'x' + str(round(height)) + ' mm')
 	return page_size
 
+
+
+def check_for_duplicates(inputs):
+	rows = []
+	for ele in inputs:
+		print (type(ele))
+		print ('XXXXX' + str(ele))
+		print (set(ele))
+		if set(ele) not in [set(x) for x in rows]:
+			rows.append(ele)
+	return rows
+
+def getimageinfo (filename):
+	try:
+		output = (subprocess.check_output(["identify", '-format', '%wx%hpx %m', filename]))
+		outputlist = (output.splitlines())
+		getimageinfo = []
+		for num in outputlist:  # prochazeni listem
+			first, middle = num.split()
+			getimageinfo.append(str(first.decode()))
+			getimageinfo.append(str(middle.decode()))
+		error = 0
+	except Exception as e:
+		error = str(e)
+		getimageinfo = 0
+	return getimageinfo, error
+
 def pdf_parse(self, inputs, *args):
 	rows = []
 	if type(inputs) is str:
@@ -450,31 +477,7 @@ def pdf_update(self, inputs, index, *args):
 	# rows = check_for_duplicates(merged_list)
 	return merged_list
 
-def check_for_duplicates(inputs):
-	rows = []
-	for ele in inputs:
-		print (type(ele))
-		print ('XXXXX' + str(ele))
-		print (set(ele))
-		if set(ele) not in [set(x) for x in rows]:
-			rows.append(ele)
-	return rows
 
-def getimageinfo (filename):
-	try:
-		output = (subprocess.check_output(["identify", '-format', '%wx%hpx %m', filename]))
-		outputlist = (output.splitlines())
-		getimageinfo = []
-		for num in outputlist:  # prochazeni listem
-			first, middle = num.split()
-			getimageinfo.append(str(first.decode()))
-			getimageinfo.append(str(middle.decode()))
-		error = 0
-	except Exception as e:
-		error = str(e)
-		getimageinfo = 0
-	return getimageinfo, error
-	
 def parse_img(self, inputs, *args):
 	rows = []
 	for item in inputs:
@@ -499,27 +502,17 @@ def parse_img(self, inputs, *args):
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return merged_list
 
-def update_img(self, inputs, index, *args):
-	rows = []
-	for item in inputs:
-		oldfilename = (os.path.basename(item))
-		filesize = humansize(os.path.getsize(item))
-		ext_file = os.path.splitext(oldfilename)
-		dirname = (os.path.dirname(item) + '/')
-		info[index] = ('')
-		image_info, error = getimageinfo(item)
-		if image_info == 0:
-			self.d_writer('Import file failed...' , 0, 'red')
-			self.d_writer(error , 1, 'white')
-			break
-		name[index] = ext_file[0]
-		size[index] = str(image_info[0])
-		extension[index] = ext_file[1][1:].lower()
-		file_size[index] = humansize(os.path.getsize(item))
-		pages[index] = 1
-		price[index] = ''
-		colors[index] = str(image_info[1])
-		filepath[index] = item
+def remove_from_list(self, index, *args):
+	print (info)
+	del info[index]
+	del name[index]
+	del size[index]
+	del extension[index]
+	del file_size[index]
+	del pages[index]
+	del price[index]
+	del colors[index]
+	del filepath[index]
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return merged_list
 
@@ -1219,39 +1212,55 @@ class Window(QMainWindow):
 			# self.OCR_b.setDisabled(True)
 		# pass
 
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				# index=(self.table.selectionModel().currentIndex())
+				row = items.row()
+				# filetype=index.sibling(items.row(),3).data()
+				# if filetype == 'pdf':
+				print (row)
+				remove_from_list(self, row)
+				print ('xxxxx_jpg')
+				del(self.files[row])
+
+
 	def contextMenuEvent(self, pos):
-			if self.table.selectionModel().selection().indexes():
-					for i in self.table.selectionModel().selection().indexes():
-							row, column = i.row(), i.column()
-					menu = QMenu()
-					openAction = menu.addAction('Open')
-					revealAction = menu.addAction('Reveal in finder')
-					printAction = menu.addAction('Print')
-					previewAction = menu.addAction('Preview')
-					fix_nameAction = menu.addAction('Remove special characters from filename')
-					action = menu.exec_(self.mapToGlobal(pos))
-					if action == openAction:
-						index=(self.table.selectionModel().currentIndex())
-						row = self.table.currentRow()
-						file_path=index.sibling(row,8).data()
-						revealfile(file_path,'')
-					if action == revealAction:
-						index=(self.table.selectionModel().currentIndex())
-						row = self.table.currentRow()
-						file_path=index.sibling(row,8).data()
-					if action == fix_nameAction:
-						index=(self.table.selectionModel().currentIndex())
-						row = self.table.currentRow()
-						file_path=index.sibling(row,8).data()
-						newname = fix_filename(file_path)
+		file_paths = []
+		if self.table.selectionModel():
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				index=(self.table.selectionModel().currentIndex())
+				row = items.row()
+				file_path=index.sibling(row,8).data()
+				file_paths.append(file_path)
+			menu = QMenu()
+			openAction = menu.addAction('Open')
+			revealAction = menu.addAction('Reveal in finder')
+			printAction = menu.addAction('Print')
+			previewAction = menu.addAction('Preview')
+			fix_nameAction = menu.addAction('Remove special characters from filename')
+			action = menu.exec_(self.mapToGlobal(pos))
+			if action == openAction:
+				revealfile(file_paths,'')
+			if action == revealAction:
+				revealfile(file_path,'-R')
+			if action == fix_nameAction:
+				self.deleteClicked()
+				for items in file_paths:
+					newname = fix_filename(items)
+					print (newname)
+					if newname.lower().endswith == '.pdf':
+						self.files = pdf_parse(self,[newname])
+						Window.table_reload(self, self.files)
+					else:
+						self.files = parse_img(self, [newname])
+						Window.table_reload(self, self.files)
 						print (newname)
-					if action == printAction:
-						index=(self.table.selectionModel().currentIndex())
-						row = self.table.currentRow()
-						file_path=index.sibling(row,8).data()
-						self.table_print()
-					if action == previewAction:
-						self.preview_window()
+			if action == printAction:
+				index=(self.table.selectionModel().currentIndex())
+				row = self.table.currentRow()
+				file_path=index.sibling(row,8).data()
+				self.table_print()
+			if action == previewAction:
+				self.preview_window()
 
 	def togglePrintWidget(self):
 		print (self.gb_printers.isHidden())
@@ -1810,16 +1819,13 @@ class Window(QMainWindow):
 				self.d_writer('Created '+ str(len(split_pdf)) + ' pdf files:', 0, 'green')
 				self.d_writer(split_pdf, 1)
 				Window.table_reload(self, self.files)
-				# self.table.item((len(rows)-1), 1).setForeground(green_)
 
-				# fix merged pdf files
 	def merge_pdf(self):
 		green_ = (QColor(10, 200, 50))
 		combinefiles = []
 		table = sorted(self.table.selectionModel().selectedRows())
 		if len(table) <= 1:
 			self.d_writer("Error - Choose two or more files to combine PDFs. At least two files...", 1, 'red')
-			# QMessageBox.information(self, 'Error', 'Choose two or more files to combine PDFs. At least two files....', QMessageBox.Ok)
 		else:
 			for items in table:
 				row = items.row()
@@ -1828,14 +1834,10 @@ class Window(QMainWindow):
 				file_path=index.sibling(items.row(),8).data()
 				combinefiles.append(file_path)
 			merged_pdf = mergefiles(combinefiles, 0)
-			# print ('XXXXX' + str(merged_pdf))
 			self.d_writer('New combined PDF created:', 1,'green')
 			self.d_writer(merged_pdf, 1)
-			# merged_pdf = (merged_pdf.split())
-			# print ('XXXXX' + str(merged_pdf))
 			self.files = pdf_parse(self,merged_pdf)
 			Window.table_reload(self, self.files)
-			# self.table.item((len(rows)-1), 1).setForeground(green_)
 
 	def loadcolors(self):
 		green_ = (QColor(10, 200, 50))
@@ -1864,14 +1866,12 @@ class Window(QMainWindow):
 						self.table.item(row, 7).setForeground(black_)
 						self.d_writer("Document is all grayscale", 1, 'red')
 						self.table.item(row, 7).setFont(font)
-						# self.table.clearSelection()
 					else:
 						self.table.item(row, 7).setText('CMYK')
 						self.table.item(row, 7).setForeground(green_)
 						self.table.item(row, 7).setFont(font)
 						self.d_writer("Color pages:", 0, 'green')
 						self.d_writer(' ' +  ', '.join(map(str, nc)), 1)
-						# self.table.clearSelection()
 		else:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				row = items.row()
@@ -1880,8 +1880,6 @@ class Window(QMainWindow):
 				outputfiles.append(file_path)
 				for items in outputfiles:
 					image_info = getimageinfo(items)
-					# print (image_info)
-					# print (items)
 					self.d_writer(str(image_info[1]), 0, 'green')
 					return			
 
@@ -1910,7 +1908,6 @@ class Window(QMainWindow):
 		vbox.addWidget(self.printer_tb)
 		self.printer_layout.addWidget(self.gb_printers)
 		self.printer_layout.addStretch()
-
 		# SETTINGS GROUPBOX
 		self.gb_setting = QGroupBox("Printer setting")
 		self.vbox2 = QGridLayout()
@@ -1918,7 +1915,6 @@ class Window(QMainWindow):
 		self.gb_setting.setFixedWidth(391)
 		self.gb_setting.setVisible(not pref_printers_state)
 		self.gb_setting.setDisabled(True)
-
 		# # POČET KOPII
 		copies_Label = QLabel("Copies:")
 		self.copies = QSpinBox()
@@ -1951,7 +1947,6 @@ class Window(QMainWindow):
 		self.btn_orientation.setChecked(True)
 		self.btn_orientation.setVisible(False)
 		self.btn_orientation.toggled.connect(lambda: self.icon_change('icons/long.png','icons/short.png',self.btn_orientation))
-
 		# COLLATE
 		self.btn_collate= QPushButton()
 		self._icon_collate = QIcon()
@@ -1961,7 +1956,6 @@ class Window(QMainWindow):
 		self.btn_collate.setIconSize(QSize(23,38))
 		self.btn_collate.setChecked(True)
 		self.btn_collate.toggled.connect(lambda: self.icon_change('icons/collate_on.png','icons/collate_off.png',self.btn_collate))
-
 		# # COLORS
 		btn_colors_Label = QLabel("Color:")
 		self.btn_colors = QComboBox(self)
@@ -2171,17 +2165,20 @@ class Window(QMainWindow):
 
 	def keyPressEvent(self,e):
 		if e.key() == Qt.Key_Delete:
-			for items in sorted(self.table.selectionModel().selectedRows()):
-				row = items.row()
-				del(self.files[row]) 
-			Window.table_reload(self, self.files)
-
+			self.deleteClicked()
 		if e.key() == Qt.Key_F1:
 			self.preview_window()
 
 	def deleteClicked(self):
-		row = self.table.currentRow()
-		self.table.removeRow(row)
+		rows_ = [] 
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			rows_.append(row)
+		rows_.reverse()
+		for items in rows_:
+			remove_from_list(self, items)
+			del(self.files[items])
+		Window.table_reload(self, self.files)
 
 	def openFileNamesDialog(self):
 		options = QFileDialog.Options()

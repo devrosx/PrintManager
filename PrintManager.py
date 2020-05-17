@@ -2074,7 +2074,6 @@ class Window(QMainWindow):
 			filetype=index.sibling(items.row(),3).data()
 			filepath=index.sibling(items.row(),8).data()
 			pages=int(index.sibling(items.row(),5).data())
-			# with open(filepath, 'rb') as pdf_file:
 			if filetype == 'pdf':
 				pdf_in = open(filepath, 'rb')
 				pdf_reader = PdfFileReader(pdf_in)

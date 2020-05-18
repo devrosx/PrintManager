@@ -192,6 +192,16 @@ def raster_this_file(original_file,resolution):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+def flaten_transpare_pdf(original_file,resolution):
+	outputfiles = []
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '_fl' + ext
+		command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.3", "-sOutputFile="+outputfile, item]
+		subprocess.run(command_gs)
+		outputfiles.append(outputfile)
+	return command_gs, outputfiles
+
 def fix_this_file(original_file,resolution):
 	outputfiles = []
 	for item in original_file:
@@ -367,18 +377,6 @@ def get_pdf_size(pdf_input):
 	page_size = (str(round(width)) + 'x' + str(round(height)) + ' mm')
 	return page_size
 
-
-
-def check_for_duplicates(inputs):
-	rows = []
-	for ele in inputs:
-		print (type(ele))
-		print ('XXXXX' + str(ele))
-		print (set(ele))
-		if set(ele) not in [set(x) for x in rows]:
-			rows.append(ele)
-	return rows
-
 def getimageinfo (filename):
 	try:
 		output = (subprocess.check_output(["identify", '-format', '%wx%hpx %m', filename]))
@@ -474,7 +472,6 @@ def pdf_update(self, inputs, index, *args):
 					self.d_writer('Import error:' + str(e),1, 'red')
 			f.close()
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	# rows = check_for_duplicates(merged_list)
 	return merged_list
 
 
@@ -1491,6 +1488,7 @@ class Window(QMainWindow):
 		colors_menu.addAction('To Grayscale',self.gray_pdf)
 		other_menu.addAction('Fix PDF',lambda: self.operate_file(fix_this_file, 'File(s) fixed:', default_pref[1]))
 		other_menu.addAction('Rasterize PDF',lambda: self.operate_file(raster_this_file, 'File(s) rasterized:', default_pref[1]))
+		other_menu.addAction('Flaten transparency PDF',lambda: self.operate_file(flaten_transpare_pdf, 'File(s) converted:', default_pref[1]))
 		other_menu.addAction('Compress PDF',lambda: self.operate_file(compres_this_file, 'File(s) compressed:', default_pref[1]))
 		other_menu.addAction('OCR', self.ocr_maker)
 		self.pdf_button.setMenu(menu)

@@ -17,6 +17,7 @@ PrintManager for Macosx (written in Python and PyQt5, with some handy features).
  - OCR (thanks to pytesseract)
  - Convert to PDF
  - Resize image
+ - Rotate
  - Identify images in image and extract (thanks to OpenCV)
 
 # Installation
@@ -53,7 +54,7 @@ I'm a newbie with python and PyQt5 :)
 - fixed duplicates bug
 - rotating files (pdf and image files works) in edit menu
 - bugfixes in context menu and deleting from tab...
-
+- added option to flatten transparency (convert to pdf 1.3)
 0.29
 - merge and split pdf is back
 - added page selecter for preview panel and window

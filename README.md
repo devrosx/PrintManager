@@ -54,7 +54,8 @@ I'm a newbie with python and PyQt5 :)
 - fixed duplicates bug
 - rotating files (pdf and image files works) in edit menu
 - bugfixes in context menu and deleting from tab...
-- added option to flatten transparency (convert to pdf 1.3)
+- added option to flatten transparency (convert to PDF 1.3 version)
+
 0.29
 - merge and split pdf is back
 - added page selecter for preview panel and window

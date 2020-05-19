@@ -499,6 +499,31 @@ def parse_img(self, inputs, *args):
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return merged_list
 
+def update_img(self, inputs, index, *args):
+	rows = []
+	for item in inputs:
+		oldfilename = (os.path.basename(item))
+		filesize = humansize(os.path.getsize(item))
+		ext_file = os.path.splitext(oldfilename)
+		dirname = (os.path.dirname(item) + '/')
+		info[index] = ('')
+		image_info, error = getimageinfo(item)
+		if image_info == 0:
+			self.d_writer('Import file failed...' , 0, 'red')
+			self.d_writer(error , 1, 'white')
+			break
+		name[index] = ext_file[0]
+		size[index] = str(image_info[0])
+		extension[index] = ext_file[1][1:].lower()
+		file_size[index] = humansize(os.path.getsize(item))
+		pages[index] = 1
+		price[index] = ''
+		colors[index] = str(image_info[1])
+		filepath[index] = item
+	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	return merged_list
+
+
 def remove_from_list(self, index, *args):
 	print (info)
 	del info[index]
@@ -2085,7 +2110,7 @@ class Window(QMainWindow):
 				command, outputfiles = rotate_this_image([filepath], angle)
 				self.files = update_img(self, outputfiles, row)
 				self.reload(row)
-			self.d_writer(filename + ' / angle: ' + str(angle),1, 'green')
+			self.d_writer(filename + '.' +  filetype + ' / angle: ' + str(angle),1, 'green')
 		
 	def get_page_size(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):

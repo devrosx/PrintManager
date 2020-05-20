@@ -11,14 +11,9 @@ from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
 from tnefparse.mapi import TNEFMAPI_Attribute
 from unidecode import unidecode
 import webbrowser
-# my modules import
 from libs.colordetector import *
-# from libs.ocr_module import ocr_core
 from libs.crop_module import processFile
-# from libs.pdfextract_module import extractfiles
-# from libs.cc_module import cc_convert
 from libs.pdf_preview_module import pdf_preview_generator
-# from libs.super_crop_module import *
 from libs.image_grabber_module import *
 from libs.remove_cropmarks_module import *
 version = '0.30'
@@ -910,7 +905,8 @@ class Window(QMainWindow):
 
 	def dropEvent(self, event):
 		self.d_writer("Loading files - please wait...", 0,'green')
-		# hack to update saved value.... fix later somehow
+		# path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/jpg.png')
+		# app.setWindowIcon(QIcon(path))
 		try:
 			print ('loc je:' + self.localization)
 		except:

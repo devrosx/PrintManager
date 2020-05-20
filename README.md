@@ -18,6 +18,7 @@ PrintManager for Macosx (written in Python and PyQt5, with some handy features).
  - Convert to PDF
  - Resize image
  - Rotate
+ - Invert
  - Identify images in image and extract (thanks to OpenCV)
 
 # Installation
@@ -55,7 +56,7 @@ I'm a newbie with python and PyQt5 :)
 - rotating files (pdf and image files works) in edit menu
 - bugfixes in context menu and deleting from tab...
 - added option to flatten transparency (convert to PDF 1.3 version)
-
+- invert colors for image files
 
 0.29
 - merge and split pdf is back

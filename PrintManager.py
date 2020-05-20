@@ -158,6 +158,16 @@ def rotate_this_image(original_file, angle):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+def invert_this_image(original_file):
+	outputfiles = []
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + ext
+		command = ["convert", item, "-channel", "RGB", "-negate", outputfile]
+		subprocess.run(command)
+		outputfiles.append(outputfile)
+	return command, outputfiles
+
 def gray_this_file(original_file,filetype):
 	outputfiles = []
 	for item in original_file:
@@ -1123,6 +1133,10 @@ class Window(QMainWindow):
 
 		self.table.setRowCount(len(inputfile))
 		for i, (Info, File, Size, Kind, Filesize, Pages, Price, Colors, Filepath) in enumerate(inputfile):
+			# if inputfile[i][3] == 'pdf':
+			# 	self.table.setItem('button', 7, QTableWidgetItem(Colors))
+			# 	print ('bingo')
+			# else:
 			self.table.setItem(i, 1, QTableWidgetItem(File))
 			self.table.setItem(i, 2, QTableWidgetItem(Size))
 			self.table.setItem(i, 3, QTableWidgetItem(Kind))
@@ -1131,7 +1145,7 @@ class Window(QMainWindow):
 			self.table.setItem(i, 6, QTableWidgetItem(Price))
 			self.table.setItem(i, 7, QTableWidgetItem(Colors))
 			self.table.setItem(i, 8, QTableWidgetItem(Filepath))
-		self.table.setColumnHidden(8, True)
+			self.table.setColumnHidden(8, True)
 		# print ('rowcount je:' + str(self.table.rowCount()))
 		if self.table.rowCount() == 0:
 			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #191919;")
@@ -1535,6 +1549,8 @@ class Window(QMainWindow):
 		# convert_menu.addAction('SmartCrop', self.crop_pdf)
 		colors_menu.addAction('To CMYK')
 		colors_menu.addAction('To Grayscale',self.gray_pdf)
+		colors_menu.addAction('Invert colors', self.invertor)
+
 		# other_menu.addAction('Fix PDF',lambda: self.operate_pdf(fix_this_file, 'File(s) fixed:', default_pref[1]))
 		# other_menu.addAction('Rasterize PDF',lambda: self.operate_pdf(raster_this_file, 'File(s) rasterized:', default_pref[1]))
 		# other_menu.addAction('Compress PDF',lambda: self.operate_pdf(compres_this_file, 'File(s) compressed:', default_pref[1]))
@@ -2082,6 +2098,19 @@ class Window(QMainWindow):
 			tiskarna = (printers[row])
 		open_printer(tiskarna)
 		self.d_writer('Printing setting: ' + tiskarna,0, 'green')
+
+	def invertor(self):
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			filename=index.sibling(items.row(),1).data()
+			filetype=index.sibling(items.row(),3).data()
+			filepath=index.sibling(items.row(),8).data()
+			pages=int(index.sibling(items.row(),5).data())
+			command, outputfiles = invert_this_image([filepath])
+			self.files = update_img(self, outputfiles, row)
+			self.reload(row)
+			self.d_writer(filename + '.' +  filetype + ' / colors inverted', 'green')
 
 	def rotator(self, angle):
 		for items in sorted(self.table.selectionModel().selectedRows()):

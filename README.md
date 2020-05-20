@@ -57,6 +57,7 @@ I'm a newbie with python and PyQt5 :)
 - bugfixes in context menu and deleting from tab...
 - added option to flatten transparency (convert to PDF 1.3 version)
 - invert colors for image files
+- added fonts into to pdf preview
 
 0.29
 - merge and split pdf is back

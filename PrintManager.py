@@ -250,6 +250,25 @@ def get_boxes(input_file):
 		# input_file.close()
 		return pageNumbers
 
+def find_fonts(obj, fnt):
+	if '/BaseFont' in obj:
+		fnt.add(obj['/BaseFont'])
+	for k in obj:
+		if hasattr(obj[k], 'keys'):
+			find_fonts(obj[k], fnt)
+	return fnt
+
+def get_fonts(pdf_input):
+	fonts = set()
+	for page in pdf_input.pages:
+		obj = page.getObject()
+		f = find_fonts(obj['/Resources'], fonts)
+		# print (type(f))
+		# print (f)
+	# fonts = [(k,v) for k,v in f.items()]
+	# print (fonts)
+	return f
+
 def file_info_new(inputs, file, *args):
 	_info = []
 	if file == 'pdf':
@@ -262,9 +281,12 @@ def file_info_new(inputs, file, *args):
 			pdf_fixed.update( {'MediaBox' : get_pdf_size(pdf_toread.getPage(0).mediaBox)} )
 			pdf_fixed.update( {'CropBox' : get_pdf_size(pdf_toread.getPage(0).cropBox)} )
 			pdf_fixed.update( {'TrimBox' : get_pdf_size(pdf_toread.getPage(0).trimBox)} )
+			pdf_fixed.update( {'Fonts' : str(get_fonts(pdf_toread))} )
+			# fonts = get_fonts(inputs)
+			# print (fonts)
 			# print (pdf_fixed)
-			boxes = get_boxes(item)
-			print (boxes)
+			# boxes = get_boxes(item)
+			# print (boxes)
 			# z = dict(list(x.items()) + list(y.items()))
 			# pdf_fixed.update({'a':'B'})
 			# pdf_fixed.update(dict(a=1))
@@ -277,6 +299,8 @@ def file_info_new(inputs, file, *args):
 		for item in inputs:
 			output = (subprocess.check_output(["mdls", item]))
 			pdf_info = (output.splitlines())
+			name_.append('Filesize')
+			val_.append(humansize(os.path.getsize(item)))
 			for num in pdf_info:
 				num = num.decode("utf-8")
 				name, *value = num.split('=')
@@ -285,12 +309,14 @@ def file_info_new(inputs, file, *args):
 				value = value.replace('"','')
 				value = value.lstrip()
 				name = name.replace('kMD','')
+				name = name.replace('FS','')
+				name = name[:24] + (name[24:] and '..')
 				name_.append(name)
 				val_.append(value)
 		tolist = dict(zip(name_, val_))
 		unwanted = ['', [], '(', '0', '(null)']
 		img_ = {k: v for k, v in tolist.items() if v not in unwanted}
-		img_.update( {'Filesize' : humansize(os.path.getsize(item))} )
+		# img_.update( {'Filesize' : humansize(os.path.getsize(item))} )
 		_info = tablemaker(img_)
 	return _info
 

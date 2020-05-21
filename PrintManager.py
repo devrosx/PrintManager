@@ -259,15 +259,15 @@ def find_fonts(obj, fnt):
 	return fnt
 
 def get_fonts(pdf_input):
+	font_ = []
 	fonts = set()
 	for page in pdf_input.pages:
 		obj = page.getObject()
 		f = find_fonts(obj['/Resources'], fonts)
-		# print (type(f))
-		# print (f)
-	# fonts = [(k,v) for k,v in f.items()]
-	# print (fonts)
-	return f
+	for items in f:
+		head, sep, tail = items.partition('+')
+		font_.append(tail)
+	return font_
 
 def file_info_new(inputs, file, *args):
 	_info = []
@@ -281,16 +281,7 @@ def file_info_new(inputs, file, *args):
 			pdf_fixed.update( {'MediaBox' : get_pdf_size(pdf_toread.getPage(0).mediaBox)} )
 			pdf_fixed.update( {'CropBox' : get_pdf_size(pdf_toread.getPage(0).cropBox)} )
 			pdf_fixed.update( {'TrimBox' : get_pdf_size(pdf_toread.getPage(0).trimBox)} )
-			pdf_fixed.update( {'Fonts' : str(get_fonts(pdf_toread))} )
-			# fonts = get_fonts(inputs)
-			# print (fonts)
-			# print (pdf_fixed)
-			# boxes = get_boxes(item)
-			# print (boxes)
-			# z = dict(list(x.items()) + list(y.items()))
-			# pdf_fixed.update({'a':'B'})
-			# pdf_fixed.update(dict(a=1))
-			# pdf_fixed.update(a=1)
+			pdf_fixed.update( {'Fonts' : "\n".join(get_fonts(pdf_toread))} )
 			html_info = tablemaker(pdf_fixed)
 			_info.append(html_info)
 	else:

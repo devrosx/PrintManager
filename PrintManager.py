@@ -16,7 +16,10 @@ from libs.crop_module import processFile
 from libs.pdf_preview_module import pdf_preview_generator
 from libs.image_grabber_module import *
 from libs.remove_cropmarks_module import *
-version = '0.30'
+
+from libs.gui_crop2 import *
+
+version = '0.31'
 import time
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
@@ -350,9 +353,9 @@ def print_this_file(print_file, printer, lp_two_sided, orientation, copies, p_si
 	if colors == 'Auto':
 		colors =  ('')
 	if colors == 'Color':
-		colors =  ('-OColorMode=Color')
+		colors =  ('-o ColorMode=Color')
 	if colors == 'Gray':
-		colors =  ('-OColorMode=GrayScale')
+		colors =  ('-o ColorMode=GrayScale')
 		# _colors =  ('-oColorModel=KGray')
 	# PAPER SHRINK
 	if fit_to_size == 1:
@@ -1193,10 +1196,10 @@ class Window(QMainWindow):
 		self.my_info_label.setText(str(self.count_pages()) + ' pages selected')
 		self.debuglist.clear()
 		if self.selected_file_check() == 'pdf':
-			# self.gb_debug.show()
 			self.pdf_button.show()
 			self.img_button.hide()
 			self.print_b.show()
+			self.crop_b.show()
 			print (self.count_pages())
 			self.my_info_label.show()
 			if len(self.table.selectionModel().selectedRows()) > 1:
@@ -1204,63 +1207,26 @@ class Window(QMainWindow):
 			if int(self.count_pages()) > 1:
 				self.split_pdf_b.show()
 			self.Convert_b.hide()
-			# self.compres_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.raster_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.extract_b.show()
-			# self.extract_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.crop_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 		elif self.selected_file_check() == 'image':
-			# print ('image')
-			# self.gb_debug.show()
 			self.pdf_button.hide()
 			self.img_button.show()
 			self.print_b.show()
+			self.crop_b.show()
 			self.my_info_label.setText("Image files selected")
 			self.my_info_label.show()
 			self.split_pdf_b.hide()
 			self.merge_pdf_b.hide()
 			self.Convert_b.show()
-
-			# self.color_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.merge_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			# self.split_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			# self.compres_pdf_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			# self.gray_pdf_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.raster_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			# self.gb_setting.setEnabled(bool(self.table.selectionModel().selectedRows()))
-			# self.crop_b.setDisabled(bool(self.table.selectionModel().selectedRows()))
-			# self.OCR_b.setEnabled(bool(self.table.selectionModel().selectedRows()))
 		else:
 			self.split_pdf_b.hide()
 			self.merge_pdf_b.hide()
-			# self.gb_debug.hide()
+			self.crop_b.hide()
 			self.pdf_button.hide()
 			self.img_button.hide()
 			self.print_b.hide()
 			self.my_info_label.hide()
 			self.Convert_b.hide()
 			self.move_page.hide()
-
-			# self.Colors_button.hide()
-			# self.MergeButton.hide()
-			# self.SplitButton.hide()
-
-			# self.print_b.setDisabled(True)
-			# self.color_b.setDisabled(True)
-			# self.merge_pdf_b.setDisabled(True)
-			# self.split_pdf_b.setDisabled(True)
-			# self.compres_pdf_b.setDisabled(True)
-			# self.gray_pdf_b.setDisabled(True)
-			# self.raster_b.setDisabled(True)
-			# self.extract_b.setDisabled(True)
-			# self.gb_setting.setDisabled(True)
-			# self.crop_b.setDisabled(True)
-			# self.OCR_b.setDisabled(True)
-		# pass
-
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				# index=(self.table.selectionModel().currentIndex())
 				row = items.row()
@@ -1295,14 +1261,13 @@ class Window(QMainWindow):
 				self.deleteClicked()
 				for items in file_paths:
 					newname = fix_filename(items)
-					print (newname)
 					if newname.lower().endswith == '.pdf':
 						self.files = pdf_parse(self,[newname])
 						Window.table_reload(self, self.files)
 					else:
 						self.files = parse_img(self, [newname])
 						Window.table_reload(self, self.files)
-						print (newname)
+						self.d_writer('Renamed: ' + str(newname), 1, 'green')
 			if action == printAction:
 				index=(self.table.selectionModel().currentIndex())
 				row = self.table.currentRow()
@@ -1594,8 +1559,18 @@ class Window(QMainWindow):
 		# self.print_b.setDisabled(True)
 		self.print_b.hide()
 		self.buttons_layout.addWidget(self.print_b)
-		self.buttons_layout.addWidget(self.print_b)
 
+		self.crop_b = QPushButton('', self)
+		self._icon = QIcon()
+		self._icon.addPixmap(QPixmap('icons/crop.png'))
+		self.crop_b.setIcon(self._icon)
+		self.crop_b.setMaximumWidth(22)
+		self.crop_b.setIconSize(QSize(14,14))
+		# self.crop_b.clicked.connect(lambda: live_crop_window('/Users/jandevera/Desktop/1.png'))
+		self.crop_b.clicked.connect(self.create_crop_window)
+		self.crop_b.hide()
+		self.buttons_layout.addWidget(self.crop_b)
+		# COLLATE
 
 		# d = {'convert': [1,2,3], 'colors': [4,5,6], 'other': [7,8,9]}
 		# pdf_button = QToolButton()
@@ -1625,7 +1600,6 @@ class Window(QMainWindow):
 		# self.actions_pdf.addItem('Extract images from PDF')
 		# self.actions_pdf.addItem('SmartCrop')
 
-
 		# self.actions_pdf.activated[str].connect(self.color_box_change)
 		# self.buttons_layout.addWidget(self.actions_pdf)
 
@@ -1634,6 +1608,23 @@ class Window(QMainWindow):
 		# self.info_b.clicked.connect(self.info_tb)
 		# self.buttons_layout.addWidget(self.info_b)
 		# self.info_b.setDisabled(True)
+
+	def create_crop_window(self):
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			filetype=index.sibling(items.row(),3).data()
+			if filetype == 'pdf':
+				print ('konverze')
+				file_path = pdf_preview_generator(file_path,generate_marks=1,page=0)
+			# if self.live_crop_window is None:
+			self.live_crop_window = livecropwindow(file_path)
+			self.live_crop_window.show()
+			if self.live_crop_window.exec_():
+				cropcoordinates = self.live_crop_window.GetValue()
+				self.live_crop_window.destroy()
+				self.d_writer('Crop coordinates: ' + str(cropcoordinates), 1, 'green')
 
 	def operate_file(self, action, debug_text, resolution):
 		outputfiles = []
@@ -1966,7 +1957,6 @@ class Window(QMainWindow):
 		self.gb_setting.setFixedHeight(150)
 		self.gb_setting.setFixedWidth(391)
 		self.gb_setting.setVisible(not pref_printers_state)
-		self.gb_setting.setDisabled(True)
 		# # POČET KOPII
 		copies_Label = QLabel("Copies:")
 		self.copies = QSpinBox()
@@ -1974,6 +1964,7 @@ class Window(QMainWindow):
 		self.copies.setMinimum(1)
 		self.copies.setMaximum(999)
 		self.copies.setFixedSize(60, 25)
+		self.copies.setEnabled(True)
 		self.gb_setting.setLayout(self.vbox2)
 		# PAPERFORMAT
 		paper_Label = QLabel("Paper size:")
@@ -2041,9 +2032,8 @@ class Window(QMainWindow):
 		# self.vbox2.addWidget(self.print_b, 2,3)
 		self.vbox2.addWidget(self.fit_to_size, 1,3)
 
-
 		self.printer_layout.addWidget(self.gb_setting)
-		self.printer_layout.addStretch()
+		# self.printer_layout.addStretch()
 
 	def papersize_box_change(self, text):
 			self.d_writer(text,0)

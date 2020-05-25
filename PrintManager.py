@@ -146,6 +146,18 @@ def resize_this_image(original_file, percent):
 		outputfiles.append(outputfile)
 	return command, outputfiles
 
+def crop_image(original_file, coordinates):
+	command = ["convert", original_file, "-crop", str(coordinates[2] - coordinates[0])+'x'+str(coordinates[3] - coordinates[1])+'+'+str(coordinates[0])+'+'+str(coordinates[1]), original_file]
+	# command = ["convert", original_file, "-crop", str(coordinates[2] - coordinates[1])+'x'+str(coordinates[3] + coordinates[0])+'+'+str(coordinates[0])+'+'+str(coordinates[1]), original_file]
+
+	print (command)
+	subprocess.run(command)
+	return command
+# X 2 X+A
+# Y 3 B+Y
+# A 0 A
+# B 1 B
+
 def rotate_this_image(original_file, angle):
 	outputfiles = []
 	for item in original_file:
@@ -1609,6 +1621,18 @@ class Window(QMainWindow):
 		# self.buttons_layout.addWidget(self.info_b)
 		# self.info_b.setDisabled(True)
 
+		# for items in sorted(self.table.selectionModel().selectedRows()):
+		# 	row = items.row()
+		# 	index=(self.table.selectionModel().currentIndex())
+		# 	filename=index.sibling(items.row(),1).data()
+		# 	filetype=index.sibling(items.row(),3).data()
+		# 	filepath=index.sibling(items.row(),8).data()
+		# 	pages=int(index.sibling(items.row(),5).data())
+		# 	command, outputfiles = invert_this_image([filepath])
+		# 	self.files = update_img(self, outputfiles, row)
+		# 	self.reload(row)
+
+
 	def create_crop_window(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
@@ -1623,8 +1647,13 @@ class Window(QMainWindow):
 			self.live_crop_window.show()
 			if self.live_crop_window.exec_():
 				cropcoordinates = self.live_crop_window.GetValue()
+				crop_image(file_path, cropcoordinates)
 				self.live_crop_window.destroy()
+				self.files = update_img(self, file_path, row)
+				self.reload(row)
 				self.d_writer('Crop coordinates: ' + str(cropcoordinates), 1, 'green')
+				Window.table_reload(self, self.files)
+				self.table.selectRow(row)
 
 	def operate_file(self, action, debug_text, resolution):
 		outputfiles = []

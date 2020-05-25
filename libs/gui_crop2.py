@@ -42,12 +42,12 @@ class livecropwindow(QDialog):
 			# print ('zmensuju sirka je veci')
 			wpercent = (res[0] / float(self.w))
 			# print (wpercent)
-			self.widget.setFixedSize(self.w*wpercent, self.h*wpercent)
+			self.setFixedSize(self.w*wpercent, self.h*wpercent)
 		if self.h > res[1]:
 			# print ('zmensuju vyska je veci')
 			wpercent = (res[1] / float(self.h))
 			# print (wpercent)
-			self.widget.setFixedSize(self.w*wpercent, self.h*wpercent)
+			self.setFixedSize(self.w*wpercent, self.h*wpercent)
 		else:
 			print ('neni potreba zmensovat')
 

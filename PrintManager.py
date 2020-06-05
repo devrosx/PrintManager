@@ -16,7 +16,6 @@ from libs.crop_module import processFile
 from libs.pdf_preview_module import pdf_preview_generator
 from libs.image_grabber_module import *
 from libs.remove_cropmarks_module import *
-
 from libs.gui_crop2 import *
 
 version = '0.31'
@@ -428,6 +427,62 @@ def getimageinfo (filename):
 		error = str(e)
 		getimageinfo = 0
 	return getimageinfo, error
+
+	
+	for item in original_file:
+		head, ext = os.path.splitext(item)
+		outputfile = head + '_c' + ext
+		command = ["gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4", "-dPDFSETTINGS=/ebook", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile="+outputfile, item]
+		subprocess.run(command)
+		outputfiles.append(outputfile)
+	return command, outputfiles
+
+def append_blankpage(inputs, *args):
+	outputfiles = []
+	if type(inputs) is str:
+		inputs = [inputs]
+	for item in inputs:
+		with open(item, 'rb') as input:
+			pdf=PdfFileReader(input)
+			numPages=pdf.getNumPages()
+			if numPages % 2 == 1:
+				print ('licha')
+				outPdf=PdfFileWriter()
+				outPdf.appendPagesFromReader(pdf)
+				outPdf.addBlankPage()
+				outStream=open(item + '_temp', 'wb')
+				outPdf.write(outStream)
+				outStream.close()
+				os.rename(item + '_temp', item)
+			else:
+				print ('suda all ok')
+	command = ['ok']
+	return command, outputfiles
+
+	# for items in inputs:
+	# 	pdf_in = open(items, 'rb')
+	# 	pdf_reader = PdfFileReader(pdf_in)
+	# 	pdf_writer = PdfFileWriter()
+	# 	numPages=pdf_reader.getNumPages()
+	# 	if numPages % 2 == 1:
+	# 		print ('je potreba pridat stranu')
+	# 		pdf_out = open(items + '_temp', 'wb')
+	# 		pdf_writer.write(pdf_out)
+	# 		pdf_writer.appendPagesFromReader(pdf_reader)
+	# 		pdf_writer.addBlankPage()
+	# 	pdf_out = open(items + '_temp', 'wb')
+	# 	# pdf_writer.write(pdf_out)
+	# 	pdf_out.close()
+	# 	pdf_in.close()
+	# 	os.rename(items + '_temp', items)
+	# 	outputfiles.append(items)
+	# command = ['XXXX']
+	# return command, outputfiles
+
+				# pdf_out = open(filepath + '_temp', 'wb')
+				# pdf_writer.write(pdf_out)
+				# pdf_out.close()
+
 
 def pdf_parse(self, inputs, *args):
 	rows = []
@@ -886,9 +941,9 @@ class Window(QMainWindow):
 			self.convertor = default_pref[2]
 			self.ontop = default_pref[3]
 		preferences = []
-		if self.printer_tb.currentItem() != None:
+		if self.printer_tb.currentText() != None:
 			preferences.append('printer')
-			preferences.append(self.printer_tb.currentRow())
+			preferences.append(self.printer_tb.currentIndex())
 			preferences.append('printer_window')
 			preferences.append(self.gb_printers.isHidden())
 			preferences.append('debug_window')
@@ -1004,7 +1059,7 @@ class Window(QMainWindow):
 		# fix long names
 		if office_files:
 			if len(office_files) > 1:
-				items = ["Convert to PDF","Combine to PDF"]
+				items = ["Convert to PDF","Combine to PDF","Combine to PDF (add blank page to odd documents"]
 				text, okPressed = QInputDialog.getItem(self, "Action", "Action", items, 0, False)
 				if not okPressed:
 					return
@@ -1013,6 +1068,8 @@ class Window(QMainWindow):
 					files = self.external_convert(extension, office_files, 'convert')
 				if text == 'Combine to PDF':
 					files = self.external_convert(extension, office_files, 'combine')
+				if text == 'Combine to PDF (add blank page to odd documents':
+					files = self.external_convert(extension, office_files, 'combinefix')
 			else:
 				self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
 				files = self.external_convert(extension, office_files, 'convert')
@@ -1052,20 +1109,13 @@ class Window(QMainWindow):
 
 	def external_convert(self, ext, inputfile, setting):
 		converts = []
-		if setting == 'combine':
-			outputdir = "/tmp/"
-			# print ('tmp folder selected')
-			savedir = os.path.dirname(inputfile[0]) + '/'
-			# print ('this is savedir' + str(savedir))
-		else:
+		if setting == 'Convert to PDF':
 			outputdir = os.path.dirname(inputfile[0]) + '/'
-			# print ('this is outputdir' + str(outputdir))
-
+		else:
+			outputdir = "/tmp/"
+			savedir = os.path.dirname(inputfile[0]) + '/'
 		if self.convertor == 'OpenOffice':
-		# self.process = QProcess(self)
-		# self.process.readyRead.connect(self.dataReady)
 			for items in inputfile:
-				# print (items)
 				command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]
 				p = subprocess.Popen(command, stderr=subprocess.PIPE)
 				output, err = p.communicate()
@@ -1078,6 +1128,18 @@ class Window(QMainWindow):
 				converts.append(new_file)
 			if setting == 'combine':
 				print ('converts: ' + str(converts))
+				merged_pdf = mergefiles(converts, savedir)
+				print ('this is merged_pdf: ' + str(merged_pdf))
+				# convert to list fix for later
+				# merged_pdf = (merged_pdf.split())
+				print ('this is merged_pdf with split: ' + str(merged_pdf))
+				self.files = pdf_parse(self,merged_pdf)
+				self.d_writer('OpenOffice combining files to:', 0, 'green')
+				self.d_writer(merged_pdf[0], 1)
+				Window.table_reload(self, self.files)
+			if setting == 'combinefix':
+				print ('converts: ' + str(converts))
+				# check if converts is odd or even and add blank pages
 				merged_pdf = mergefiles(converts, savedir)
 				print ('this is merged_pdf: ' + str(merged_pdf))
 				# convert to list fix for later
@@ -1520,6 +1582,7 @@ class Window(QMainWindow):
 		other_menu.addAction('Flaten transparency PDF',lambda: self.operate_file(flaten_transpare_pdf, 'File(s) converted:', default_pref[1]))
 		other_menu.addAction('Compress PDF',lambda: self.operate_file(compres_this_file, 'File(s) compressed:', default_pref[1]))
 		other_menu.addAction('OCR', self.ocr_maker)
+		other_menu.addAction('Add page to odd documents', self.add_pager)
 		self.pdf_button.setMenu(menu)
 		self.buttons_layout.addWidget(self.pdf_button)
 		self.pdf_button.hide()
@@ -1891,6 +1954,19 @@ class Window(QMainWindow):
 				self.d_writer('Created '+ str(len(split_pdf)) + ' pdf files:', 0, 'green')
 				self.d_writer(split_pdf, 1)
 				Window.table_reload(self, self.files)
+# TODOOOO
+	# def append_blankpage(self):
+	# 	for items in sorted(self.table.selectionModel().selectedRows()):
+	# 	with open(pdffile, 'rb') as input:
+	# 			pdf=PdfFileReader(input)
+	# 			numPages=pdf.getNumPages()
+	# 			if numPages > 1 and (numPages % 2 == 1):
+	# 							outPdf=PdfFileWriter()
+	# 							outPdf.cloneDocumentFromReader(pdf)
+	# 							outPdf.addBlankPage()
+	# 							outStream=file('/tmp/test.pdf','wb')
+	# 							outPdf.write(outStream)
+	# 							outStream.close()
 
 	def merge_pdf(self):
 		green_ = (QColor(10, 200, 50))
@@ -1970,14 +2046,16 @@ class Window(QMainWindow):
 		self.gb_printers.setFixedHeight(150)
 		self.gb_printers.setFixedWidth(202)
 		self.gb_printers.setVisible(not pref_printers_state)
-		self.printer_tb = QListWidget()
-		self.printer_tb.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-		self.printer_tb.clear()
-		self.printer_tb.setFixedHeight(106)
-		self.printer_tb.doubleClicked.connect(self.open_printer_tb)
-		self.printer_tb.addItems(printers)
-		self.printer_tb.setCurrentRow(pref_l_printer);
+		# paper_Label = QLabel("Paper size:")
+		self.printer_tb = QComboBox(self)
+		for items in printers:
+			self.printer_tb.addItem(items)
+		self.printer_tb.setCurrentIndex(pref_l_printer)
+		# self.printer_tb.activated[str].connect(self.open_printer_tb)
 		vbox.addWidget(self.printer_tb)
+		self.ppd_file = QPushButton('Printer PPD', self)
+		self.ppd_file.clicked.connect(self.open_printer_tb)
+		vbox.addWidget(self.ppd_file)
 		self.printer_layout.addWidget(self.gb_printers)
 		self.printer_layout.addStretch()
 		# SETTINGS GROUPBOX
@@ -2097,7 +2175,7 @@ class Window(QMainWindow):
 		if self.table.currentItem() == None:
 			QMessageBox.information(self, 'Error', 'Choose file to print', QMessageBox.Ok)
 			return
-		if self.printer_tb.currentItem() == None:
+		if self.printer_tb.currentText() == None:
 			QMessageBox.information(self, 'Error', 'Choose printer!', QMessageBox.Ok)
 			return
 		for items in sorted(self.table.selectionModel().selectedRows()):
@@ -2105,8 +2183,7 @@ class Window(QMainWindow):
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
-			tiskarna_ok = self.printer_tb.currentItem()
-			tiskarna_ok = (tiskarna_ok.text())
+			tiskarna_ok = self.printer_tb.currentText()
 		debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.papersize.currentText(), self.fit_to_size.isChecked(), self.btn_collate.isChecked(), self.btn_colors.currentText())
 		self.d_writer('Printing setting:',0,'green')
 		self.d_writer(debugstring,1,'white')
@@ -2124,12 +2201,9 @@ class Window(QMainWindow):
 		self.d_writer('Opened: ' + str(outputfiles),0, 'green')
 
 	def open_printer_tb(self):
-		for items in sorted(self.printer_tb.selectionModel().selectedRows()):
-			row = items.row()
-			index=(self.table.selectionModel().currentIndex())
-			tiskarna = (printers[row])
-		open_printer(tiskarna)
-		self.d_writer('Printing setting: ' + tiskarna,0, 'green')
+		printer_ = self.printer_tb.currentText()
+		open_printer(printer_)
+		self.d_writer('Printing setting: ' + printer_,0, 'green')
 
 	def invertor(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):
@@ -2144,34 +2218,19 @@ class Window(QMainWindow):
 			self.reload(row)
 			self.d_writer(filename + '.' +  filetype + ' / colors inverted', 'green')
 
-	def rotator(self, angle):
+	def add_pager(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			filename=index.sibling(items.row(),1).data()
-			filetype=index.sibling(items.row(),3).data()
 			filepath=index.sibling(items.row(),8).data()
-			pages=int(index.sibling(items.row(),5).data())
-			if filetype == 'pdf':
-				pdf_in = open(filepath, 'rb')
-				pdf_reader = PdfFileReader(pdf_in)
-				pdf_writer = PdfFileWriter()
-				for pagenum in range(pdf_reader.numPages):
-					page = pdf_reader.getPage(pagenum)
-					page.rotateClockwise(angle)
-					pdf_writer.addPage(page)
-				pdf_out = open(filepath + '_temp', 'wb')
-				pdf_writer.write(pdf_out)
-				pdf_out.close()
-				pdf_in.close()
-				os.rename(filepath + '_temp', filepath)
+			if self.selected_file_check() == 'pdf':
+				debugstring, outputfiles = append_blankpage(filepath)
 				self.files = pdf_update(self,filepath, row)
 				self.reload(row)
+				self.d_writer('fixed pages on:' + str(outputfiles),1, 'green')
 			else:
-				command, outputfiles = rotate_this_image([filepath], angle)
-				self.files = update_img(self, outputfiles, row)
-				self.reload(row)
-			self.d_writer(filename + '.' +  filetype + ' / angle: ' + str(angle),1, 'green')
+				print ('not pdf')
 		
 	def get_page_size(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):

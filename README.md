@@ -50,7 +50,7 @@ I'm a newbie with python and PyQt5 :)
 0.31
 - print bugfixes
 - better debugoutput
-- WIP live crop (not ready yet) 
+- WIP live crop  fixed croping big images 
 
 0.30
 - added remove cropmarks from pdf files (works on multiple files at once all pagesizes are detected) :)

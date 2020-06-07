@@ -1710,13 +1710,16 @@ class Window(QMainWindow):
 			self.live_crop_window.show()
 			if self.live_crop_window.exec_():
 				cropcoordinates = self.live_crop_window.GetValue()
-				crop_image(file_path, cropcoordinates)
-				self.live_crop_window.destroy()
-				self.files = update_img(self, file_path, row)
-				self.reload(row)
-				self.d_writer('Crop coordinates: ' + str(cropcoordinates), 1, 'green')
-				Window.table_reload(self, self.files)
-				self.table.selectRow(row)
+				if filetype != 'pdf':
+					crop_image(file_path, cropcoordinates)
+					self.live_crop_window.destroy()
+					self.files = update_img(self, file_path, row)
+					self.reload(row)
+					self.d_writer('Crop coordinates: ' + str(cropcoordinates), 1, 'green')
+					Window.table_reload(self, self.files)
+					self.table.selectRow(row)
+				else:
+					self.d_writer('Not yes supported', 1, 'green')
 
 	def operate_file(self, action, debug_text, resolution):
 		outputfiles = []

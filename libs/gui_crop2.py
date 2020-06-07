@@ -1,35 +1,31 @@
 # #!/usr/bin/python3
-# # -*- coding: utf-8 -*-
-# import sys
-# from PyQt5.QtWidgets import QWidget, QApplication, QComboBox, QLabel, QPushButton
-# from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QBrush, QPainter, QPixmap
-# from PyQt5.QtCore import Qt
-# from PyQt5 import QtCore, QtGui, QtWidgets
-
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-import numpy
+# import numpy
 
-
+# clean code
 class livecropwindow(QDialog):
 	def __init__(self, input_file):
 		super(livecropwindow, self).__init__()
-		self.defined_crop = False
+		# crop button
 		self.move(5, 5)
+		self.defined_crop = False
 		self.crop = QPushButton('Crop', self)
 		self.crop.clicked.connect(self.cropimage)
 		self.begin = QPoint()
 		self.end = QPoint()
+		self.handle_offsets = (QPoint(8, 8), QPoint(-1, 8), QPoint(8, -1), QPoint(-1, -1))
+		# check str or list
 		if isinstance (input_file, str):
-			res, self.w, self.h, self.wpercent, self.hpercent, self.number = self.get_sizes(input_file)
+			res, self.w, self.h, self.wpercent, self.hpercent, self.percent = self.get_sizes(input_file)
 		else:
 			im_pixmap = QPixmap('')
 			im_pixmap.loadFromData(input_file)
-			res, self.w, self.h, self.wpercent, self.hpercent, self.number = self.get_sizes(im_pixmap)
+			res, self.w, self.h, self.wpercent, self.hpercent, self.percent = self.get_sizes(im_pixmap)
 		self.setFixedSize(self.wpercent*self.w, self.hpercent*self.h)
-		print ('nova velikost:' + str(self.wpercent*self.w) + 'x' + str(self.hpercent*self.h))
+		print ('new size:' + str(self.wpercent*self.w) + 'x' + str(self.hpercent*self.h))
 		print ('show window')
 		self.show()
 
@@ -38,35 +34,26 @@ class livecropwindow(QDialog):
 		self.w, self.h = self.pixmap.width(), self.pixmap.height()
 		sizeObject = QDesktopWidget().screenGeometry(0)# monitor size
 		res = [(int(sizeObject.width()*92/100)),(int(sizeObject.height()*92/100))]
-		print ('puvodni obraz:'+ str(self.w) + ' x ' +  str(self.h))
+		print ('original size:'+ str(self.w) + ' x ' +  str(self.h))
 		if self.w > res[0]:
-			print ('zmensuju Sirka je veci')
+			print ('shrink width')
 			self.wpercent = (res[0] / float(self.w))
 			self.hpercent = self.wpercent
-			self.number = self.w/ res[0]
-			print ('xxxx' + str(self.number))
-			# print ('procenta:' + str(self.wpercent))
-			# self.setFixedSize(self.w*wpercent, self.h*wpercent)
+			self.percent = self.w/ res[0]
+			print ('xxxx' + str(self.percent))
 		if self.h > res[1]:
-			print ('zmensuju Vyska je veci')
+			print ('shrink height')
 			self.hpercent = (res[1] / float(self.h))
 			self.wpercent = self.hpercent
 
-			self.number = self.w/ res[1]
-			print ('xxxx' + str(self.number))
-			# print ('procenta:' + str(self.hpercent))
-			# self.setFixedSize(self.w*wpercent, self.h*wpercent)
+			self.percent = self.w/ res[1]
+			print ('xxxx' + str(self.percent))
 		else:
-			print ('neni potreba zmensovat')
-			self.wpercent = 1
-			self.hpercent = 1
-			self.number = 0
-		# self.im_pixmap.setPixmap(self.im_pixmap.scaled(self.widget.size(),Qt.KeepAspectRatio))
-		# self.im_pixmap.setMinimumSize(1, 1)
-		print ('res'  +str(res))
-		print ('wpercent:' + str(100 * self.wpercent))
-		print ('hpercent: ' + str(100 * self.hpercent))
-		return res, self.w, self.h, self.wpercent, self.hpercent, self.number
+			print ('no neeed to shrink image')
+			self.wpercent,self.hpercent = 1,1
+			self.percent = 0
+		print ('res'  +str(res) + ' hpercent: ' + str(100 * self.hpercent) + ' wpercent:' + str(100 * self.wpercent))
+		return res, self.w, self.h, self.wpercent, self.hpercent, self.percent
 
 	def paintEvent(self, event):
 		qp = QPainter(self)
@@ -79,16 +66,24 @@ class livecropwindow(QDialog):
 		brush.setColor(QColor(Qt.white))
 		brush.setStyle(Qt.Dense6Pattern)
 		qp.setBrush(brush)
-		self.selection = qp.drawRect(QRect(self.begin, self.end))
+		self.clip_rect = qp.drawRect(QRect(self.begin, self.end))
 		centerCoord = (self.begin.x()+((self.end.x()-self.begin.x())/2), (self.begin.y()+((self.end.y()-self.begin.y())/2)))
+		# qp.drawRect(self.clip_rect)
+		# for i in range(4):
+		# 	qp.drawRect(self.corner(i))
+		# path = QPainterPath()
+		# path.addRect(QRectF(self.clip_rect))
 		# https://stackoverflow.com/questions/41982006/compute-the-centroid-of-a-rectangle-in-python
 		# print (centerCoord)
-		qp.setPen(QPen(Qt.black,  2, Qt.SolidLine))
+		# font
+		qp.setPen(QPen(Qt.white,  2))
 		qp.drawEllipse(centerCoord[0], centerCoord[1], 2, 2)
 		qp.setPen(QColor(Qt.black))
 		font = qp.font()
+		path1 = QPainterPath()
 		font.setBold(True)
 		qp.setFont(font)
+		qp.setPen(QColor(Qt.white))
 		qp.drawText(80, 20, 'image size: ' + str(self.w) + ' x ' +  str(self.h) + ' px')
 		# qp.drawText(centerCoord[0], centerCoord[1], 'Crop size: ' + str(self.begin.x()-self.end.x()) + ' x ' +  str(self.begin.y()-self.end.y()) + ' px')
 		qp.drawText(self.begin.x(),self.begin.y()-5, 'Crop size: ' + str(self.begin.x()-self.end.x()) + ' x ' +  str(self.begin.y()-self.end.y()) + ' px')
@@ -129,6 +124,17 @@ class livecropwindow(QDialog):
 		self.defined_crop = True
 		self.update()
 
+	def corner(self, number):
+	
+		if number == 0:
+			return QRect(self.clip_rect.topLeft() - self.handle_offsets[0], QSize(8, 8))
+		elif number == 1:
+			return QRect(self.clip_rect.topRight() - self.handle_offsets[1], QSize(8, 8))
+		elif number == 2:
+			return QRect(self.clip_rect.bottomLeft() - self.handle_offsets[2], QSize(8, 8))
+		elif number == 3:
+			return QRect(self.clip_rect.bottomRight() - self.handle_offsets[3], QSize(8, 8))
+
 
 
 	def cropimage(self):
@@ -144,7 +150,7 @@ class livecropwindow(QDialog):
 		return self.crop_text
 
 	def ucalc(self, p_input):
-		fixed_input = p_input * self.number
+		fixed_input = p_input * self.percent
 		return fixed_input
 
 	def GetValue(self):
@@ -152,6 +158,6 @@ class livecropwindow(QDialog):
 
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
-	ex = livecropwindow("/Users/jandevera/Desktop/15.jpg")
+	ex = livecropwindow("/Users/jandevera/Desktop/Screenshot 2020-06-08 at 00.23.06.png")
 	ex.show()
 	sys.exit(app.exec_())

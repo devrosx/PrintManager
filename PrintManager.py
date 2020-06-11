@@ -148,7 +148,7 @@ def resize_this_image(original_file, percent):
 def crop_image(original_file, coordinates):
 	command = ["convert", original_file, "-crop", str(coordinates[2] - coordinates[0])+'x'+str(coordinates[3] - coordinates[1])+'+'+str(coordinates[0])+'+'+str(coordinates[1]), original_file]
 	# command = ["convert", original_file, "-crop", str(coordinates[2] - coordinates[1])+'x'+str(coordinates[3] + coordinates[0])+'+'+str(coordinates[0])+'+'+str(coordinates[1]), original_file]
-
+	print (command)
 	print (command)
 	subprocess.run(command)
 	return command
@@ -156,6 +156,28 @@ def crop_image(original_file, coordinates):
 # Y 3 B+Y
 # A 0 A
 # B 1 B
+
+def pdf_cropper_x(pdf_input,coordinates,pages):
+	print (coordinates)
+	pdf = PdfFileReader(open(pdf_input, 'rb'))
+	output = PdfFileWriter()
+	for i in range(pages):
+		page = pdf.getPage(i)
+		outPdf=PdfFileWriter()
+		print ('TRIMBOX'+ str(i) + ':' +str(page.trimBox))
+		print ('MEDIABOX'+ str(i) + ':' +str(page.mediaBox))
+		print ('CROPBOX'+ str(i) + ':' +str(page.cropBox))
+
+		page.mediaBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
+		page.mediaBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
+		page.trimBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
+		page.trimBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
+
+		outPdf.addPage(page)
+		outStream=open(pdf_input + '_temp', 'wb')
+		outPdf.write(outStream)
+		outStream.close()
+		os.rename(pdf_input + '_temp', pdf_input)
 
 def rotate_this_image(original_file, angle):
 	outputfiles = []
@@ -492,36 +514,36 @@ def pdf_parse(self, inputs, *args):
 		oldfilename = (os.path.basename(item))
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
-		with open(item, mode='rb') as f:
-			pdf_input = PdfFileReader(f, strict=False)
-			if pdf_input.isEncrypted:
-				self.d_writer('File is encrypted...', 0, 'red')
-				pdf_input.close()
-				break
-			else:
-				try:
-					page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
-					pdf_pages = pdf_input.getNumPages()
-					velikost = size_check(page_size)
-					name.append(ext_file[0])
-					size.append(size_check(page_size))
-					price.append(price_check(pdf_pages, velikost))
-					file_size.append(humansize(os.path.getsize(item)))
-					pages.append(int(pdf_pages))
-					filepath.append(item)
-					info.append('')
-					colors.append('')
-					extension.append(ext_file[1][1:].lower())
-				except Exception as e:
-					print (e)
-					err = QMessageBox()
-					err.setWindowTitle("Error")
-					err.setIcon(QMessageBox.Critical)
-					err.setText("Error")
-					err.setInformativeText(str(e))
-					err.exec_()
-					self.d_writer('Import error:' + str(e),1, 'red')
-			f.close()
+		try:
+			with open(item, mode='rb') as f:
+				pdf_input = PdfFileReader(f, strict=False)
+				if pdf_input.isEncrypted:
+					self.d_writer('File is encrypted...', 0, 'red')
+					pdf_input.close()
+					break
+				else:
+						page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
+						pdf_pages = pdf_input.getNumPages()
+						velikost = size_check(page_size)
+						name.append(ext_file[0])
+						size.append(size_check(page_size))
+						price.append(price_check(pdf_pages, velikost))
+						file_size.append(humansize(os.path.getsize(item)))
+						pages.append(int(pdf_pages))
+						filepath.append(item)
+						info.append('')
+						colors.append('')
+						extension.append(ext_file[1][1:].lower())
+				f.close()
+		except Exception as e:
+			print (e)
+			err = QMessageBox()
+			err.setWindowTitle("Error")
+			err.setIcon(QMessageBox.Critical)
+			err.setText("Error")
+			err.setInformativeText(str(e))
+			err.exec_()
+			self.d_writer('Import error:' + str(e),1, 'red')
 	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
 	return merged_list
 
@@ -1109,7 +1131,8 @@ class Window(QMainWindow):
 
 	def external_convert(self, ext, inputfile, setting):
 		converts = []
-		if setting == 'Convert to PDF':
+		# print ('xxxx' + str(setting))
+		if setting == 'convert':
 			outputdir = os.path.dirname(inputfile[0]) + '/'
 		else:
 			outputdir = "/tmp/"
@@ -1696,18 +1719,24 @@ class Window(QMainWindow):
 		# 	self.reload(row)
 
 
+
+
 	def create_crop_window(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())
 			file_path=index.sibling(items.row(),8).data()
 			filetype=index.sibling(items.row(),3).data()
+			pages=int(index.sibling(items.row(),5).data())
 			if filetype == 'pdf':
 				print ('konverze')
-				file_path = pdf_preview_generator(file_path,generate_marks=1,page=0)
+				file_path_preview = pdf_preview_generator(file_path,generate_marks=1,page=0)
+				self.live_crop_window = livecropwindow(file_path_preview)
+				self.live_crop_window.show()
+			else:
 			# if self.live_crop_window is None:
-			self.live_crop_window = livecropwindow(file_path)
-			self.live_crop_window.show()
+				self.live_crop_window = livecropwindow(file_path)
+				self.live_crop_window.show()
 			if self.live_crop_window.exec_():
 				cropcoordinates = self.live_crop_window.GetValue()
 				if filetype != 'pdf':
@@ -1719,7 +1748,15 @@ class Window(QMainWindow):
 					Window.table_reload(self, self.files)
 					self.table.selectRow(row)
 				else:
-					self.d_writer('Not yes supported', 1, 'green')
+					# self.d_writer('Not yes supported', 1, 'green')
+					pdf_cropper_x(file_path,cropcoordinates,pages)
+					self.live_crop_window.destroy()
+					self.files = update_img(self, file_path, row)
+					self.reload(row)
+					self.d_writer('Crop coordinates: ' + str(cropcoordinates), 1, 'green')
+					Window.table_reload(self, self.files)
+					self.table.selectRow(row)
+
 
 	def operate_file(self, action, debug_text, resolution):
 		outputfiles = []

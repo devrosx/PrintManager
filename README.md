@@ -51,6 +51,7 @@ I'm a newbie with python and PyQt5 :)
 - print bugfixes
 - better debugoutput
 - WIP live crop  fixed croping big images 
+- basic PDF croping works (on some pdf files) TODO fix all types
 
 0.30
 - added remove cropmarks from pdf files (works on multiple files at once all pagesizes are detected) :)

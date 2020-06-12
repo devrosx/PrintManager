@@ -160,10 +160,11 @@ def crop_image(original_file, coordinates):
 def pdf_cropper_x(pdf_input,coordinates,pages):
 	print (coordinates)
 	pdf = PdfFileReader(open(pdf_input, 'rb'))
-	output = PdfFileWriter()
+	# output = PdfFileWriter()
+	outPdf=PdfFileWriter()
 	for i in range(pages):
 		page = pdf.getPage(i)
-		outPdf=PdfFileWriter()
+		
 		print ('TRIMBOX'+ str(i) + ':' +str(page.trimBox))
 		print ('MEDIABOX'+ str(i) + ':' +str(page.mediaBox))
 		print ('CROPBOX'+ str(i) + ':' +str(page.cropBox))
@@ -172,12 +173,11 @@ def pdf_cropper_x(pdf_input,coordinates,pages):
 		page.mediaBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
 		page.trimBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
 		page.trimBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
-
 		outPdf.addPage(page)
-		outStream=open(pdf_input + '_temp', 'wb')
-		outPdf.write(outStream)
-		outStream.close()
-		os.rename(pdf_input + '_temp', pdf_input)
+	outStream=open(pdf_input + '_temp', 'wb')
+	outPdf.write(outStream)
+	outStream.close()
+	os.rename(pdf_input + '_temp', pdf_input)
 
 def rotate_this_image(original_file, angle):
 	outputfiles = []

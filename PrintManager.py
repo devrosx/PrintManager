@@ -2208,6 +2208,7 @@ class Window(QMainWindow):
 			self._icon.addPixmap(QPixmap(_off))
 			name.setIcon(self._icon)
 
+# TOD UPDATE PDF
 	def rotator(self, angle):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()

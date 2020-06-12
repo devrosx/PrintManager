@@ -2208,6 +2208,36 @@ class Window(QMainWindow):
 			self._icon.addPixmap(QPixmap(_off))
 			name.setIcon(self._icon)
 
+	def rotator(self, angle):
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			filename=index.sibling(items.row(),1).data()
+			filetype=index.sibling(items.row(),3).data()
+			filepath=index.sibling(items.row(),8).data()
+			pages=int(index.sibling(items.row(),5).data())
+			if filetype == 'pdf':
+				pdf_in = open(filepath, 'rb')
+				pdf_reader = PdfFileReader(pdf_in)
+				pdf_writer = PdfFileWriter()
+				for pagenum in range(pdf_reader.numPages):
+					page = pdf_reader.getPage(pagenum)
+					page.rotateClockwise(angle)
+					pdf_writer.addPage(page)
+				pdf_out = open(filepath + '_temp', 'wb')
+				pdf_writer.write(pdf_out)
+				pdf_out.close()
+				pdf_in.close()
+				os.rename(filepath + '_temp', filepath)
+				self.files = pdf_update(self,filepath, row)
+				self.reload(row)
+			else:
+				command, outputfiles = rotate_this_image([filepath], angle)
+				self.files = update_img(self, outputfiles, row)
+				self.reload(row)
+			self.d_writer(filename + ' / angle: ' + str(angle),1, 'green')
+
+
 	def table_print(self):
 		green_ = (QColor(80, 80, 80))
 		black_ = (QBrush(QColor(0, 0, 0)))

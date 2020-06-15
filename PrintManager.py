@@ -147,32 +147,27 @@ def resize_this_image(original_file, percent):
 
 def crop_image(original_file, coordinates):
 	command = ["convert", original_file, "-crop", str(coordinates[2] - coordinates[0])+'x'+str(coordinates[3] - coordinates[1])+'+'+str(coordinates[0])+'+'+str(coordinates[1]), original_file]
-	# command = ["convert", original_file, "-crop", str(coordinates[2] - coordinates[1])+'x'+str(coordinates[3] + coordinates[0])+'+'+str(coordinates[0])+'+'+str(coordinates[1]), original_file]
 	print (command)
 	print (command)
 	subprocess.run(command)
 	return command
-# X 2 X+A
-# Y 3 B+Y
-# A 0 A
-# B 1 B
 
 def pdf_cropper_x(pdf_input,coordinates,pages):
 	print (coordinates)
 	pdf = PdfFileReader(open(pdf_input, 'rb'))
-	# output = PdfFileWriter()
 	outPdf=PdfFileWriter()
 	for i in range(pages):
+		# fix boxes....
 		page = pdf.getPage(i)
-		
-		print ('TRIMBOX'+ str(i) + ':' +str(page.trimBox))
-		print ('MEDIABOX'+ str(i) + ':' +str(page.mediaBox))
-		print ('CROPBOX'+ str(i) + ':' +str(page.cropBox))
-
+		# print ('TRIMBOX'+ str(i) + ':' +str(page.trimBox))
+		# print ('MEDIABOX'+ str(i) + ':' +str(page.mediaBox))
+		# print ('CROPBOX'+ str(i) + ':' +str(page.cropBox))
 		page.mediaBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
 		page.mediaBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
 		page.trimBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
 		page.trimBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
+		# page.cropBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
+		# page.cropBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
 		outPdf.addPage(page)
 	outStream=open(pdf_input + '_temp', 'wb')
 	outPdf.write(outStream)
@@ -1719,8 +1714,6 @@ class Window(QMainWindow):
 		# 	self.reload(row)
 
 
-
-
 	def create_crop_window(self):
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
@@ -1734,7 +1727,6 @@ class Window(QMainWindow):
 				self.live_crop_window = livecropwindow(file_path_preview)
 				self.live_crop_window.show()
 			else:
-			# if self.live_crop_window is None:
 				self.live_crop_window = livecropwindow(file_path)
 				self.live_crop_window.show()
 			if self.live_crop_window.exec_():
@@ -1744,18 +1736,17 @@ class Window(QMainWindow):
 					self.live_crop_window.destroy()
 					self.files = update_img(self, file_path, row)
 					self.reload(row)
-					self.d_writer('Crop coordinates: ' + str(cropcoordinates), 1, 'green')
 					Window.table_reload(self, self.files)
 					self.table.selectRow(row)
+					self.d_writer('File croped: ' + str(file_path), 1, 'green')
 				else:
-					# self.d_writer('Not yes supported', 1, 'green')
 					pdf_cropper_x(file_path,cropcoordinates,pages)
 					self.live_crop_window.destroy()
 					self.files = update_img(self, file_path, row)
 					self.reload(row)
-					self.d_writer('Crop coordinates: ' + str(cropcoordinates), 1, 'green')
 					Window.table_reload(self, self.files)
 					self.table.selectRow(row)
+					self.d_writer('File croped: ' + str(file_path), 1, 'green')
 
 
 	def operate_file(self, action, debug_text, resolution):
@@ -1824,16 +1815,9 @@ class Window(QMainWindow):
 		if self.selected_file_check() == 'pdf':
 			file,outputpdf = raster_this_file_(', '.join(outputfiles), 300,0,True,int(pages))
 			for items in file:
-				# print (items)
 				ocr = ocr_core(items, self.localization)
 				self.d_writer(str(ocr), 1)
-				# self.d_writer('WTF', 1)
-				# print (ocr)
-
-			# debugstring, outputfiles = gray_this_file(outputfiles,'pdf')
-			# self.files = pdf_parse(self,outputfiles)
 		else:
-			# only singe item for now
 			for items in outputfiles:
 				ocr = ocr_core(items, self.localization)
 				self.d_writer(str(ocr), 1)

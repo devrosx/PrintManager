@@ -1329,10 +1329,11 @@ class Window(QMainWindow):
 				print ('xxxxx_jpg')
 				del(self.files[row])
 
-
 	def contextMenuEvent(self, pos):
 		file_paths = []
-		if self.table.selectionModel():
+		if not self.table.selectionModel().selectedRows():
+			pass
+		else:
 			for items in sorted(self.table.selectionModel().selectedRows()):
 				index=(self.table.selectionModel().currentIndex())
 				row = items.row()
@@ -1368,6 +1369,7 @@ class Window(QMainWindow):
 			if action == previewAction:
 				self.preview_window()
 
+
 	def togglePrintWidget(self):
 		print (self.gb_printers.isHidden())
 		self.gb_printers.setHidden(not self.gb_printers.isHidden())
@@ -1390,6 +1392,7 @@ class Window(QMainWindow):
 				self.get_page_size()
 			except:
 				pass
+				
 	def preview_window(self):
 		if not self.table.selectionModel().selectedRows():
 			pass
@@ -2232,7 +2235,7 @@ class Window(QMainWindow):
 			return
 		if self.printer_tb.currentText() == None:
 			QMessageBox.information(self, 'Error', 'Choose printer!', QMessageBox.Ok)
-			return
+			return 
 		for items in sorted(self.table.selectionModel().selectedRows()):
 			row = items.row()
 			index=(self.table.selectionModel().currentIndex())

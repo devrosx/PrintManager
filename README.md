@@ -47,6 +47,10 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
+0.32
+- code cleanup
+- new context menu that add prefix based on orientation.... (portrait/landscape)
+
 0.31
 - print bugfixes
 - better debugoutput

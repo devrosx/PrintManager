@@ -92,7 +92,6 @@ class livecropwindow(QDialog):
 
 	def mousePressEvent(self, event):
 		if self.defined_crop == False:
-			print ('xxxxx')
 			if self.hpercent != 1:
 				print ('image to big')
 			self.begin = event.pos()

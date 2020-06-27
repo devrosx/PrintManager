@@ -65,10 +65,13 @@ def load_preferences():
 		default_pref = ['eng',300,'OpenOffice',False]
 	return json_pref, printers, default_pref
 
-def fix_filename(item):
+def fix_filename(item, _format=None):
 	oldfilename = (os.path.basename(item))
 	dirname = (os.path.dirname(item) + '/')
-	newfilename = unidecode(oldfilename)
+	if _format != None:
+		newfilename = _format + oldfilename
+	else:
+		newfilename = unidecode(oldfilename)
 	os.system('mv ' + "'" + dirname + oldfilename + "'" + ' ' + "'" + dirname + newfilename + "'")
 	return dirname + newfilename
 
@@ -584,7 +587,7 @@ def pdf_update(self, inputs, index, *args):
 	return merged_list
 
 
-def parse_img(self, inputs, *args):
+def img_parse(self, inputs, *args):
 	rows = []
 	for item in inputs:
 		oldfilename = (os.path.basename(item))
@@ -1058,8 +1061,7 @@ class Window(QMainWindow):
 				if text == "Combine to PDF " + (self.convertor):
 					files = self.external_convert(extension, image_files, 'combine')
 				if text == 'Import':
-					# parse_files = []
-					self.files = parse_img(self, image_files)
+					self.files = img_parse(self, image_files)
 					Window.table_reload(self, self.files)
 			else:
 				items = ["Convert to PDF", "Import"]
@@ -1070,9 +1072,8 @@ class Window(QMainWindow):
 					files = self.external_convert(extension, image_files, 'convert')
 				if text == 'Import':
 					# parse_files = []
-					self.files = parse_img(self, image_files)
+					self.files = img_parse(self, image_files)
 					Window.table_reload(self, self.files)
-					# self.d_writer('Imported: ' + ' '.join(image_files), 0)
 		# fix long names
 		if office_files:
 			if len(office_files) > 1:
@@ -1326,7 +1327,6 @@ class Window(QMainWindow):
 				# if filetype == 'pdf':
 				print (row)
 				remove_from_list(self, row)
-				print ('xxxxx_jpg')
 				del(self.files[row])
 
 	def contextMenuEvent(self, pos):
@@ -1345,6 +1345,7 @@ class Window(QMainWindow):
 			printAction = menu.addAction('Print')
 			previewAction = menu.addAction('Preview')
 			fix_nameAction = menu.addAction('Remove special characters from filename')
+			sort_images = menu.addAction('Sort portrait and landscape')
 			action = menu.exec_(self.mapToGlobal(pos))
 			if action == openAction:
 				revealfile(file_paths,'')
@@ -1358,9 +1359,11 @@ class Window(QMainWindow):
 						self.files = pdf_parse(self,[newname])
 						Window.table_reload(self, self.files)
 					else:
-						self.files = parse_img(self, [newname])
+						self.files = img_parse(self, [newname])
 						Window.table_reload(self, self.files)
 						self.d_writer('Renamed: ' + str(newname), 1, 'green')
+			if action == sort_images:
+					self.indetify_orientation(items)
 			if action == printAction:
 				index=(self.table.selectionModel().currentIndex())
 				row = self.table.currentRow()
@@ -1369,17 +1372,54 @@ class Window(QMainWindow):
 			if action == previewAction:
 				self.preview_window()
 
+	def indetify_orientation(self, items):
+		outputfiles = []
+		outputimgfiles = []
+		for items in sorted(self.table.selectionModel().selectedRows()):
+			row = items.row()
+			index=(self.table.selectionModel().currentIndex())
+			file_path=index.sibling(items.row(),8).data()
+			file_format=index.sibling(items.row(),2).data()
+			type_=index.sibling(items.row(),3).data()
+			if type_ == 'pdf':
+				file_format_l = file_format.split('x')
+				file_format_l = ' '.join(file_format_l).replace(' mm','').split()
+				file_format_l = list(map(int, file_format_l))
+				if file_format_l[0] > file_format_l[1]:
+					format_ =  'l_'
+				elif file_format_l[0] < file_format_l[1]:
+					format_ = 'p_'
+				elif file_format_l[0] == file_format_l[1]:
+					format_ = 's_'
+				self.d_writer(str(file_path) + str(format_), 1, 'green')
+				newname = fix_filename(file_path, _format=format_)
+				outputfiles.append(newname)
+			else:
+				file_format_l = file_format.split('x', 1)
+				file_format_l = ' '.join(file_format_l).replace('px','').split()
+				file_format_l = list(map(int, file_format_l))
+				if file_format_l[0] > file_format_l[1]:
+					format_ =  'l_'
+				elif file_format_l[0] < file_format_l[1]:
+					format_ = 'p_'
+				elif file_format_l[0] == file_format_l[1]:
+					format_ = 's_'
+				self.d_writer(str(file_path) + str(format_), 1, 'green')
+				newname = fix_filename(file_path, _format=format_)
+				outputimgfiles.append(newname)
+		self.deleteClicked()
+		self.files = pdf_parse(self,outputfiles)
+		self.files = img_parse(self,outputimgfiles)
+		Window.table_reload(self, self.files)
 
 	def togglePrintWidget(self):
-		print (self.gb_printers.isHidden())
+		# print (self.gb_printers.isHidden())
 		self.gb_printers.setHidden(not self.gb_printers.isHidden())
 		self.gb_setting.setHidden(not self.gb_setting.isHidden())
 		return True
 
 	def togglePreviewWidget(self):
-
 		PreviewWidget = 1
-		# self.move(50, 50)
 		self.gb_preview.setHidden(not self.gb_preview.isHidden())
 		print (self.gb_preview.isHidden())
 		if self.gb_preview.isHidden() == 1:
@@ -1777,7 +1817,7 @@ class Window(QMainWindow):
 			if outputfiles != None:
 				# imagename
 				self.d_writer(', '.join(debugstring),1)
-				self.files = parse_img(self,outputfiles)
+				self.files = img_parse(self,outputfiles)
 				Window.table_reload(self, self.files)
 			if outputfiles == None:
 				self.d_writer(', '.join(debugstring),1)
@@ -1798,7 +1838,7 @@ class Window(QMainWindow):
 			self.files = pdf_parse(self,outputfiles)
 		else:
 			debugstring, outputfiles = gray_this_file(outputfiles,'jpg')
-			self.files = parse_img(self,outputfiles)
+			self.files = img_parse(self,outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer('Converted '+ str(len(outputfiles)) + ' pdf files to grayscale:', 0, 'green')
 		self.d_writer(', '.join(debugstring),1)
@@ -1853,7 +1893,7 @@ class Window(QMainWindow):
 			file_path=index.sibling(items.row(),8).data()
 			outputfiles.append(file_path)
 		command, outputfiles = resize_this_image(outputfiles, percent)
-		self.files = parse_img(self, outputfiles)
+		self.files = img_parse(self, outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer('File(s)' + str(outputfiles) +' resized', 1, 'green')
 
@@ -1912,7 +1952,7 @@ class Window(QMainWindow):
 		except Exception as e:
 			self.d_writer('Error - Importing error' + str(e), 1, 'red')
 			return
-		self.files = parse_img(self,outputfiles)
+		self.files = img_parse(self,outputfiles)
 		Window.table_reload(self, self.files)
 		self.d_writer('Extracted images:', 1, 'green')
 		self.d_writer(str(outputfiles),1)

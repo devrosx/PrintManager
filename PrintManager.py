@@ -17,13 +17,20 @@ from libs.pdf_preview_module import pdf_preview_generator
 from libs.image_grabber_module import *
 from libs.remove_cropmarks_module import *
 from libs.gui_crop2 import *
+from libs.waifu_module import *
 
-version = '0.31'
+
+# SMART CROP - BROKEN NOW
+version = '0.34'
+# -more formats
+# -added gs convert fonts to
+# -added waifu convert
+# -fixed close window crashes
 import time
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [],[],[],[],[],[],[],[],[]
 mm = '0.3527777778'
-office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx', 'ppt']
+office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx', 'ppt', 'cdr']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
 next_ext = ['pdf','dat']
 papers = ['A4', 'A5', 'A3', '480x320', '450x320', 'undefined']
@@ -51,6 +58,7 @@ def load_preferences():
 	try:
 		with open('config.json', encoding='utf-8') as data_file:
 			json_pref = json.loads(data_file.read())
+			
 		if json_pref[0][8] == username:
 			print ('saved pref. ok')
 			printers = json_pref[0][9]
@@ -711,7 +719,7 @@ class TableWidgetDragRows(QTableWidget):
 	def __init__(self, *args, **kwargs):
 		QTableWidget.__init__(self, *args, **kwargs)
 		self.setAcceptDrops(True)
-		# self.setDragEnabled(True)
+		self.setDragEnabled(True)
 		self.viewport().setAcceptDrops(True)
 		self.setDragDropOverwriteMode(False)
 		# self.setDropIndicatorShown(True)
@@ -721,6 +729,48 @@ class TableWidgetDragRows(QTableWidget):
 		# self.setDragDropMode(QAbstractItemView.InternalMove)
 		self.setFocusPolicy(Qt.NoFocus)
 		self.setSortingEnabled(True)
+	# print todoo
+	def dragEnterEvent(self, event):
+		print ('chytam')
+		jpg_file = "icons/jpg.png"
+		jpg_icon = QIcon()
+		jpg_icon.addPixmap(QPixmap(jpg_file))
+	# 	m = event.mimeData()
+	# 	print (m)
+	# 	if event.mimeData().hasUrls:
+	# 		event.accept()
+	# 	else:
+	# 		event.ignore()
+		# event.setDropAction(Qt.CopyAction)
+	def dragMoveEvent(self, event):
+		r = self.currentRow()
+		path = self.item(r,8).text()
+		print (path)
+		# file_url = QUrl(path).toLocalFile()
+		# mimeData = QMimeData()
+		# mimeData.setUrls(file_url)
+		# print (mimeData)
+		# if mimeData.hasUrls:
+		# 	print ('nejsem debil')
+		# else:
+		# 	print ('sem')
+
+		# print (self.currentItem().row().text())
+		# print (self.currentItem().text())
+		# m = event.mimeData().text()
+		# print (m)
+		# if path.mimeData().hasUrls:
+			# event.setDropAction(Qt.CopyAction)
+		event.accept()
+		print ('yay')
+		# else:
+		# 	event.ignore()
+
+	def dragLeaveEvent(self, event):
+		event.accept()
+	def dropEvent(self, event):
+		print ('drag back')
+
 # for icons
 class IconDelegate(QStyledItemDelegate):
 	def initStyleOption(self, option, index):
@@ -748,6 +798,35 @@ class InputDialog_SmartCut(QDialog):
 		buttonBox.rejected.connect(self.reject)
 	def getInputs(self):
 		return (self.first.text(), self.second.text())
+
+class InputDialog_waifu2x(QDialog):
+	def __init__(self, parent=None):
+		super().__init__(parent)
+
+		self.imagetype = QComboBox()
+		self.imagetype.addItems(["photo", "cartoon"])
+
+		self.scale = QSpinBox(self)
+		self.scale.setRange(0, 2)
+		self.scale.setValue(2)
+		self.denoise = QSpinBox(self)
+		self.denoise.setRange(0, 4)
+		self.denoise.setValue(1)
+		buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self);
+
+		layout = QFormLayout(self)
+		layout.addRow("Image type", self.imagetype)
+		layout.addRow("Scale", self.scale)
+		layout.addRow("Denoise", self.denoise)
+		layout.addWidget(buttonBox)
+		buttonBox.accepted.connect(self.accept)
+		buttonBox.rejected.connect(self.reject)
+	def getInputs(self):
+		if self.imagetype.currentText() == "photo":
+			self.image_type = 'p'
+		else:
+			self.image_type = 'a'
+		return (self.image_type, self.scale.text(), self.denoise.text())
 
 class InputDialog_PDFcut(QDialog):
 	def __init__(self, parent=None):
@@ -1254,7 +1333,7 @@ class Window(QMainWindow):
 			self.table.setItem(i, 6, QTableWidgetItem(Price))
 			self.table.setItem(i, 7, QTableWidgetItem(Colors))
 			self.table.setItem(i, 8, QTableWidgetItem(Filepath))
-			self.table.setColumnHidden(8, True)
+			# self.table.setColumnHidden(8, True)
 		# print ('rowcount je:' + str(self.table.rowCount()))
 		if self.table.rowCount() == 0:
 			self.table.setStyleSheet("background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #191919;")
@@ -1668,6 +1747,7 @@ class Window(QMainWindow):
 		# other_menu.addAction('Fix PDF',lambda: self.operate_pdf(fix_this_file, 'File(s) fixed:', default_pref[1]))
 		# other_menu.addAction('Rasterize PDF',lambda: self.operate_pdf(raster_this_file, 'File(s) rasterized:', default_pref[1]))
 		# other_menu.addAction('Compress PDF',lambda: self.operate_pdf(compres_this_file, 'File(s) compressed:', default_pref[1]))
+		other_menu.addAction('waifu2x Upscale', self.waifu)
 		other_menu.addAction('OCR', self.ocr_maker)
 		other_menu.addAction('Resize', self.resize_image)
 		other_menu.addAction('Find similar image on google',lambda: self.operate_file(find_this_file, 'Images(s) found', default_pref[1]))
@@ -1883,19 +1963,42 @@ class Window(QMainWindow):
 
 	def resize_image(self):
 		outputfiles = []
-		percent,okPressed = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 5000)
-		if self.table.currentItem() == None:
-			self.d_writer('Error - No files selected', 1, 'red')
-			return
-		for items in sorted(self.table.selectionModel().selectedRows()):
-			row = items.row()
-			index=(self.table.selectionModel().currentIndex())
-			file_path=index.sibling(items.row(),8).data()
-			outputfiles.append(file_path)
-		command, outputfiles = resize_this_image(outputfiles, percent)
-		self.files = img_parse(self, outputfiles)
-		Window.table_reload(self, self.files)
-		self.d_writer('File(s)' + str(outputfiles) +' resized', 1, 'green')
+		percent,ok = QInputDialog.getInt(self,"Resize image","Enter a percent", 50, 1, 5000)
+		if ok:
+			if self.table.currentItem() == None:
+				self.d_writer('Error - No files selected', 1, 'red')
+				return
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				row = items.row()
+				index=(self.table.selectionModel().currentIndex())
+				file_path=index.sibling(items.row(),8).data()
+				outputfiles.append(file_path)
+			command, outputfiles = resize_this_image(outputfiles, percent)
+			self.files = img_parse(self, outputfiles)
+			Window.table_reload(self, self.files)
+			self.d_writer('File(s)' + str(outputfiles) +' resized', 1, 'green')
+
+
+	def waifu(self):
+		outputfiles = []
+		dialog = InputDialog_waifu2x()
+		if dialog.exec():
+			print(dialog.getInputs())
+			imagetype, scale_factor, denoise = dialog.getInputs()
+			if self.table.currentItem() == None:
+				self.d_writer('Error - No files selected', 1, 'red')
+				return
+			for items in sorted(self.table.selectionModel().selectedRows()):
+				row = items.row()
+				index=(self.table.selectionModel().currentIndex())
+				file_path=index.sibling(items.row(),8).data()
+				outputfiles.append(file_path)
+				print (file_path)
+				print (outputfiles)
+			command, outputfiles = img_upscale(outputfiles, scale_factor, denoise, imagetype)
+			self.files = img_parse(self, outputfiles)
+			Window.table_reload(self, self.files)
+			self.d_writer('File(s)' + str(outputfiles) +' upscaled', 1, 'green')
 
 	def crop_pdf(self):
 		from libs.super_crop_module import super_crop

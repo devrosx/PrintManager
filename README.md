@@ -5,6 +5,7 @@ PrintManager for Macosx (written in Python and PyQt5, with some handy features).
 
 ## Features
 - Fast print PDF and image files from table (LP command)
+- Waifu2x upscaling support (install brew install imxieyi/waifu2x/waifu2x)
 - Debug text window with informations
 - Preview window with page preview and detailed infotable
 - Basic printing settings (format, collating, fit to page, twosided, number of copies)
@@ -47,6 +48,12 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
+0.35
+- code cleanup
+- bugfixes (closing dialog boxes
+- waifu support
+
+
 0.32
 - code cleanup
 - new context menu that add prefix based on orientation.... (portrait/landscape)

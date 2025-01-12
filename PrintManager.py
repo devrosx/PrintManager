@@ -100,18 +100,18 @@ def humansize(size):
 
 
 def clear_table(self):
-    """Vymaže všechny řádky v tabulce."""
-    self.table.setRowCount(0)  # Nastaví počet řádků na 0
+	"""Vymaže všechny řádky v tabulce."""
+	self.table.setRowCount(0)  # Nastaví počet řádků na 0
 
 def open_printer(file):
-    file_path = '/private/etc/cups/ppd/' + file + '.ppd'
-    
-    if os.path.exists(file_path):
-        print(['open', '-t', file_path])
-        # Použijte plnou cestu k příkazu open
-        subprocess.run(['/usr/bin/open', '-t', file_path])
-    else:
-        print(f"Soubor {file_path} neexistuje.")
+	file_path = '/private/etc/cups/ppd/' + file + '.ppd'
+	
+	if os.path.exists(file_path):
+		print(['open', '-t', file_path])
+		# Použijte plnou cestu k příkazu open
+		subprocess.run(['/usr/bin/open', '-t', file_path])
+	else:
+		print(f"Soubor {file_path} neexistuje.")
 
 def revealfile(list_path,reveal): #reveal and convert
 	if isinstance (list_path, list):
@@ -126,38 +126,38 @@ def previewimage(original_file):
 	return command
 
 def mergefiles(list_path, save_dir):
-    base = os.path.basename(list_path[0])
-    file = os.path.splitext(base)
-    folder_path = os.path.dirname(list_path[0])
-    print(folder_path)
-    if folder_path == '/tmp':
-        folder_path = save_dir
-    outputfile = folder_path + '/' + file[0] + '_m.pdf'
-    # print (outputfile)
-    writer = PdfWriter()
-    for pdf in list_path:
-        reader = PdfReader(pdf)
-        writer.append(reader)
-    with open(outputfile, 'wb') as f:
-        writer.write(f)
-    return outputfile
+	base = os.path.basename(list_path[0])
+	file = os.path.splitext(base)
+	folder_path = os.path.dirname(list_path[0])
+	print(folder_path)
+	if folder_path == '/tmp':
+		folder_path = save_dir
+	outputfile = folder_path + '/' + file[0] + '_m.pdf'
+	# print (outputfile)
+	writer = PdfWriter()
+	for pdf in list_path:
+		reader = PdfReader(pdf)
+		writer.append(reader)
+	with open(outputfile, 'wb') as f:
+		writer.write(f)
+	return outputfile
 
 def splitfiles(file):
-    outputfiles = []
-    pdf_file = open(file, 'rb')
-    pdf_reader = PdfReader(pdf_file)
-    pageNumbers = len(pdf_reader.pages)
-    head, ext = os.path.splitext(file)
-    outputfile = head + 's_'
-    for i in range(pageNumbers):
-        pdf_writer = PdfWriter()
-        pdf_writer.add_page(pdf_reader.pages[i])
-        outputpaths = outputfile + str(i + 1) + '.pdf'
-        with open(outputpaths, 'wb') as split_motive:
-            pdf_writer.write(split_motive)
-        outputfiles.append(outputpaths)
-    pdf_file.close()
-    return outputfiles
+	outputfiles = []
+	pdf_file = open(file, 'rb')
+	pdf_reader = PdfReader(pdf_file)
+	pageNumbers = len(pdf_reader.pages)
+	head, ext = os.path.splitext(file)
+	outputfile = head + 's_'
+	for i in range(pageNumbers):
+		pdf_writer = PdfWriter()
+		pdf_writer.add_page(pdf_reader.pages[i])
+		outputpaths = outputfile + str(i + 1) + '.pdf'
+		with open(outputpaths, 'wb') as split_motive:
+			pdf_writer.write(split_motive)
+		outputfiles.append(outputpaths)
+	pdf_file.close()
+	return outputfiles
 
 def resize_this_image(original_file, percent):
 	outputfiles = []
@@ -177,19 +177,19 @@ def crop_image(original_file, coordinates):
 	return command
 
 def pdf_cropper_x(pdf_input, coordinates, pages):
-    print(coordinates)
-    pdf = PdfReader(open(pdf_input, 'rb'))
-    outPdf = PdfWriter()
-    for i in range(pages):
-        page = pdf.pages[i]
-        page.mediaBox.upper_left = (coordinates[0], int(page.trim_box[3]) - coordinates[1])
-        page.mediaBox.lower_right = (coordinates[2], int(page.trim_box[3]) - coordinates[3])
-        page.trimbox.upper_left = (coordinates[0], int(page.trim_box[3]) - coordinates[1])
-        page.trimbox.lower_right = (coordinates[2], int(page.trim_box[3]) - coordinates[3])
-        outPdf.add_page(page)
-    with open(pdf_input + '_temp', 'wb') as outStream:
-        outPdf.write(outStream)
-    os.rename(pdf_input + '_temp', pdf_input)
+	print(coordinates)
+	pdf = PdfReader(open(pdf_input, 'rb'))
+	outPdf = PdfWriter()
+	for i in range(pages):
+		page = pdf.pages[i]
+		page.mediaBox.upper_left = (coordinates[0], int(page.trim_box[3]) - coordinates[1])
+		page.mediaBox.lower_right = (coordinates[2], int(page.trim_box[3]) - coordinates[3])
+		page.trimbox.upper_left = (coordinates[0], int(page.trim_box[3]) - coordinates[1])
+		page.trimbox.lower_right = (coordinates[2], int(page.trim_box[3]) - coordinates[3])
+		outPdf.add_page(page)
+	with open(pdf_input + '_temp', 'wb') as outStream:
+		outPdf.write(outStream)
+	os.rename(pdf_input + '_temp', pdf_input)
 
 def rotate_this_image(original_file, angle):
 	outputfiles = []
@@ -519,50 +519,50 @@ def append_blankpage(inputs, *args):
 
 
 def pdf_parse(self, inputs, *args):
-    rows = []
-    if isinstance(inputs, str):
-        inputs = [inputs]
-    
-    for item in inputs:
-        oldfilename = os.path.basename(item)
-        ext_file = os.path.splitext(oldfilename)
-        dirname = os.path.dirname(item) + '/'
-        
-        try:
-            with open(item, mode='rb') as f:
-                pdf_input = PdfReader(f, strict=False)
-                
-                if pdf_input.is_encrypted:
-                    self.d_writer('File is encrypted...', 0, 'red')
-                    continue  # Pokračujte na další soubor, pokud je šifrovaný
-                
-                # Opraveno na mediaBox
-                page_size = get_pdf_size(pdf_input.pages[0].mediabox)
-                pdf_pages = len(pdf_input.pages)
-                velikost = size_check(page_size)
-                
-                name.append(ext_file[0])
-                size.append(size_check(page_size))
-                price.append(price_check(pdf_pages, velikost))
-                file_size.append(humansize(os.path.getsize(item)))
-                pages.append(int(pdf_pages))
-                filepath.append(item)
-                info.append('')
-                colors.append('')
-                extension.append(ext_file[1][1:].lower())
-        
-        except Exception as e:
-            print(e)
-            err = QMessageBox()
-            err.setWindowTitle("Error")
-            err.setIcon(QMessageBox.Critical)
-            err.setText("Error")
-            err.setInformativeText(str(e))
-            err.exec_()
-            self.d_writer('Import error: ' + str(e), 1, 'red')
-    
-    merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-    return merged_list
+	rows = []
+	if isinstance(inputs, str):
+		inputs = [inputs]
+	
+	for item in inputs:
+		oldfilename = os.path.basename(item)
+		ext_file = os.path.splitext(oldfilename)
+		dirname = os.path.dirname(item) + '/'
+		
+		try:
+			with open(item, mode='rb') as f:
+				pdf_input = PdfReader(f, strict=False)
+				
+				if pdf_input.is_encrypted:
+					self.d_writer('File is encrypted...', 0, 'red')
+					continue  # Pokračujte na další soubor, pokud je šifrovaný
+				
+				# Opraveno na mediaBox
+				page_size = get_pdf_size(pdf_input.pages[0].mediabox)
+				pdf_pages = len(pdf_input.pages)
+				velikost = size_check(page_size)
+				
+				name.append(ext_file[0])
+				size.append(size_check(page_size))
+				price.append(price_check(pdf_pages, velikost))
+				file_size.append(humansize(os.path.getsize(item)))
+				pages.append(int(pdf_pages))
+				filepath.append(item)
+				info.append('')
+				colors.append('')
+				extension.append(ext_file[1][1:].lower())
+		
+		except Exception as e:
+			print(e)
+			err = QMessageBox()
+			err.setWindowTitle("Error")
+			err.setIcon(QMessageBox.Critical)
+			err.setText("Error")
+			err.setInformativeText(str(e))
+			err.exec_()
+			self.d_writer('Import error: ' + str(e), 1, 'red')
+	
+	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+	return merged_list
 
 
 
@@ -1224,83 +1224,87 @@ class Window(QMainWindow):
 
 	def external_convert(self, ext, inputfile, setting):
 		converts = []
-		# print ('xxxx' + str(setting))
+		
+		# Nastavení výstupního adresáře
 		if setting == 'convert':
 			outputdir = os.path.dirname(inputfile[0]) + '/'
 		else:
 			outputdir = "/tmp/"
 			savedir = os.path.dirname(inputfile[0]) + '/'
+	
 		if self.convertor == 'OpenOffice':
+			# Příprava příkazu pro konverzi
+			command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf"]
+	
+			# Přidání všech souborů do příkazového řetězce
+			command.extend(inputfile)
+			command.append("--outdir")
+			command.append(outputdir)
+	
+			# Spuštění příkazu
+			p = subprocess.Popen(command, stderr=subprocess.PIPE)
+			output, err = p.communicate()
+	
+			# Kontrola chyb
+			if err:
+				for items in inputfile:
+					if err == b'Error: source file could not be loaded\n':
+						QMessageBox.about(self, "Error", "File: " + str(items) + " not supported.")
+						break
+	
+			# Generování seznamu konvertovaných souborů
 			for items in inputfile:
-				command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf", items,"--outdir", outputdir]
-				p = subprocess.Popen(command, stderr=subprocess.PIPE)
-				output, err = p.communicate()
-				if err == b'Error: source file could not be loaded\n':
-					QMessageBox.about(self, "Error", "File: " + str(items) + " not supported.")
-					break
 				base = os.path.basename(items)
 				base = os.path.splitext(base)[0]
-				new_file = outputdir + base + '.pdf'
+				new_file = os.path.join(outputdir, base + '.pdf')
 				converts.append(new_file)
-			if setting == 'combine':
-				print ('converts: ' + str(converts))
+	
+			# Zpracování podle nastavení
+			if setting in ['combine', 'combinefix']:
+				print('converts: ' + str(converts))
 				merged_pdf = mergefiles(converts, savedir)
-				print ('this is merged_pdf: ' + str(merged_pdf))
-				# convert to list fix for later
-				# merged_pdf = (merged_pdf.split())
-				print ('this is merged_pdf with split: ' + str(merged_pdf))
-				self.files = pdf_parse(self,merged_pdf)
-				self.d_writer('OpenOffice combining files to:', 0, 'green')
-				self.d_writer(merged_pdf[0], 1)
-				Window.table_reload(self, self.files)
-			if setting == 'combinefix':
-				print ('converts: ' + str(converts))
-				# check if converts is odd or even and add blank pages
-				merged_pdf = mergefiles(converts, savedir)
-				print ('this is merged_pdf: ' + str(merged_pdf))
-				# convert to list fix for later
-				# merged_pdf = (merged_pdf.split())
-				print ('this is merged_pdf with split: ' + str(merged_pdf))
-				self.files = pdf_parse(self,merged_pdf)
+				print('this is merged_pdf: ' + str(merged_pdf))
+				self.files = pdf_parse(self, merged_pdf)
 				self.d_writer('OpenOffice combining files to:', 0, 'green')
 				self.d_writer(merged_pdf[0], 1)
 				Window.table_reload(self, self.files)
 			else:
 				self.d_writer('OpenOffice converted files:', 0, 'green')
 				self.d_writer(converts, 1)
-				self.files = pdf_parse(self,converts)
-				Window.table_reload(self, self.files)				
+				self.files = pdf_parse(self, converts)
+				Window.table_reload(self, self.files)
+	
 		elif self.convertor == 'CloudConvert':
-			print ('CloudConvert')
+			print('CloudConvert')
 			from libs.cc_module import cc_convert
 			for items in inputfile:
-				# fix diacritics (check better fix later)
+				# Oprava diakritiky (zkontrolujte lepší opravu později)
 				items = fix_filename(items)
 				new_file, warning = cc_convert(items)
 				if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
-					self.d_writer('missing API_KEY',0,'red')
-					API_KEY,okPressed = QInputDialog.getText(self,"Warning ","Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
+					self.d_writer('missing API_KEY', 0, 'red')
+					API_KEY, okPressed = QInputDialog.getText(self, "Warning ", "Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
 					with open("cc.json", "w") as text_file:
 						text_file.write(API_KEY)
 					self.d_writer('API_KEY saved - Try import again', 0, 'red')
-				elif new_file == None:
-					print (warning)
+				elif new_file is None:
+					print(warning)
 					QMessageBox.about(self, "Warning", warning)
-				elif new_file != None:
-					print ('converting...')
+				else:
+					print('converting...')
 					converts.append(new_file)
+	
 			if setting == 'combine':
 				merged_pdf = mergefiles(converts, savedir)
-				# convert to list fix for later
-				# merged_pdf = (merged_pdf.split())
-				merged_pdf = [merged_pdf]
-				self.files = pdf_parse(self,merged_pdf)
+				merged_pdf = [merged_pdf]  # Oprava pro pozdější použití
+				self.files = pdf_parse(self, merged_pdf)
 				self.d_writer('CloudConvert combining files to:', 0, 'green')
 				self.d_writer(merged_pdf[0], 1)
 				Window.table_reload(self, self.files)
 			else:
-				self.files = pdf_parse(self,converts)
+				self.files = pdf_parse(self, converts)
 				Window.table_reload(self, self.files)
+
 
 	def table_reload(self, inputfile):
 		self.table = TableWidgetDragRows()
@@ -2558,8 +2562,8 @@ class Window(QMainWindow):
 		self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 	def clear_table(self):
-	    """Vymaže všechny řádky v tabulce."""
-	    self.table.setRowCount(0)  # Nastaví počet řádků na 0
+		"""Vymaže všechny řádky v tabulce."""
+		self.table.setRowCount(0)  # Nastaví počet řádků na 0
 
 
 	def reload(self, row):

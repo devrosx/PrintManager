@@ -110,17 +110,18 @@ def rotateBox(box, angle, center):
 	return np.array(rotBox)
 
 def getCenter(box):
-	x_vals = [i[0] for i in box]; y_vals = [i[1] for i in box]
-	cen_x = max(x_vals) - min(x_vals)
-	cen_y = max(y_vals) - min(y_vals)
-	return (cen_x, cen_y)
+    x_vals = [i[0] for i in box]
+    y_vals = [i[1] for i in box]
+    cen_x = (max(x_vals) + min(x_vals)) / 2
+    cen_y = (max(y_vals) + min(y_vals)) / 2
+    return (cen_x, cen_y)
 
 # Rotate and crop the candidates.
 def clipScans(img, candidates):
 	scans = []
 	for roi in candidates:
 		rect = roi[1]
-		box = np.int0(roi[0])
+		box = np.intp(roi[0])
 		angle = rect[2]
 		if angle < -45:
 			angle += 90
@@ -153,7 +154,8 @@ def findScans(img,tresh):
 
 if __name__ == '__main__':
 	print ('local run')
-	output = processFile(str(inputfiles[0]),3,220)
+	inputfiles =['xxx.jpg']
+	output = processFile(str(inputfiles[0]),20,220)
 
 #--------------------------------------------------------------------
 # 

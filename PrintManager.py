@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/local/opt/python@3.12/bin/python3.12
 import sys
 import os
 import subprocess
 import json
-from PyPDF2 import PdfFileReader, PdfFileMerger, PdfFileWriter
+from PyPDF2 import PdfReader, PdfWriter
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor, QTextCursor, QDrag
 from PyQt5.QtCore import *
@@ -44,7 +44,7 @@ else:
 
 # extract printer info as list for preferences only
 def load_printers():
-	output = (subprocess.check_output(["lpstat", "-a"]))
+	output = (subprocess.check_output(["/usr/bin/lpstat", "-a"]))
 	outputlist = (output.splitlines())
 	tolist = [] # novy list
 	for num in outputlist:  # prochazeni listem
@@ -97,8 +97,21 @@ def humansize(size):
 	filesize = ('%.1f' % float(size/1000000) + ' MB')
 	return filesize
 
+
+
+def clear_table(self):
+    """Vymaže všechny řádky v tabulce."""
+    self.table.setRowCount(0)  # Nastaví počet řádků na 0
+
 def open_printer(file):
-	subprocess.call(['open', "-t", '/private/etc/cups/ppd/'+file+'.ppd'])
+    file_path = '/private/etc/cups/ppd/' + file + '.ppd'
+    
+    if os.path.exists(file_path):
+        print(['open', '-t', file_path])
+        # Použijte plnou cestu k příkazu open
+        subprocess.run(['/usr/bin/open', '-t', file_path])
+    else:
+        print(f"Soubor {file_path} neexistuje.")
 
 def revealfile(list_path,reveal): #reveal and convert
 	if isinstance (list_path, list):
@@ -112,39 +125,39 @@ def previewimage(original_file):
 	subprocess.run(command)
 	return command
 
-def mergefiles(list_path,save_dir):
-	base = os.path.basename(list_path[0])
-	file = os.path.splitext(base)
-	folder_path = os.path.dirname(list_path[0])
-	print (folder_path)
-	if folder_path == '/tmp':
-		folder_path = save_dir
-	outputfile = folder_path + '/' + file[0] +  '_m.pdf'
-	# print (outputfile)
-	merger = PdfFileMerger()
-	for pdf in list_path:
-		merger.append(pdf)
-	merger.write(outputfile)
-	merger.close()
-	return outputfile
+def mergefiles(list_path, save_dir):
+    base = os.path.basename(list_path[0])
+    file = os.path.splitext(base)
+    folder_path = os.path.dirname(list_path[0])
+    print(folder_path)
+    if folder_path == '/tmp':
+        folder_path = save_dir
+    outputfile = folder_path + '/' + file[0] + '_m.pdf'
+    # print (outputfile)
+    writer = PdfWriter()
+    for pdf in list_path:
+        reader = PdfReader(pdf)
+        writer.append(reader)
+    with open(outputfile, 'wb') as f:
+        writer.write(f)
+    return outputfile
 
 def splitfiles(file):
-	outputfiles = []
-	pdf_file = open(file,'rb')
-	pdf_reader = PdfFileReader(file)
-	pageNumbers = pdf_reader.getNumPages()
-	head, ext = os.path.splitext(file)
-	outputfile = head + 's_'
-	for i in range (pageNumbers):
-		pdf_writer = PdfFileWriter()
-		pdf_writer.addPage(pdf_reader.getPage(i))
-		outputpaths = outputfile + str(i+1) + '.pdf'
-		split_motive = open(outputfile + str(i+1) + '.pdf','wb')
-		outputfiles.append(outputpaths)
-		pdf_writer.write(split_motive)
-		split_motive.close()
-	pdf_file.close()
-	return outputfiles
+    outputfiles = []
+    pdf_file = open(file, 'rb')
+    pdf_reader = PdfReader(pdf_file)
+    pageNumbers = len(pdf_reader.pages)
+    head, ext = os.path.splitext(file)
+    outputfile = head + 's_'
+    for i in range(pageNumbers):
+        pdf_writer = PdfWriter()
+        pdf_writer.add_page(pdf_reader.pages[i])
+        outputpaths = outputfile + str(i + 1) + '.pdf'
+        with open(outputpaths, 'wb') as split_motive:
+            pdf_writer.write(split_motive)
+        outputfiles.append(outputpaths)
+    pdf_file.close()
+    return outputfiles
 
 def resize_this_image(original_file, percent):
 	outputfiles = []
@@ -163,27 +176,20 @@ def crop_image(original_file, coordinates):
 	subprocess.run(command)
 	return command
 
-def pdf_cropper_x(pdf_input,coordinates,pages):
-	print (coordinates)
-	pdf = PdfFileReader(open(pdf_input, 'rb'))
-	outPdf=PdfFileWriter()
-	for i in range(pages):
-		# fix boxes....
-		page = pdf.getPage(i)
-		# print ('TRIMBOX'+ str(i) + ':' +str(page.trimBox))
-		# print ('MEDIABOX'+ str(i) + ':' +str(page.mediaBox))
-		# print ('CROPBOX'+ str(i) + ':' +str(page.cropBox))
-		page.mediaBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
-		page.mediaBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
-		page.trimBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
-		page.trimBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
-		# page.cropBox.upperLeft = (coordinates[0], int(page.trimBox[3]) - coordinates[1])
-		# page.cropBox.lowerRight = (coordinates[2], int(page.trimBox[3]) - coordinates[3])
-		outPdf.addPage(page)
-	outStream=open(pdf_input + '_temp', 'wb')
-	outPdf.write(outStream)
-	outStream.close()
-	os.rename(pdf_input + '_temp', pdf_input)
+def pdf_cropper_x(pdf_input, coordinates, pages):
+    print(coordinates)
+    pdf = PdfReader(open(pdf_input, 'rb'))
+    outPdf = PdfWriter()
+    for i in range(pages):
+        page = pdf.pages[i]
+        page.mediaBox.upper_left = (coordinates[0], int(page.trim_box[3]) - coordinates[1])
+        page.mediaBox.lower_right = (coordinates[2], int(page.trim_box[3]) - coordinates[3])
+        page.trimbox.upper_left = (coordinates[0], int(page.trim_box[3]) - coordinates[1])
+        page.trimbox.lower_right = (coordinates[2], int(page.trim_box[3]) - coordinates[3])
+        outPdf.add_page(page)
+    with open(pdf_input + '_temp', 'wb') as outStream:
+        outPdf.write(outStream)
+    os.rename(pdf_input + '_temp', pdf_input)
 
 def rotate_this_image(original_file, angle):
 	outputfiles = []
@@ -286,8 +292,8 @@ def smart_cut_this_file(original_file, *args):
 	return command, smartcut_files
 
 def get_boxes(input_file):
-		pdf_reader = PdfFileReader(input_file)
-		page = pdf_reader.getPage(0)
+		pdf_reader = PdfReader(input_file)
+		page = reader.pages[0]
 		pageNumbers = pdf_reader.getNumPages()
 		# input_file.close()
 		return pageNumbers
@@ -315,7 +321,7 @@ def file_info_new(inputs, file, *args):
 	_info = []
 	if file == 'pdf':
 		for item in inputs:
-			pdf_toread = PdfFileReader(open(item, "rb"))
+			pdf_toread = PdfReader(open(item, "rb"))
 			pdf_ = pdf_toread.getDocumentInfo()
 			pdf_fixed = {key.strip('/'): item.strip() for key, item in pdf_.items()}
 			pdf_fixed.update( {'Filesize' : humansize(os.path.getsize(item))} )
@@ -443,7 +449,7 @@ def get_pdf_size(pdf_input):
 
 def getimageinfo (filename):
 	try:
-		output = (subprocess.check_output(["identify", '-format', '%wx%hpx %m', filename]))
+		output = (subprocess.check_output(["/usr/local/bin/identify", '-format', '%wx%hpx %m', filename]))
 		outputlist = (output.splitlines())
 		getimageinfo = []
 		for num in outputlist:  # prochazeni listem
@@ -471,7 +477,7 @@ def append_blankpage(inputs, *args):
 		inputs = [inputs]
 	for item in inputs:
 		with open(item, 'rb') as input:
-			pdf=PdfFileReader(input)
+			pdf=PdfReader(input)
 			numPages=pdf.getNumPages()
 			if numPages % 2 == 1:
 				print ('licha')
@@ -489,7 +495,7 @@ def append_blankpage(inputs, *args):
 
 	# for items in inputs:
 	# 	pdf_in = open(items, 'rb')
-	# 	pdf_reader = PdfFileReader(pdf_in)
+	# 	pdf_reader = PdfReader(pdf_in)
 	# 	pdf_writer = PdfFileWriter()
 	# 	numPages=pdf_reader.getNumPages()
 	# 	if numPages % 2 == 1:
@@ -513,45 +519,52 @@ def append_blankpage(inputs, *args):
 
 
 def pdf_parse(self, inputs, *args):
-	rows = []
-	if type(inputs) is str:
-		inputs = [inputs]
-	for item in inputs:
-		oldfilename = (os.path.basename(item))
-		ext_file = os.path.splitext(oldfilename)
-		dirname = (os.path.dirname(item) + '/')
-		try:
-			with open(item, mode='rb') as f:
-				pdf_input = PdfFileReader(f, strict=False)
-				if pdf_input.isEncrypted:
-					self.d_writer('File is encrypted...', 0, 'red')
-					pdf_input.close()
-					break
-				else:
-						page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
-						pdf_pages = pdf_input.getNumPages()
-						velikost = size_check(page_size)
-						name.append(ext_file[0])
-						size.append(size_check(page_size))
-						price.append(price_check(pdf_pages, velikost))
-						file_size.append(humansize(os.path.getsize(item)))
-						pages.append(int(pdf_pages))
-						filepath.append(item)
-						info.append('')
-						colors.append('')
-						extension.append(ext_file[1][1:].lower())
-				f.close()
-		except Exception as e:
-			print (e)
-			err = QMessageBox()
-			err.setWindowTitle("Error")
-			err.setIcon(QMessageBox.Critical)
-			err.setText("Error")
-			err.setInformativeText(str(e))
-			err.exec_()
-			self.d_writer('Import error:' + str(e),1, 'red')
-	merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
-	return merged_list
+    rows = []
+    if isinstance(inputs, str):
+        inputs = [inputs]
+    
+    for item in inputs:
+        oldfilename = os.path.basename(item)
+        ext_file = os.path.splitext(oldfilename)
+        dirname = os.path.dirname(item) + '/'
+        
+        try:
+            with open(item, mode='rb') as f:
+                pdf_input = PdfReader(f, strict=False)
+                
+                if pdf_input.is_encrypted:
+                    self.d_writer('File is encrypted...', 0, 'red')
+                    continue  # Pokračujte na další soubor, pokud je šifrovaný
+                
+                # Opraveno na mediaBox
+                page_size = get_pdf_size(pdf_input.pages[0].mediabox)
+                pdf_pages = len(pdf_input.pages)
+                velikost = size_check(page_size)
+                
+                name.append(ext_file[0])
+                size.append(size_check(page_size))
+                price.append(price_check(pdf_pages, velikost))
+                file_size.append(humansize(os.path.getsize(item)))
+                pages.append(int(pdf_pages))
+                filepath.append(item)
+                info.append('')
+                colors.append('')
+                extension.append(ext_file[1][1:].lower())
+        
+        except Exception as e:
+            print(e)
+            err = QMessageBox()
+            err.setWindowTitle("Error")
+            err.setIcon(QMessageBox.Critical)
+            err.setText("Error")
+            err.setInformativeText(str(e))
+            err.exec_()
+            self.d_writer('Import error: ' + str(e), 1, 'red')
+    
+    merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
+    return merged_list
+
+
 
 def pdf_update(self, inputs, index, *args):
 	rows = []
@@ -562,8 +575,8 @@ def pdf_update(self, inputs, index, *args):
 		ext_file = os.path.splitext(oldfilename)
 		dirname = (os.path.dirname(item) + '/')
 		with open(item, mode='rb') as f:
-			pdf_input = PdfFileReader(f, strict=False)
-			if pdf_input.isEncrypted:
+			pdf_input = PdfReader(f, strict=False)
+			if pdf_input.is_encrypted:
 				self.d_writer('File is encrypted...', 0, 'red')
 				pdf_input.close()
 				break
@@ -950,6 +963,11 @@ class Window(QMainWindow):
 		rotate_180.setShortcut('Ctrl+Alt+Shift+R')
 		rotate_180.triggered.connect(lambda: self.rotator(angle=180))
 		edit_menu.addAction(rotate_180)
+
+		clear_all = QAction("Clear all files", self)
+		clear_all.setShortcut('Ctrl+X')
+		clear_all.triggered.connect(self.clear_table)
+		edit_menu.addAction(clear_all)
 
 		# PREVIEW
 		preview_menu  = QAction("Preview", self)
@@ -2349,10 +2367,10 @@ class Window(QMainWindow):
 			pages=int(index.sibling(items.row(),5).data())
 			if filetype == 'pdf':
 				pdf_in = open(filepath, 'rb')
-				pdf_reader = PdfFileReader(pdf_in)
+				pdf_reader = PdfReader(pdf_in)
 				pdf_writer = PdfFileWriter()
 				for pagenum in range(pdf_reader.numPages):
-					page = pdf_reader.getPage(pagenum)
+					page = reader.pages[pagenum]
 					page.rotateClockwise(angle)
 					pdf_writer.addPage(page)
 				pdf_out = open(filepath + '_temp', 'wb')
@@ -2538,6 +2556,11 @@ class Window(QMainWindow):
 		for row in range(self.table.rowCount()):
 			self.table.selectRow(row)
 		self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+	def clear_table(self):
+	    """Vymaže všechny řádky v tabulce."""
+	    self.table.setRowCount(0)  # Nastaví počet řádků na 0
+
 
 	def reload(self, row):
 		self.table_reload(self.files)

@@ -921,6 +921,9 @@ class PrefDialog(QDialog):
 		return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText(), self.ontop.isChecked()	
 
 class Window(QMainWindow):
+	def open_url(self):
+		url = 'http://github.com/devrosx/PrintManager/'
+		subprocess.run(['/usr/bin/open', url])  # Pouze pro macOS
 	def __init__(self, parent=None):
 		super(Window, self).__init__(parent)
 		self.setWindowTitle("PrintManager " + version)
@@ -988,7 +991,7 @@ class Window(QMainWindow):
 		file_menu.addAction(pref_action)
 		# GITHUB PAGE
 		url_action = QAction("PrintManager Github", self)
-		url_action.triggered.connect(lambda: webbrowser.open('http://github.com/devrosx/PrintManager/'))
+		url_action.triggered.connect(self.open_url)
 		about_menu.addAction(url_action)
 		# OPEN
 		open_action.triggered.connect(self.openFileNamesDialog)

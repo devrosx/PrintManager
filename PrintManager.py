@@ -473,23 +473,26 @@ def getimageinfo (filename):
 
 def append_blankpage(inputs, *args):
 	outputfiles = []
-	if type(inputs) is str:
+	if isinstance(inputs, str):  # Použijte isinstance pro kontrolu typu
 		inputs = [inputs]
 	for item in inputs:
-		with open(item, 'rb') as input:
-			pdf=PdfReader(input)
-			numPages=pdf.getNumPages()
+		with open(item, 'rb') as input_file:
+			pdf = PdfReader(input_file)
+			numPages = len(pdf.pages)  # Získání počtu stránek pomocí len(pdf.pages)
 			if numPages % 2 == 1:
-				print ('licha')
-				outPdf=PdfFileWriter()
-				outPdf.appendPagesFromReader(pdf)
-				outPdf.addBlankPage()
-				outStream=open(item + '_temp', 'wb')
+				print('licha')
+				outPdf = PdfWriter()  # Použijte PdfWriter
+				# Přidejte všechny stránky jednu po druhé
+				for page_number in range(numPages):
+					page = pdf.pages[page_number]  # Získání stránky pomocí indexu
+					outPdf.add_page(page)  # Přidání jednotlivé stránky
+				outPdf.add_blank_page()  # Přidejte prázdnou stránku
+				outStream = open(item + '_temp', 'wb')
 				outPdf.write(outStream)
 				outStream.close()
 				os.rename(item + '_temp', item)
 			else:
-				print ('suda all ok')
+				print('suda all ok')
 	command = ['ok']
 	return command, outputfiles
 
@@ -568,23 +571,27 @@ def pdf_parse(self, inputs, *args):
 
 def pdf_update(self, inputs, index, *args):
 	rows = []
-	if type(inputs) is str:
+	if isinstance(inputs, str):  # Použijte isinstance pro kontrolu typu
 		inputs = [inputs]
+	
 	for item in inputs:
-		oldfilename = (os.path.basename(item))
+		oldfilename = os.path.basename(item)
 		ext_file = os.path.splitext(oldfilename)
-		dirname = (os.path.dirname(item) + '/')
+		dirname = os.path.dirname(item) + '/'
+		
 		with open(item, mode='rb') as f:
 			pdf_input = PdfReader(f, strict=False)
 			if pdf_input.is_encrypted:
 				self.d_writer('File is encrypted...', 0, 'red')
-				pdf_input.close()
-				break
+				break  # Ukončete cyklus, pokud je soubor zašifrovaný
 			else:
 				try:
-					page_size = get_pdf_size(pdf_input.getPage(0).mediaBox)
-					pdf_pages = pdf_input.getNumPages()
+					# Získání velikosti stránky a počtu stránek
+					page_size = get_pdf_size(pdf_input.pages[0].mediabox)  # Použijte pdf_input.pages[0]
+					pdf_pages = len(pdf_input.pages)  # Použijte len(pdf_input.pages)
 					velikost = size_check(page_size)
+					
+					# Aktualizace informací
 					name[index] = ext_file[0]
 					size[index] = size_check(page_size)
 					price[index] = price_check(pdf_pages, velikost)
@@ -595,7 +602,7 @@ def pdf_update(self, inputs, index, *args):
 					colors[index] = ''
 					extension[index] = ext_file[1][1:].lower()
 				except Exception as e:
-					print (e)
+					print(e)
 					err = QMessageBox()
 					err.setWindowTitle("Error")
 					err.setIcon(QMessageBox.Critical)

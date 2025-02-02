@@ -49,7 +49,8 @@ I'm a newbie with python and PyQt5 :)
 
 # Updates:
 0.4
-- MAJOR REWRITE 
+- MAJOR REWRITE
+- google convert test version (WIP)
 - PyQT6 support
 - fixed icons
 - added printer presets support

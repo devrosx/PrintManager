@@ -48,6 +48,15 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
+0.4
+- MAJOR REWRITE 
+- PyQT6 support
+- fixed icons
+- added printer presets support
+- code cleanup and fixes
+
+
+# Updates:
 0.35
 - code cleanup
 - bugfixes (closing dialog boxes

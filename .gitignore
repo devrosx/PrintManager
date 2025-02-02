@@ -1,3 +1,5 @@
 **/.DS_Store
 **/libs/__pycache__/
 *.json
+build/
+dist/

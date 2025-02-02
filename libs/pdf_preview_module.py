@@ -8,7 +8,7 @@ def pdf_preview_generator(input_file,generate_marks,page):
 		pass
 	else:
 		page = page - 1
-	cmd = ["convert", "-density", str(res), input_file+'['+str(page)+']', "jpg:-"]
+	cmd = ["/usr/local/bin/convert", "-density", str(res), input_file+'['+str(page)+']', "jpg:-"]
 	fconvert = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	stdout, stderr = fconvert.communicate()
 	assert fconvert.returncode == 0, stderr
@@ -17,7 +17,7 @@ def pdf_preview_generator(input_file,generate_marks,page):
 
 if __name__ == '__main__':
 	print ('testing')
-	test = '/Users/jandevera/Desktop/x/pr.pdf'
+	test = '/Users/xxx/Desktop/x/pr.pdf'
 	filebytes = pdf_preview_generator(test,generate_marks=1,page=0)
 	import cv2
 	image = cv2.imdecode(filebytes, cv2.IMREAD_GRAYSCALE)

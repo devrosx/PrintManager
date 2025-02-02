@@ -1,0 +1,1 @@
+pyinstaller  --windowed  --icon=icon.icns PrintManager.py

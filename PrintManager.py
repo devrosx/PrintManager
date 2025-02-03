@@ -5,31 +5,30 @@ import fnmatch
 import plistlib
 import subprocess
 import json
+import time
+import logging
+from pathlib import Path
+
 from PyPDF2 import PdfReader, PdfWriter
 from PyQt6.QtWidgets import *
-from PyQt6.QtGui import QDropEvent, QKeySequence, QPalette, QColor, QIcon, QPixmap, QBrush, QPainter, QFont, QCursor, QTextCursor, QDrag
-from PyQt6.QtCore import *
+from PyQt6.QtGui import QPalette, QColor, QIcon, QPixmap
 from PyQt6.QtCore import QThread, pyqtSignal
-from tnefparse.tnef import TNEF, TNEFAttachment, TNEFObject
-from tnefparse.mapi import TNEFMAPI_Attribute
+# test threads
 from unidecode import unidecode
-import webbrowser
+
 from libs.colordetector import *
 from libs.crop_module import processFile
 from libs.pdf_preview_module import pdf_preview_generator
 from libs.image_grabber_module import *
 from libs.remove_cropmarks_module import *
 from libs.gui_crop2 import *
-from libs.waifu_module import *
-import time
-import logging  # Oprava: přidání importu pro logging
 
 # SMART CROP - BROKEN 
 version = '0.4'
 # -google convert
 
 start_time = time.time()
-info, name, size, extension, file_size, pages, price, colors, filepath = [], [], [], [], [], [], [], [], []
+info, name, size, extension, file_size, pages, price, colors, filepath = [[] for _ in range(9)]
 mm = '0.3527777778'
 office_ext = ['csv', 'db', 'odt', 'doc', 'gif', 'pcx', 'docx', 'dotx', 'fodp', 'fods', 'fodt', 'odb', 'odf', 'odg', 'odm', 'odp', 'ods', 'otg', 'otp', 'ots', 'ott', 'oxt', 'pptx', 'psw', 'sda', 'sdc', 'sdd', 'sdp', 'sdw', 'slk', 'smf', 'stc', 'std', 'sti', 'stw', 'sxc', 'sxg', 'sxi', 'sxm', 'sxw', 'uof', 'uop', 'uos', 'uot', 'vsd', 'vsdx', 'wdb', 'wps', 'wri', 'xls', 'xlsx', 'ppt', 'cdr']
 image_ext = ['jpg', 'jpeg', 'png', 'tif', 'bmp']
@@ -46,24 +45,7 @@ on_top = False
 printer_panel = True
 debug_panel = True
 preview_panel = True
-
-class Worker(QThread):
-    finished = pyqtSignal(list)
-    def __init__(self, filepaths):
-        super().__init__()
-        self.filepaths = filepaths
-
-    def run(self):
-        try:
-            result = self.process_files(self.filepaths)
-            self.finished.emit(result)
-        except Exception as e:
-            logging.error(f"Chyba ve vlákně: {e}")
-
-    def process_files(self, filepaths):
-        processed_files = []  # Oprava: inicializace processed_files
-        # Zde provádějte dlouhotrvající operace
-        return processed_files
+user_path = Path.home()
 
 # PRESET STUFF
 def get_custom_presets_files():
@@ -126,7 +108,6 @@ def is_cups_running():
 
 def load_printers():
     output = (subprocess.check_output(["lpstat", "-a"]))
-    
     outputlist = (output.splitlines())
     tolist = []  # novy list
     for num in outputlist:  # prochazeni listem
@@ -136,34 +117,39 @@ def load_printers():
     return (tolist)
 
 def load_preferences():
+    """Načtení preferencí z config.json nebo vytvoření výchozích hodnot."""
     try:
         with open('config.json', encoding='utf-8') as data_file:
-            data = json.loads(data_file.read())
-            print ('pref loaded')
-            print (data)
-    except Exception as e:
-        print (e)
-        print ('wtf config. json chybi')
-        printers = load_printers()
-        cups_check = is_cups_running()
-        arch_check = is_arch_check()
-        printer_presets = get_printer_presets()
-        data = {
-            "preferences": {
-                "language": language,
-                "resolution": resolution,
-                "convertor": convertor,
-                "on_top": on_top,
-                "printer_panel": printer_panel,
-                "debug_panel": debug_panel,
-                "preview_panel": preview_panel
-            },
-            "printers": printers,
-            "cups_running": cups_check,
-            "arch_check": arch_check,
-            "printer_presets": printer_presets,
-        }
-        save_preferences(data)
+            data = json.load(data_file)
+            print('Preferences loaded:', data)
+            return data
+    except FileNotFoundError:
+        print('Config.json not found, creating default preferences.')
+        return create_default_preferences()
+
+def create_default_preferences():
+    """Vytvoření výchozích preferencí."""
+    printers = load_printers()
+    cups_check = is_cups_running()
+    arch_check = is_arch_check()
+    printer_presets = get_printer_presets()
+    
+    data = {
+        "preferences": {
+            "language": language,
+            "resolution": resolution,
+            "convertor": convertor,
+            "on_top": on_top,
+            "printer_panel": printer_panel,
+            "debug_panel": debug_panel,
+            "preview_panel": preview_panel
+        },
+        "printers": printers,
+        "cups_running": cups_check,
+        "arch_check": arch_check,
+        "printer_presets": printer_presets,
+    }
+    save_preferences(data)
     return data
 
 def fix_filename(item, _format=None):
@@ -193,13 +179,8 @@ def humansize(size):
         size /= 1024
     return f"{round(size)} GB"
 
-def clear_table(self):
-    """Vymaže všechny řádky v tabulce."""
-    self.table.setRowCount(0)  # Nastaví počet řádků na 0
-
 def open_printer(file):
     file_path = '/private/etc/cups/ppd/' + file + '.ppd'
-    
     if os.path.exists(file_path):
         print(['open', '-t', file_path])
         # Použijte plnou cestu k příkazu open
@@ -219,18 +200,21 @@ def previewimage(original_file):
     subprocess.run(command)
     return command
 
+def add_suffix_to_filename(file_path: str, suffix: str) -> str:
+    """Přidá suffix do názvu souboru před jeho příponu."""
+    path = Path(file_path)  # Vytvoření objektu Path
+    new_filename = f"{path}_{suffix}{path.suffix}"  # Přidání suffixu k názvu souboru
+    return new_filename
+
 def mergefiles(list_path, save_dir):
-    base = os.path.basename(list_path[0])
-    file = os.path.splitext(base)
-    folder_path = os.path.dirname(list_path[0])
-    print(folder_path)
-    if folder_path == '/tmp':
-        folder_path = save_dir
-    outputfile = os.path.join(folder_path, f"{file[0]}_m.pdf")  # Oprava: použití os.path.join
+    """Spojí PDF soubory do jednoho PDF souboru."""
+    base = Path(list_path[0])
+    outputfile = add_suffix_to_filename(base, "m")
     writer = PdfWriter()
     for pdf in list_path:
-        reader = PdfReader(pdf)
-        writer.append(reader)
+        with open(pdf, 'rb') as f:
+            reader = PdfReader(f)
+            writer.append(reader)
     with open(outputfile, 'wb') as f:
         writer.write(f)
     return outputfile
@@ -240,9 +224,7 @@ def splitfiles(file):
     with open(file, 'rb') as pdf_file:  # Oprava: použití with pro správu souborů
         pdf_reader = PdfReader(pdf_file)
         pageNumbers = len(pdf_reader.pages)
-
-        head, ext = os.path.splitext(file)
-        outputfile = head + 's_'
+        outputfile = add_suffix_to_filename(file, "s")
         for i in range(pageNumbers):
             pdf_writer = PdfWriter()
             pdf_writer.add_page(pdf_reader.pages[i])
@@ -420,7 +402,7 @@ def file_info_new(inputs, file, *args):
             pdf_fixed.update({'MediaBox': get_pdf_size(pdf_toread.pages[0].mediabox)})
             pdf_fixed.update({'CropBox': get_pdf_size(pdf_toread.pages[0].cropbox)})
             pdf_fixed.update({'TrimBox': get_pdf_size(pdf_toread.pages[0].trimbox)})
-            pdf_fixed.update({'Fonts': "\n".join(get_fonts(pdf_toread))})
+            # pdf_fixed.update({'Fonts': "\n".join(get_fonts(pdf_toread))})
             html_info = tablemaker(pdf_fixed)
             _info.append(html_info)
     else:
@@ -582,9 +564,11 @@ def pdf_parse(self, inputs, *args):
                 page_size = get_pdf_size(pdf_input.pages[0].mediabox)
                 pdf_pages = len(pdf_input.pages)
                 velikost = size_check(page_size)
+                print (velikost)
                 
                 name.append(ext_file[0])
                 size.append(size_check(page_size))
+                print (size)
                 price.append(price_check(pdf_pages, velikost))
                 file_size.append(humansize(os.path.getsize(item)))
                 pages.append(int(pdf_pages))
@@ -703,8 +687,11 @@ def update_img(self, inputs, index, *args):
     merged_list = list(zip(info, name, size, extension, file_size, pages, price, colors, filepath))
     return merged_list
 
+def clear_table(self):
+    """Vymaže všechny řádky v tabulce."""
+    self.table.setRowCount(0)  # Nastaví počet řádků na 0
+
 def remove_from_list(self, index, *args):
-    print(info)
     del info[index]
     del name[index]
     del size[index]
@@ -719,17 +706,19 @@ def remove_from_list(self, index, *args):
 
 def size_check(page_size):
     velikost = 0
-    if page_size == '210x297mm':
+    if page_size == '210x297 mm':
         velikost = 'A4'
-    elif page_size == '420x297mm':
+    elif page_size == '420x297 mm':
         velikost = 'A3'
-    elif page_size == '148x210mm':
+    elif page_size == '105x148 mm':
+        velikost = 'A6'
+    elif page_size == '148x210 mm':
         velikost = 'A5'
-    elif page_size == '420x594mm':
+    elif page_size == '420x594 mm':
         velikost = 'A2'
-    elif page_size == '594x841mm':
+    elif page_size == '594x841 mm':
         velikost = 'A1'
-    elif page_size == '841x1188mm':
+    elif page_size == '841x1188 mm':
         velikost = 'A0'
     else:
         velikost = page_size
@@ -739,18 +728,18 @@ def price_check(pages, velikost):
     price = []
     if velikost == 'A4':
         if pages >= 50:
-            pricesum = (str(pages * 1.5) + ' Kč')
-        elif pages >= 20:
             pricesum = (str(pages * 2) + ' Kč')
+        elif pages >= 20:
+            pricesum = (str(pages * 2.5) + ' Kč')
         elif pages >= 0:
             pricesum = (str(pages * 3) + ' Kč')
     elif velikost == 'A3':
         if pages >= 50:
-            pricesum = (str(pages * 2) + ' Kč')
-        elif pages >= 20:
-            pricesum = (str(pages * 3) + ' Kč')
-        elif pages >= 0:
             pricesum = (str(pages * 4) + ' Kč')
+        elif pages >= 20:
+            pricesum = (str(pages * 4.8) + ' Kč')
+        elif pages >= 0:
+            pricesum = (str(pages * 6) + ' Kč')
     else:
         pricesum = '/'
     return pricesum
@@ -813,7 +802,8 @@ class TableWidgetDragRows(QTableWidget):
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         # self.setDragDropMode(QAbstractItemView.InternalMove)
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
         self.setSortingEnabled(True)
 
     def dragEnterEvent(self, event):
@@ -887,29 +877,6 @@ class InputDialog_SmartCut(QDialog):
 
     def getInputs(self):
         return (self.first.value(), self.second.value())
-
-class InputDialog_waifu2x(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.imagetype = QComboBox()
-        self.imagetype.addItems(["photo", "cartoon"])
-
-        self.scale = QSpinBox(self)
-        self.scale.setRange(0, 2)
-        self.scale.setValue(2)
-        self.denoise = QSpinBox(self)
-        self.denoise.setRange(0, 4)
-        self.denoise.setValue(1)
-        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self)
-
-        layout = QFormLayout(self)
-        layout.addRow("Image type", self.imagetype)
-        layout.addRow("Scale", self.scale)
-        layout.addRow("Denoise", self.denoise)
-        layout.addWidget(buttonBox)
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
 
     def getInputs(self):
         if self.imagetype.currentText() == "photo":
@@ -1107,6 +1074,10 @@ class Window(QMainWindow):
         self.window = QWidget()
         self.window.setLayout(self.mainLayout)
         self.setCentralWidget(self.window)
+
+    def start_conversion(self, function):
+        worker = Worker(simple_unidecode, input_text, callback=self.update_result)
+        self.thread_pool.start(worker)  # Spuštění úkolu v thread pool
 
     def open_dialog(self):
         # load setting first
@@ -1325,14 +1296,20 @@ class Window(QMainWindow):
         self.table.setStyleSheet("QTableView {background-image:none}")
 
     def d_writer(self, message, append, color='white'):
+        # Pokud je message seznam, spojíme ho pomocí '\n'
         if isinstance(message, list):
             message = '\n'.join(message)
-        message = f'<font color={color}><b>{message}</b></font>'
+        # Pokud message obsahuje '\n', rozdělíme ho a použijeme HTML pro každý řádek
+        message_lines = message.split('\n')
+        formatted_message = ''.join(f'<font color={color}><b>{line}</b></font><br>' for line in message_lines)
         
         if append:
-            self.debuglist.append(message)
+            # Přidání formátovaného textu do debuglist
+            self.debuglist.append(formatted_message)
         else:
-            self.debuglist.setText(message)
+            # Pokud je message prázdný, nezapíšeme prázdný řádek
+            if message.strip():  # Zkontrolujeme, zda message není prázdný
+                self.debuglist.setText(formatted_message)
 
     def external_convert(self, ext, inputfile, setting):
         converts = []
@@ -1442,12 +1419,12 @@ class Window(QMainWindow):
         self.table.verticalHeader().setDefaultSectionSize(35)
         self.table.setFixedWidth(598)
         self.table.setColumnWidth(0, 35)
-        self.table.setColumnWidth(1, 248)
+        self.table.setColumnWidth(1, 228)
         self.table.setColumnWidth(3, 34)
         self.table.setColumnWidth(4, 65)
         self.table.setColumnWidth(5, 37)
-        self.table.setColumnWidth(6, 32)
-        self.table.setColumnWidth(7, 45)
+        self.table.setColumnWidth(6, 50)
+        self.table.setColumnWidth(7, 50)
         # Skrytí horizontálního scrollbaru
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         # Lepší zobrazení hlaviček
@@ -1522,6 +1499,7 @@ class Window(QMainWindow):
             self.pdf_button.show()
             self.img_button.hide()
             self.print_b.show()
+            self.color_b.show()
             self.crop_b.show()
             print(self.count_pages())
             self.my_info_label.show()
@@ -1535,6 +1513,7 @@ class Window(QMainWindow):
             self.img_button.show()
             self.print_b.show()
             self.crop_b.show()
+            self.color_b.hide()
             self.my_info_label.setText("Image files selected")
             self.my_info_label.show()
             self.split_pdf_b.hide()
@@ -1542,6 +1521,7 @@ class Window(QMainWindow):
             self.Convert_b.show()
         else:
             self.split_pdf_b.hide()
+            self.color_b.hide()
             self.merge_pdf_b.hide()
             self.crop_b.hide()
             self.pdf_button.hide()
@@ -1858,7 +1838,6 @@ class Window(QMainWindow):
         self.gb_debug.setLayout(dbox)
         # debug
         self.debuglist = QTextEdit(self)
-        self.d_writer('DEBUG:', 0, 'green')
         self.debuglist.acceptRichText()
         self.debuglist.setReadOnly(True)
         self.debuglist.setFixedHeight(80)
@@ -1870,9 +1849,10 @@ class Window(QMainWindow):
     def createButtons_layout(self):
         self.buttons_layout = QHBoxLayout()
         self.color_b = QPushButton('Colors', self)
+        self.color_b.setFixedWidth(55)  # Nastavení šířky na 100 pixelů
         self.color_b.clicked.connect(self.loadcolors)
         self.buttons_layout.addWidget(self.color_b)
-        self.color_b.setDisabled(True)
+        # self.color_b.setDisabled(True)
         self.color_b.hide()
 
         # # COMPRES PDF
@@ -1950,8 +1930,6 @@ class Window(QMainWindow):
         colors_menu.addAction('To CMYK')
         colors_menu.addAction('To Grayscale', self.gray_pdf)
         colors_menu.addAction('Invert colors', self.invertor)
-
-        other_menu.addAction('waifu2x Upscale', self.waifu)
         other_menu.addAction('OCR', self.ocr_maker)
         other_menu.addAction('Resize', self.resize_image)
         other_menu.addAction('Find similar image on google', lambda: self.operate_file(find_this_file, 'Images(s) found', default_pref[1]))
@@ -1975,9 +1953,11 @@ class Window(QMainWindow):
         self.split_pdf_b.hide()
 
         self.print_b = QPushButton('Print selected', self)
+        self.print_b.setDefault(True)  # Nastavení tlačítka jako výchozí
         self.print_b.clicked.connect(self.table_print)
         # self.print_b.setDisabled(True)
         self.print_b.hide()
+        self.print_b.setFocus()
         self.buttons_layout.addWidget(self.print_b)
 
         self.crop_b = QPushButton('', self)
@@ -1996,37 +1976,6 @@ class Window(QMainWindow):
         self.my_info_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.buttons_layout.addWidget(self.my_info_label)
         self.my_info_label.hide()
-
-        # self.actions_pdf = QComboBox(self)
-        # self.actions_pdf.addItem('Convert to image')
-        # self.actions_pdf.addItem('To Grayscale')
-        # self.actions_pdf.addItem('To CMYK')
-        # self.actions_pdf.addItem('Fix PDF')
-        # self.actions_pdf.addItem('Rasterize PDF')
-        # self.actions_pdf.addItem('OCR')
-        # self.actions_pdf.addItem('Compress PDF')
-        # self.actions_pdf.addItem('Extract images from PDF')
-        # self.actions_pdf.addItem('SmartCrop')
-
-        # self.actions_pdf.activated[str].connect(self.color_box_change)
-        # self.buttons_layout.addWidget(self.actions_pdf)
-
-        # # POCITANI TABULKY PDF
-        # self.info_b = QPushButton('Info', self)
-        # self.info_b.clicked.connect(self.info_tb)
-        # self.buttons_layout.addWidget(self.info_b)
-        # self.info_b.setDisabled(True)
-
-        # for items in sorted(self.table.selectionModel().selectedRows()):
-        #     row = items.row()
-        #     index=(self.table.selectionModel().currentIndex())
-        #     filename=index.sibling(items.row(),1).data()
-        #     filetype=index.sibling(items.row(),3).data()
-        #     filepath=index.sibling(items.row(),8).data()
-        #     pages=int(index.sibling(items.row(),5).data())
-        #     command, outputfiles = invert_this_image([filepath])
-        #     self.files = update_img(self, outputfiles, row)
-        #     self.reload(row)
 
     def create_crop_window(self):
         for items in sorted(self.table.selectionModel().selectedRows()):
@@ -2052,7 +2001,7 @@ class Window(QMainWindow):
                     self.reload(row)
                     Window.table_reload(self, self.files)
                     self.table.selectRow(row)
-                    self.d_writer('File croped: ' + str(file_path), 1, 'green')
+                    self.d_writer(f'File croped: {file_path}', 1, 'green')
                 else:
                     pdf_cropper_x(file_path, cropcoordinates, pages)
                     self.live_crop_window.destroy()
@@ -2060,8 +2009,11 @@ class Window(QMainWindow):
                     self.reload(row)
                     Window.table_reload(self, self.files)
                     self.table.selectRow(row)
-                    self.d_writer('File croped: ' + str(file_path), 1, 'green')
+                    self.d_writer(f'File croped: {file_path}', 1, 'green')
 
+
+# GET FILE PATH////////////////////FIX TODP
+# GET FILE PATH////////////////////FIX TODP
     def operate_file(self, action, debug_text, parameter=None):
         outputfiles = []
         if self.table.currentItem() == None:
@@ -2091,6 +2043,8 @@ class Window(QMainWindow):
                 Window.table_reload(self, self.files)
             if outputfiles == None:
                 self.d_writer(', '.join(debugstring), 1)
+# GET FILE PATH////////////////////FIX TODP
+# GET FILE PATH////////////////////FIX TODP
 
     def gray_pdf(self):
         outputfiles = []
@@ -2166,27 +2120,6 @@ class Window(QMainWindow):
             self.files = img_parse(self, outputfiles)
             Window.table_reload(self, self.files)
             self.d_writer('File(s)' + str(outputfiles) + ' resized', 1, 'green')
-
-    def waifu(self):
-        outputfiles = []
-        dialog = InputDialog_waifu2x()
-        if dialog.exec():
-            print(dialog.getInputs())
-            imagetype, scale_factor, denoise = dialog.getInputs()
-            if self.table.currentItem() == None:
-                self.d_writer('Error - No files selected', 1, 'red')
-                return
-            for items in sorted(self.table.selectionModel().selectedRows()):
-                row = items.row()
-                index = (self.table.selectionModel().currentIndex())
-                file_path = index.sibling(items.row(), 8).data()
-                outputfiles.append(file_path)
-                print(file_path)
-                print(outputfiles)
-            command, outputfiles = img_upscale(outputfiles, scale_factor, denoise, imagetype)
-            self.files = img_parse(self, outputfiles)
-            Window.table_reload(self, self.files)
-            self.d_writer('File(s)' + str(outputfiles) + ' upscaled', 1, 'green')
 
     def crop_pdf(self):
         from libs.super_crop_module import super_crop
@@ -2399,7 +2332,7 @@ class Window(QMainWindow):
         
         self.printer_tb = QComboBox(self)
         self.printer_tb.addItems(pref_l_printer)
-    
+        self.printer_tb.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         # PRINTERS PRESETS
         self.printer_presets = QComboBox(self)
         # Naplnění printer_presets podle první tiskárny
@@ -2507,13 +2440,8 @@ class Window(QMainWindow):
         except Exception as e:
             print(f"An error occurred: {e}")
             self.d_writer(str(e), 1, 'white')  # Zpracování výjimek
-    
         except Exception as e:
             print(f"An error occurred: {e}")
-        # # Získání názvu tiskárny ze QComboBox
-        # printer_name = self.printer_tb.currentText()  # Získání aktuálně vybrané tiskárny
-        # url = f"http://localhost:631/printers/{printer_name}"  # Vytvoření URL
-        # webbrowser.open(url)  # Otevření URL ve výchozím webovém prohlížeči
 
     def on_printer_changed(self, index):
         printer_name = self.printer_tb.itemText(index)  # Získání názvu tiskárny podle indexu
@@ -2659,7 +2587,7 @@ class Window(QMainWindow):
             filename = index.sibling(items.row(), 1).data()
             filetype = index.sibling(items.row(), 3).data()
             filepath = index.sibling(items.row(), 8).data()
-            pages = index.sibling(items.row(), 5).data()
+            pages = int(index.sibling(items.row(), 5).data())
         try:
             if not self.gb_preview.isHidden():
                 self.image_label.show()
@@ -2670,6 +2598,9 @@ class Window(QMainWindow):
                     self.image_label_pixmap = QPixmap(filepath)
                     self.image_label.setPixmap(self.image_label_pixmap)
                 if filetype == 'pdf':
+                    print ('xxx')
+                    print (type(pages))
+                    print (pages)
                     if pages > 1:
                         self.move_page.show()
                         self.move_page.setMaximum(pages)
@@ -2689,15 +2620,16 @@ class Window(QMainWindow):
                 self.image_label.setMinimumSize(1, 1)
                 # change with of info
                 self.labl_name.setText(filename + '.' + filetype)
-                if size[-2:] == 'px':
-                    papers[5] = 'not supported'
-                else: 
-                    papers[5] = size[:-3]
-                    self.papersize.clear()
-                for items in papers:
-                    self.papersize.addItem(items)
-                self.papersize.update()
+                # if size[-2:] == 'px':
+                #     papers[5] = 'not supported'
+                # else: 
+                #     papers[5] = size[:-3]
+                #     self.papersize.clear()
+                # for items in papers:
+                #     self.papersize.addItem(items)
+                # self.papersize.update()
         except Exception as e:
+            print (e)
             self.infotable.clear()
             self.image_label.clear()
             self.labl_name.setText('No file selected')
@@ -2773,10 +2705,8 @@ if __name__ == '__main__':
     app.setWindowIcon(QIcon(path))
     w = Window()
     darkmode()
-    try:
-        log = ('OS:' + arch_check + ' / boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + ' CUPS:')
-    except:
-        log = ''
+    # w.d_writer('DEBUG:', 1, 'green')
+    log = ('boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + '\n' + ' CUPS: ' + "yes" if is_cups_running() == 1 else "no")
     w.d_writer(log, 1)
     w.showNormal()
     sys.exit(app.exec())

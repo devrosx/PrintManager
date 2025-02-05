@@ -4,23 +4,22 @@ PrintManager for Macosx (written in Python and PyQt5, with some handy features).
 ![alt text](https://raw.githubusercontent.com/devrosx/PrintManager/master/wiki/screenshot.png)
 
 ## Features
-- Fast print PDF and image files from table (LP command)
-- Waifu2x upscaling support (install brew install imxieyi/waifu2x/waifu2x)
-- Debug text window with informations
-- Preview window with page preview and detailed infotable
-- Basic printing settings (format, collating, fit to page, twosided, number of copies)
-- Basic pdf operations (split, merge, compress, view, rasterize,crop, ocr)
-- PDF info in table (number of pages, colors, filesize, name, size)
-- Convert various formats to PDF (OpenOffice and Cloudconvert supported)
-- Extract images from PDF without resampling
-- Simple winmail data extraction
-- Basic image operations
- - OCR (thanks to pytesseract)
- - Convert to PDF
- - Resize image
- - Rotate
- - Invert
- - Identify images in image and extract (thanks to OpenCV)
+	•	Fast printing of PDF and image files from the table (LP command)
+	•	Debug text window with information
+	•	Preview window with page preview and detailed info table
+	•	Basic printing settings (format, collating, fit to page, two-sided, number of copies)
+	•	Basic PDF operations (split, merge, compress, view, rasterize, crop, OCR)
+	•	PDF info in the table (number of pages, colors, file size, name, size)
+	•	Convert various formats to PDF (OpenOffice and CloudConvert supported)
+	•	Extract images from PDF without resampling
+	•	Simple Winmail data extraction
+	•	Basic image operations
+	•	OCR (thanks to pytesseract)
+	•	Convert to PDF
+	•	Resize image
+	•	Rotate
+	•	Invert
+	•	Identify images within an image and extract (thanks to OpenCV)
 
 # Installation
 Use Pip3 to install these libraries: pytesseract, OpenCv(opencv-python-headless), PyPDF2, Pillow, Numpy, PyQt5, tnefparse, cloudconvert, beautifulsoup

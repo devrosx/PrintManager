@@ -1110,8 +1110,6 @@ class Window(QMainWindow):
         self.setCentralWidget(self.window)
         # new code load setting    
 
-
-
     def open_dialog(self):
         # load setting first
         default_pref = load_preferences()
@@ -1144,34 +1142,6 @@ class Window(QMainWindow):
         printer_presets = get_printer_presets()
         print (printer_presets)
 
-    # def pref_generator(self):
-    #     try:
-    #         print (self.localization)
-    #         print (self.resolution)
-    #         print (self.ontop)
-    #         print (self.convertor)
-    #     except:
-    #         self.localization = default_pref[0]['localization']
-    #         self.resolution = default_pref[0]['resolution']
-    #         self.convertor = default_pref[0]['convertor']
-    #         self.ontop = default_pref[0]['ontop']
-    #     preferences = {}
-
-    #     # Zkontrolujte, zda je vybrána tiskárna
-    #     if self.printer_tb.currentText() is not None:
-    #         preferences['printer'] = self.printer_tb.currentIndex()
-    #         preferences['printer_window'] = self.gb_printers.isHidden()
-    #         preferences['debug_window'] = self.gb_debug.isHidden()
-    #         preferences['preview_window'] = self.gb_preview.isHidden()
-    #         preferences['user_path'] = user_path
-    #         preferences['printers'] = printers
-    #         preferences['localization'] = self.localization
-    #         preferences['resolution'] = self.resolution
-    #         preferences['convertor'] = self.convertor
-    #         preferences['ontop'] = self.ontop
-    #         preferences['cups_support'] = printer_presets
-    #         preferences['printer_presets'] = cups_pref
-            
     def check_menu_items(self):
         # Zkontrolujte stav akcí a vraťte jejich hodnoty
         return self.printing_setting_menu.isChecked(), self.debug_setting_menu.isChecked()
@@ -1182,7 +1152,6 @@ class Window(QMainWindow):
         close.setIcon(QMessageBox.Icon.Warning)
         close.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
         close.setDefaultButton(QMessageBox.StandardButton.Yes)
-        self.save_settings()
         close_result = close.exec()
 
         if close_result == QMessageBox.StandardButton.Yes:
@@ -1192,7 +1161,6 @@ class Window(QMainWindow):
             event.accept()
         else:
             event.ignore()
-
 
     def dragMoveEvent(self, event):
         event.accept()

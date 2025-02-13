@@ -4,15 +4,13 @@ import os
 import fnmatch
 import plistlib
 import subprocess
-import json
 import time
-import logging
 from pathlib import Path
 
 from PyPDF2 import PdfReader, PdfWriter
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QPalette, QColor, QIcon, QPixmap
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal, QSettings
 # test threads
 from unidecode import unidecode
 
@@ -24,8 +22,9 @@ from libs.remove_cropmarks_module import *
 from libs.gui_crop2 import *
 
 # SMART CROP - BROKEN 
-version = '0.4'
+version = '0.5'
 # -google convert
+# -rewrited preferences to QSettings
 
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [[] for _ in range(9)]
@@ -38,13 +37,6 @@ user_path = os.path.expanduser("~")
 system = str(sys.platform)
 os.environ['PATH'] += ':/usr/bin:/usr/local/bin'
 # default values
-language = 'eng'
-resolution = 300
-convertor = 'Google'
-on_top = False
-printer_panel = True
-debug_panel = True
-preview_panel = True
 user_path = Path.home()
 
 # PRESET STUFF
@@ -116,61 +108,64 @@ def load_printers():
         tolist.append(tiskarna)
     return (tolist)
 
-def load_preferences():
-    """Načtení preferencí z config.json nebo vytvoření výchozích hodnot."""
-    try:
-        with open('config.json', encoding='utf-8') as data_file:
-            data = json.load(data_file)
-            print('Preferences loaded:', data)
-            return data
-    except FileNotFoundError:
-        print('Config.json not found, creating default preferences.')
-        return create_default_preferences()
-
-def create_default_preferences():
-    """Vytvoření výchozích preferencí."""
-    printers = load_printers()
-    cups_check = is_cups_running()
-    arch_check = is_arch_check()
-    printer_presets = get_printer_presets()
+def handle_exception(e):
+    if isinstance(e, FileNotFoundError):
+        warning_message = f"Chyba: Soubor nebyl nalezen: {str(e)}"
+    else:
+        warning_message = f"Nastala neočekávaná chyba: {str(e)}"
     
-    data = {
-        "preferences": {
-            "language": language,
-            "resolution": resolution,
-            "convertor": convertor,
-            "on_top": on_top,
-            "printer_panel": printer_panel,
-            "debug_panel": debug_panel,
-            "preview_panel": preview_panel
-        },
-        "printers": printers,
-        "cups_running": cups_check,
-        "arch_check": arch_check,
-        "printer_presets": printer_presets,
-    }
-    save_preferences(data)
-    return data
+    print(warning_message)
+    QMessageBox.about(None, "Warning", warning_message)  # Zde můžete předat instanci okna, pokud ji máte
 
-def fix_filename(item, _format=None):
+def fix_filename(item, _format=None, app=None):
     oldfilename = os.path.basename(item)
     dirname = os.path.dirname(item) + '/'
+    
     if _format is not None:
         newfilename = _format + oldfilename
     else:
         newfilename = unidecode(oldfilename)
-    os.rename(os.path.join(dirname, oldfilename), os.path.join(dirname, newfilename))  # Oprava: použití os.rename
-    return os.path.join(dirname, newfilename)
+    
+    # Kontrola, zda máme oprávnění k zápisu do souboru
+    old_file_path = os.path.join(dirname, oldfilename)
+    new_file_path = os.path.join(dirname, newfilename)
 
-def save_preferences(*settings):
-    print('JSON saving')
-    preferences = []
-    for items in settings:
-        preferences.append(items)
-    with open('config.json', 'w', encoding='utf-8') as data_file:
-        json.dump(preferences, data_file)
-    startup = 1
-    return startup
+    # Zkontrolujeme, zda je soubor otevřený nebo zda máme oprávnění
+    if not os.access(dirname, os.W_OK):
+        show_warning("Není povolen zápis do adresáře.")
+        return None
+    
+    if os.path.exists(new_file_path):
+        show_warning("Soubor s novým názvem již existuje.")
+        return None
+
+    try:
+        # Otestujeme, zda můžeme soubor otevřít v režimu zápisu
+        with open(old_file_path, 'a'):
+            pass
+    except IOError:
+        show_warning("Zápis do souboru není povolen.")
+        return None
+
+    try:
+        # Pokusíme se přejmenovat soubor
+        os.rename(old_file_path, new_file_path)
+    except PermissionError:
+        show_warning("Není povolen zápis do souboru.")
+        return None
+
+    return new_file_path
+
+def show_warning(message):
+    # Vytvoření výstražného okna
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Icon.Warning)
+    msg.setText(message)
+    msg.setWindowTitle("Výstraha")
+    msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+    msg.exec()
+
+
 
 def humansize(size):
     for unit in ['B', 'KB', 'MB', 'GB']:
@@ -959,16 +954,55 @@ class PrefDialog(QDialog):
         self.destroy()
         return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText(), self.ontop.isChecked()    
 
+
+# XXXXX
+
 class Window(QMainWindow):
+    def save_settings(self):
+        preferences = {
+            "language": "eng",
+            "resolution": 300,
+            "convertor": "OpenOffice",
+            "on_top": False,
+            "printer_panel": self.printing_setting_menu.isChecked(),
+            "debug_panel": self.debug_setting_menu.isChecked(),
+            "preview_panel": True,
+            "printers": load_printers(),
+            "cups_running": is_cups_running(),
+            "arch_check": is_arch_check(),
+            "printer_presets": get_printer_presets()
+        }
+        settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
+        settings.setValue("data", preferences)  # Uložení dat jako hodnoty
+        QMessageBox.information(self, "Uložení", "Nastavení byla uložena.")
+
+    def load_settings(self):
+        settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
+        preferences = settings.value("data", None)  # Načtení dat
+        print('Načítám data')
+
+        if preferences is not None:
+            # preferences = preferences[0]  # Tato řádka byla odstraněna, protože preferences není seznam
+            self.preferences = preferences  # Uložení preferences jako atribut instance
+            # Nastavení okna podle on_top
+            # Další nastavení
+            # self.printing_setting_menu.setChecked(self.preferences.get("printer_panel", False))
+            # self.debug_setting_menu.setChecked(self.preferences.get("debug_panel", False))
+            print("Načtení", "Nastavení byla načtena.")
+        else:
+            print("Načtení", "Nastavení nebyla nalezena.")
+
     def open_url(self):
         url = 'http://github.com/devrosx/PrintManager/'
         subprocess.run(['open', url])  # Pouze pro macOS
-
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
+        self.preferences = {}
+        self.load_settings()
+        if self.preferences.get("on_top"):
+            print ('ontop....')
+            self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint) 
         self.setWindowTitle("PrintManager " + version)
-        if json_pref[0]['preferences']['on_top'] == 'True':
-            self.setWindowFlags(Qt.WindowStaysOnTopHint) 
         self.setAcceptDrops(True)
         menubar = self.menuBar()
         menubar.setNativeMenuBar(True)
@@ -1074,10 +1108,9 @@ class Window(QMainWindow):
         self.window = QWidget()
         self.window.setLayout(self.mainLayout)
         self.setCentralWidget(self.window)
+        # new code load setting    
 
-    def start_conversion(self, function):
-        worker = Worker(simple_unidecode, input_text, callback=self.update_result)
-        self.thread_pool.start(worker)  # Spuštění úkolu v thread pool
+
 
     def open_dialog(self):
         # load setting first
@@ -1100,39 +1133,45 @@ class Window(QMainWindow):
             print(e)
             print('pref canceled')
 
-    def pref_generator(self):
-        try:
-            print (self.localization)
-            print (self.resolution)
-            print (self.ontop)
-            print (self.convertor)
-        except:
-            self.localization = default_pref[0]['localization']
-            self.resolution = default_pref[0]['resolution']
-            self.convertor = default_pref[0]['convertor']
-            self.ontop = default_pref[0]['ontop']
-        preferences = {}
+    
+        printers = load_printers()
+        settings.setValue(setting, printers)
+        cups_check = is_cups_running()
+        settings.setValue(setting, printers)
+        print (cups_check)
+        arch_check = is_arch_check()
+        print (arch_check)
+        printer_presets = get_printer_presets()
+        print (printer_presets)
 
-        # Zkontrolujte, zda je vybrána tiskárna
-        if self.printer_tb.currentText() is not None:
-            preferences['printer'] = self.printer_tb.currentIndex()
-            preferences['printer_window'] = self.gb_printers.isHidden()
-            preferences['debug_window'] = self.gb_debug.isHidden()
-            preferences['preview_window'] = self.gb_preview.isHidden()
-            preferences['user_path'] = user_path
-            preferences['printers'] = printers
-            preferences['localization'] = self.localization
-            preferences['resolution'] = self.resolution
-            preferences['convertor'] = self.convertor
-            preferences['ontop'] = self.ontop
-            preferences['cups_support'] = printer_presets
-            preferences['printer_presets'] = cups_pref
+    # def pref_generator(self):
+    #     try:
+    #         print (self.localization)
+    #         print (self.resolution)
+    #         print (self.ontop)
+    #         print (self.convertor)
+    #     except:
+    #         self.localization = default_pref[0]['localization']
+    #         self.resolution = default_pref[0]['resolution']
+    #         self.convertor = default_pref[0]['convertor']
+    #         self.ontop = default_pref[0]['ontop']
+    #     preferences = {}
+
+    #     # Zkontrolujte, zda je vybrána tiskárna
+    #     if self.printer_tb.currentText() is not None:
+    #         preferences['printer'] = self.printer_tb.currentIndex()
+    #         preferences['printer_window'] = self.gb_printers.isHidden()
+    #         preferences['debug_window'] = self.gb_debug.isHidden()
+    #         preferences['preview_window'] = self.gb_preview.isHidden()
+    #         preferences['user_path'] = user_path
+    #         preferences['printers'] = printers
+    #         preferences['localization'] = self.localization
+    #         preferences['resolution'] = self.resolution
+    #         preferences['convertor'] = self.convertor
+    #         preferences['ontop'] = self.ontop
+    #         preferences['cups_support'] = printer_presets
+    #         preferences['printer_presets'] = cups_pref
             
-            # Uložení do JSON souboru
-            with open('preferences.json', 'w', encoding='utf-8') as json_file:
-                json.dump(preferences, json_file, ensure_ascii=False, indent=4)
-            return preferences
-
     def check_menu_items(self):
         # Zkontrolujte stav akcí a vraťte jejich hodnoty
         return self.printing_setting_menu.isChecked(), self.debug_setting_menu.isChecked()
@@ -1143,43 +1182,16 @@ class Window(QMainWindow):
         close.setIcon(QMessageBox.Icon.Warning)
         close.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
         close.setDefaultButton(QMessageBox.StandardButton.Yes)
+        self.save_settings()
         close_result = close.exec()
 
         if close_result == QMessageBox.StandardButton.Yes:
             printer_checked, debug_checked = self.check_menu_items()
             print(f"Printers checked: {printer_checked}, Debug checked: {debug_checked}")
-            self.save_preferences()
+            self.save_settings()
             event.accept()
         else:
             event.ignore()
-
-    def save_preferences(self):
-        # Uložení aktuálních hodnot printer_panel a debug_panel do souboru config.json
-        preferences = {
-            "language": "eng",  # Můžete změnit podle potřeby
-            "resolution": 300,  # Můžete změnit podle potřeby
-            "convertor": "OpenOffice",  # Můžete změnit podle potřeby
-            "on_top": False,  # Můžete změnit podle potřeby
-            "printer_panel": self.printing_setting_menu.isChecked(),
-            "debug_panel": self.debug_setting_menu.isChecked(),
-            "preview_panel": True  # Můžete změnit podle potřeby
-        }
-
-        data = [{
-            "preferences": preferences,
-            "printers": ["_0_0_0_0_0", "CP5255N"],  # Můžete změnit podle potřeby
-            "cups_running": 1,  # Můžete změnit podle potřeby
-            "arch_check": None,  # Můžete změnit podle potřeby
-            "printer_presets": {
-                "com.apple.print.custompresets.forprinter._0_0_0_0_0.plist": [],
-                "com.apple.print.custompresets.plist": [],
-                "com.apple.print.custompresets.forprinter.CP5255N.plist": ["test", "A3"]
-            }
-        }]
-
-        # Uložení dat do souboru
-        with open('config.json', 'w', encoding='utf-8') as file:
-            json.dump(data, file, ensure_ascii=False, indent=4)
 
 
     def dragMoveEvent(self, event):
@@ -1322,31 +1334,32 @@ class Window(QMainWindow):
             savedir = os.path.dirname(inputfile[0]) + '/'
     
         if convertor == 'OpenOffice':
+            print('OpenOffice convert')
+            
             # Příprava příkazu pro konverzi
             command = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "--headless", "--convert-to", "pdf"]
-    
+        
             # Přidání všech souborů do příkazového řetězce
             command.extend(inputfile)
             command.append("--outdir")
             command.append(outputdir)
-    
-            # Spuštění příkazu
-            p = subprocess.Popen(command, stderr=subprocess.PIPE)
-            output, err = p.communicate()
-    
-            # Kontrola chyb
-            if err:
+        
+            try:
+                # Spuštění příkazu
+                p = subprocess.Popen(command, stderr=subprocess.PIPE)
+                output, err = p.communicate()
+        
+                # Zkontrolujte, zda došlo k chybě při konverzi
+                if p.returncode != 0:
+                    raise RuntimeError(f"Chyba při konverzi: {err.decode('utf-8')}")
+                # Generování seznamu konvertovaných souborů
                 for items in inputfile:
-                    if err == b'Error: source file could not be loaded\n':
-                        QMessageBox.about(self, "Error", "File: " + str(items) + " not supported.")
-                        break
-    
-            # Generování seznamu konvertovaných souborů
-            for items in inputfile:
-                base = os.path.basename(items)
-                base = os.path.splitext(base)[0]
-                new_file = os.path.join(outputdir, base + '.pdf')
-                converts.append(new_file)
+                    base = os.path.basename(items)
+                    base = os.path.splitext(base)[0]
+                    new_file = os.path.join(outputdir, base + '.pdf')
+                    converts.append(new_file)
+            except Exception as e:
+                handle_exception(e)  # Zavolání funkce pro zpracování výjimek
     
             # Zpracování podle nastavení
             if setting in ['combine', 'combinefix']:
@@ -1367,35 +1380,46 @@ class Window(QMainWindow):
             print('CloudConvert')
             from libs.cc_module import cc_convert
             for items in inputfile:
-                # Oprava diakritiky (zkontrolujte lepší opravu později)
-                items = fix_filename(items)
-                new_file, warning = cc_convert(items)
-                if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
-                    self.d_writer('missing API_KEY', 0, 'red')
-                    API_KEY, okPressed = QInputDialog.getText(self, "Warning ", "Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
-                    with open("cc.json", "w") as text_file:
-                        text_file.write(API_KEY)
-                    self.d_writer('API_KEY saved - Try import again', 0, 'red')
-                elif new_file is None:
-                    print(warning)
-                    QMessageBox.about(self, "Warning", warning)
-                else:
-                    print('converting...')
-                    converts.append(new_file)
+                try:
+                    # Oprava diakritiky (zkontrolujte lepší opravu později)
+                    items = fix_filename(items)
+                    new_file, warning = cc_convert(items)
+        
+                    if warning == "'NoneType' object is not subscriptable" or warning == "[Errno 2] No such file or directory: 'cc.json'":
+                        self.d_writer('missing API_KEY', 0, 'red')
+                        API_KEY, okPressed = QInputDialog.getText(self, "Warning ", "Cloudconvert API key error, enter API key", QLineEdit.Normal, "")
+                        with open("cc.json", "w") as text_file:
+                            text_file.write(API_KEY)
+                        self.d_writer('API_KEY saved - Try import again', 0, 'red')
+                    elif new_file is None:
+                        print(warning)
+                        QMessageBox.about(self, "Warning", warning)
+                    else:
+                        print('converting...')
+                        converts.append(new_file)
+        
+                except Exception as e:
+                    handle_exception(e)  # Zavolání funkce pro zpracování výjimek
 
         elif convertor == 'Google':
             print('Google convert')
             from libs.google_module import convert_doc_to_pdf
             for items in inputfile:
-                # Oprava diakritiky (zkontrolujte lepší opravu později)
-                items = fix_filename(items)
-                new_file = convert_doc_to_pdf(items)
-                if new_file is None:
-                    print(warning)
-                    QMessageBox.about(self, "Warning", warning)
-                else:
-                    print('converting...')
-                    converts.append(new_file)
+                try:
+                    # Oprava diakritiky (zkontrolujte lepší opravu později)
+                    items = fix_filename(items)
+                    new_file = convert_doc_to_pdf(items)
+        
+                    if new_file is None:
+                        warning = "Nastala chyba při konverzi souboru."  # Přidání varovné zprávy
+                        print(warning)
+                        QMessageBox.about(self, "Warning", warning)
+                    else:
+                        print('converting...')
+                        converts.append(new_file)
+        
+                except Exception as e:
+                    handle_exception(e)  # Zavolání funkce pro zpracování výjimek
     
             if setting == 'combine':
                 merged_pdf = mergefiles(converts, savedir)
@@ -1413,6 +1437,7 @@ class Window(QMainWindow):
         headers = ["", "File", "Size", "Kind", "File size", "Pages", "Price", "Colors", "Path"]
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
+        self.table.setFocus()  
         # better is preview (printig etc) , 'File path'
         self.table.itemSelectionChanged.connect(self.get_page_size)
         self.table.doubleClicked.connect(self.open_tb)
@@ -1585,7 +1610,7 @@ class Window(QMainWindow):
                 self.preview_window()
 
     # def keyPressEvent(self, event):
-    #     if event.key() == Qt.Key.Key_Delete:
+    #     if event.key() == 32:
     #         print ('space')
     #         file_paths = []
     #         if not self.table.selectionModel().selectedRows():
@@ -1599,15 +1624,6 @@ class Window(QMainWindow):
     #                 file_paths.append(file_path)
     #         print ('space')
     #     event.accept()
-
-    # def mouseReleaseEvent(self, event):
-    #     # Získejte aktuální kontextovou nabídku
-    #     menu = self.findChild(QMenu)
-    #     if menu:
-    #         # Zkontrolujte, zda je kurzor mimo nabídku
-    #         if not menu.geometry().contains(event.globalPos()):
-    #             menu.hide()
-    #     super().mouseReleaseEvent(event)
 
     def indetify_orientation(self, items):
         outputfiles = []
@@ -1649,11 +1665,12 @@ class Window(QMainWindow):
         self.files = img_parse(self, outputimgfiles)
         Window.table_reload(self, self.files)
 
+    def toggleDebugWidget(self):
+        self.gb_debug.setHidden(not self.gb_debug.isHidden())
+
     def togglePrintWidget(self):
-        # print (self.gb_printers.isHidden())
         self.gb_printers.setHidden(not self.gb_printers.isHidden())
         self.gb_setting.setHidden(not self.gb_setting.isHidden())
-        return True
 
     def togglePreviewWidget(self):
         PreviewWidget = 1
@@ -1767,9 +1784,6 @@ class Window(QMainWindow):
                 self.rightClicked.emit()
             else:
                 self.clicked.emit()
-
-    def toggleDebugWidget(self):
-        self.gb_debug.setHidden(not self.gb_debug.isHidden())
 
     def createPreview_layout(self):
         self.preview_layout = QHBoxLayout()
@@ -2314,9 +2328,18 @@ class Window(QMainWindow):
     def createPrinter_layout(self):
         self.printer_layout = QHBoxLayout()
         try:
-            pref_l_printer = json_pref[0]['printers']
-            pref_l_printer_presets = json_pref[0]['printer_presets']
-            pref_printers_state = json_pref[0]['preferences']['printer_panel']
+            print ('try')
+            print (self.preferences)
+            # pref_l_printer = json_pref[0]['printers']
+            pref_l_printer = self.preferences.get('printers', [])
+            print (pref_l_printer)
+            # pref_l_printer_presets = json_pref[0]['printer_presets']
+            pref_l_printer_presets = self.preferences.get("printer_presets")
+            print (pref_l_printer_presets)
+            # pref_printers_state = json_pref[0]['preferences']['printer_panel']
+            pref_printers_state = self.preferences.get("printer_panel")
+            print (pref_printers_state)
+
         except Exception as e:
             pref_l_printer = []
             pref_l_printer_presets = {}
@@ -2445,7 +2468,7 @@ class Window(QMainWindow):
 
     def on_printer_changed(self, index):
         printer_name = self.printer_tb.itemText(index)  # Získání názvu tiskárny podle indexu
-        self.update_printer_presets(printer_name, json_pref[0]['printer_presets'])
+        self.update_printer_presets(printer_name, self.preferences.get("printer_presets"))
     
     def update_printer_presets(self, printer_name, pref_l_printer_presets):
         # Získání seznamu presetů pro vybranou tiskárnu
@@ -2658,9 +2681,13 @@ class Window(QMainWindow):
     def keyPressEvent(self, e):
         if e.key() == Qt.Key.Key_Delete:
             self.deleteClicked()
-        if e.key() == Qt.Key.Key_F1:
+        elif e.key() == Qt.Key.Key_F1:
             self.preview_window()
-
+        elif e.key() == Qt.Key.Key_Space:
+            print('space')
+        else:
+            super().keyPressEvent(e)
+ 
     def deleteClicked(self):
         rows_ = [] 
         for items in sorted(self.table.selectionModel().selectedRows()):
@@ -2699,13 +2726,12 @@ class Window(QMainWindow):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
 if __name__ == '__main__':
-    json_pref = load_preferences()
     app = QApplication(sys.argv)
     path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')
     app.setWindowIcon(QIcon(path))
     w = Window()
     darkmode()
-    # w.d_writer('DEBUG:', 1, 'green')
+    w.d_writer('DEBUG:', 1, 'green')
     log = ('boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + '\n' + ' CUPS: ' + "yes" if is_cups_running() == 1 else "no")
     w.d_writer(log, 1)
     w.showNormal()

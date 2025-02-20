@@ -113,9 +113,9 @@ def handle_exception(e):
         warning_message = f"Chyba: Soubor nebyl nalezen: {str(e)}"
     else:
         warning_message = f"Nastala neočekávaná chyba: {str(e)}"
-    
-    print(warning_message)
+    # print(warning_message)
     QMessageBox.about(None, "Warning", warning_message)  # Zde můžete předat instanci okna, pokud ji máte
+    # self.d_writer(warning_message, 0, 'red')
 
 def fix_filename(item, _format=None, app=None):
     oldfilename = os.path.basename(item)
@@ -135,9 +135,9 @@ def fix_filename(item, _format=None, app=None):
         show_warning("Není povolen zápis do adresáře.")
         return None
     
-    if os.path.exists(new_file_path):
-        show_warning("Soubor s novým názvem již existuje.")
-        return None
+    # if os.path.exists(new_file_path):
+    #     show_warning("Soubor s novým názvem již existuje.")
+    #     return None
 
     try:
         # Otestujeme, zda můžeme soubor otevřít v režimu zápisu
@@ -786,6 +786,7 @@ def darkmode():
     ''')
 
 class TableWidgetDragRows(QTableWidget):
+    openFileDialogRequested = pyqtSignal()
     def __init__(self, *args, **kwargs):
         QTableWidget.__init__(self, *args, **kwargs)
         self.setAcceptDrops(True)
@@ -798,56 +799,19 @@ class TableWidgetDragRows(QTableWidget):
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         # self.setDragDropMode(QAbstractItemView.InternalMove)
         # self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
         self.setSortingEnabled(True)
-
-    def dragEnterEvent(self, event):
-        print('chytam')
-        jpg_file = "icons/jpg.png"
-        jpg_icon = QIcon()
-        jpg_icon.addPixmap(QPixmap(jpg_file))
-        # m = event.mimeData()
-        # print (m)
-        # if event.mimeData().hasUrls:
-        #     event.accept()
-        # else:
-        #     event.ignore()
-        # event.setDropAction(Qt.CopyAction)
-
-    def dragMoveEvent(self, event):
-        r = self.currentRow()
-        path = self.item(r, 8).text()
-        print(path)
-        # file_url = QUrl(path).toLocalFile()
-        # mimeData = QMimeData()
-        # mimeData.setUrls(file_url)
-        # print(mimeData)
-        # if mimeData.hasUrls:
-        #     print('nejsem debil')
-        # else:
-        #     print('sem')
-
-        # print(self.currentItem().row().text())
-        # print(self.currentItem().text())
-        # m = event.mimeData().text()
-        # print(m)
-        # if path.mimeData().hasUrls:
-        #     event.setDropAction(Qt.CopyAction)
-        event.accept()
-        print('yay')
-        # else:
-        #     event.ignore()
-
+    def mousePressEvent(self, event):
+        if self.rowCount() == 0:
+            self.openFileDialogRequested.emit()
+        else:
+            super().mousePressEvent(event)
     def dragLeaveEvent(self, event):
         event.accept()
-
-    def dropEvent(self, event):
-        print('drag back')
 
 # for icons
 class IconDelegate(QStyledItemDelegate):
     def initStyleOption(self, option: QStyleOptionViewItem, index):
-        super().initStyleOption(option, index)  # Použití super() bez argumentů pro Python 3
+        super().initStyleOption(option, index)
         if option.features & QStyleOptionViewItem.ViewItemFeature.HasDecoration:
             s = option.decorationSize
             s.setWidth(option.rect.width())
@@ -919,32 +883,39 @@ class InputDialog_PDFcut(QDialog):
             self.croppage_l.setVisible(True)
 
 class PrefDialog(QDialog):
-    def __init__(self, data, parent=None):
+    def __init__(self, localization, resolution, convertor, ontop, parent=None):
         super().__init__(parent)
         self.setObjectName("Preferences")
+        # Uložení předaných hodnot do instančních proměnných
+        self.localization = localization
+        self.resolution = resolution
+        self.convertor = convertor
+        self.ontop = ontop
+
         self.layout = QFormLayout(self)
-        self.text_link = QLineEdit(data[0]['preferences']['language'], self)
+        self.text_link = QLineEdit(self.localization)
         self.text_link.setMaxLength(3)
         # resolution raster
         self.res_box = QSpinBox(self)
         self.res_box.setRange(50, 1200)
-        self.res_box.setValue(data[0]['preferences']['resolution'])
+        self.res_box.setValue(self.resolution)
         # file parser
         self.btn_convertor = QComboBox(self)
         self.btn_convertor.addItem('OpenOffice')
         self.btn_convertor.addItem('CloudConvert')
         self.btn_convertor.addItem('Google')
-        self.btn_convertor.setCurrentText(data[0]['preferences']['convertor'])
+        self.btn_convertor.setCurrentText(self.convertor)
         # ontop
-        self.ontop = QCheckBox(self)
-        self.ontop.setChecked(data[0]['preferences']['on_top'])
+        self.ontop_checkbox = QCheckBox(self)
+        self.ontop_checkbox.setChecked(self.ontop)
+        # self.ontop.setChecked(self.ontop)
         # self.btn_convertor.setObjectName("btn_conv")
         # self.btn_convertor.activated[str].connect(self.color_box_change) 
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self)
         self.layout.addRow("OCR language", self.text_link)
         self.layout.addRow("File convertor", self.btn_convertor)
         self.layout.addRow("Rastering resolution (DPI)", self.res_box)
-        self.layout.addRow("Window always on top", self.ontop)
+        self.layout.addRow("Window always on top",self.ontop_checkbox)
         self.layout.addWidget(self.buttonBox)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
@@ -952,18 +923,15 @@ class PrefDialog(QDialog):
 
     def getInputs(self):
         self.destroy()
-        return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText(), self.ontop.isChecked()    
-
-
-# XXXXX
+        return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText(), self.ontop_checkbox.isChecked()    
 
 class Window(QMainWindow):
     def save_settings(self):
         preferences = {
-            "language": "eng",
-            "resolution": 300,
-            "convertor": "OpenOffice",
-            "on_top": False,
+            "language": self.localization,
+            "resolution": self.resolution,
+            "convertor": self.convertor,
+            "on_top": self.ontop,
             "printer_panel": self.printing_setting_menu.isChecked(),
             "debug_panel": self.debug_setting_menu.isChecked(),
             "preview_panel": True,
@@ -974,7 +942,8 @@ class Window(QMainWindow):
         }
         settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
         settings.setValue("data", preferences)  # Uložení dat jako hodnoty
-        QMessageBox.information(self, "Uložení", "Nastavení byla uložena.")
+        # QMessageBox.information(self, "Uložení", "Nastavení byla uložena.")
+        self.load_settings()
 
     def load_settings(self):
         settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
@@ -984,6 +953,10 @@ class Window(QMainWindow):
         if preferences is not None:
             # preferences = preferences[0]  # Tato řádka byla odstraněna, protože preferences není seznam
             self.preferences = preferences  # Uložení preferences jako atribut instance
+            self.convertor = self.preferences['convertor']
+            self.resolution = self.preferences['resolution']
+            self.ontop = self.preferences['on_top']
+            self.localization = self.preferences['language']
             # Nastavení okna podle on_top
             # Další nastavení
             # self.printing_setting_menu.setChecked(self.preferences.get("printer_panel", False))
@@ -1112,35 +1085,27 @@ class Window(QMainWindow):
 
     def open_dialog(self):
         # load setting first
-        default_pref = load_preferences()
-        print('Default_pref:')
-        form = PrefDialog(default_pref)
+        # default_pref = load_preferences()
+        # print('Default_pref:')
+        form = PrefDialog(self.localization, self.resolution, self.convertor, self.ontop)
+        form.setFixedSize(400, 180)
         try:
             if form.exec():
                 self.localization, self.resolution, self.convertor, self.ontop = form.getInputs()
-                preferences = self.pref_generator()
-                save_preferences(preferences)
-                json_pref, printers, default_pref, cups_pref, arch_pref, printer_presets = load_preferences()
-                # if default_pref[3] == 1:
-                #     print ('ommm')
-                #     self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
-                # else: 
-                #     print ('off')
-                #     self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
         except Exception as e:
             print(e)
             print('pref canceled')
 
     
-        printers = load_printers()
-        settings.setValue(setting, printers)
-        cups_check = is_cups_running()
-        settings.setValue(setting, printers)
-        print (cups_check)
-        arch_check = is_arch_check()
-        print (arch_check)
-        printer_presets = get_printer_presets()
-        print (printer_presets)
+        # printers = load_printers()
+        # settings.setValue(setting, printers)
+        # cups_check = is_cups_running()
+        # settings.setValue(setting, printers)
+        # print (cups_check)
+        # arch_check = is_arch_check()
+        # print (arch_check)
+        # printer_presets = get_printer_presets()
+        # print (printer_presets)
 
     def check_menu_items(self):
         # Zkontrolujte stav akcí a vraťte jejich hodnoty
@@ -1157,6 +1122,10 @@ class Window(QMainWindow):
         if close_result == QMessageBox.StandardButton.Yes:
             printer_checked, debug_checked = self.check_menu_items()
             print(f"Printers checked: {printer_checked}, Debug checked: {debug_checked}")
+            # self.ontop = self.preferences['on_top']
+            # self.localization = self.preferences['language']
+            # self.resolution = self.preferences['resolution']
+            # self.convertor = self.preferences['convertor']
             self.save_settings()
             event.accept()
         else:
@@ -1182,13 +1151,6 @@ class Window(QMainWindow):
 
     def dropEvent(self, event):
         self.d_writer("Loading files - please wait...", 0, 'green')
-        # path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/jpg.png')
-        # app.setWindowIcon(QIcon(path))
-        # try:
-        #   print('loc je:' + self.localization)
-        # except:
-        #   self.localization = default_pref[0]
-        #   self.convertor = default_pref[2]
         image_files = []
         office_files = []
         unknown_files = []
@@ -1254,14 +1216,14 @@ class Window(QMainWindow):
                 if not okPressed:
                     return
                 if text == 'Convert to PDF':
-                    self.d_writer("Converting to PDF (" + convertor + '): ' + extension, 0)
+                    self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
                     files = self.external_convert(extension, office_files, 'convert')
                 if text == 'Combine to PDF':
                     files = self.external_convert(extension, office_files, 'combine')
                 if text == 'Combine to PDF (add blank page to odd documents':
                     files = self.external_convert(extension, office_files, 'combinefix')
             else:
-                self.d_writer("Converting to PDF (" + convertor + '): ' + extension, 0)
+                self.d_writer("Converting to PDF (" + self.convertor + '): ' + extension, 0)
                 files = self.external_convert(extension, office_files, 'convert')
         # handle images
         if unknown_files:
@@ -1292,16 +1254,15 @@ class Window(QMainWindow):
                 self.debuglist.setText(formatted_message)
 
     def external_convert(self, ext, inputfile, setting):
+        print ('external conv:' +str(self.convertor))
         converts = []
-        print ('convertor je ' + str(convertor))
-        # Nastavení výstupního adresáře
         if setting == 'convert':
             outputdir = os.path.dirname(inputfile[0]) + '/'
         else:
             outputdir = "/tmp/"
             savedir = os.path.dirname(inputfile[0]) + '/'
     
-        if convertor == 'OpenOffice':
+        if self.convertor == 'OpenOffice':
             print('OpenOffice convert')
             
             # Příprava příkazu pro konverzi
@@ -1344,7 +1305,7 @@ class Window(QMainWindow):
                 self.files = pdf_parse(self, converts)
                 Window.table_reload(self, self.files)
     
-        elif convertor == 'CloudConvert':
+        elif self.convertor == 'CloudConvert':
             print('CloudConvert')
             from libs.cc_module import cc_convert
             for items in inputfile:
@@ -1360,16 +1321,18 @@ class Window(QMainWindow):
                             text_file.write(API_KEY)
                         self.d_writer('API_KEY saved - Try import again', 0, 'red')
                     elif new_file is None:
-                        print(warning)
-                        QMessageBox.about(self, "Warning", warning)
+                        self.d_writer(warning, 0, 'red')
+                        # print(warning)
+                        # QMessageBox.about(self, "Warning", warning)
                     else:
                         print('converting...')
+                        self.d_writer('converting...', 0, 'green')
                         converts.append(new_file)
         
                 except Exception as e:
                     handle_exception(e)  # Zavolání funkce pro zpracování výjimek
 
-        elif convertor == 'Google':
+        elif self.convertor == 'Google':
             print('Google convert')
             from libs.google_module import convert_doc_to_pdf
             for items in inputfile:
@@ -1379,9 +1342,8 @@ class Window(QMainWindow):
                     new_file = convert_doc_to_pdf(items)
         
                     if new_file is None:
-                        warning = "Nastala chyba při konverzi souboru."  # Přidání varovné zprávy
-                        print(warning)
-                        QMessageBox.about(self, "Warning", warning)
+                        self.d_writer(warning, 0, 'red')
+                        # QMessageBox.about(self, "Warning", warning)
                     else:
                         print('converting...')
                         converts.append(new_file)
@@ -1406,9 +1368,12 @@ class Window(QMainWindow):
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setFocus()  
+
+        # Připojíme signál pro otevření dialogu
+        self.table.openFileDialogRequested.connect(self.openFileNamesDialog)
+    
         # better is preview (printig etc) , 'File path'
         self.table.itemSelectionChanged.connect(self.get_page_size)
-        self.table.doubleClicked.connect(self.open_tb)
         self.table.verticalHeader().setDefaultSectionSize(35)
         self.table.setFixedWidth(598)
         self.table.setColumnWidth(0, 35)
@@ -2669,7 +2634,8 @@ class Window(QMainWindow):
 
     def openFileNamesDialog(self):
         options = QFileDialog.Option.DontUseNativeDialog  # Přidání této možnosti pro platformní nezávislost
-        soubory, _ = QFileDialog.getOpenFileNames(self, "Vyberte soubory", "", "PDF Files (*.pdf);;Všechny soubory (*)", options=options)
+        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        soubory, _ = QFileDialog.getOpenFileNames(self, "Vyberte soubory", desktop_path,"PDF Files (*.pdf);;Všechny soubory (*)", options=options)
         if soubory:
             self.files = pdf_parse(self, soubory)
             self.table_reload(self.files)
@@ -2695,12 +2661,14 @@ class Window(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setApplicationName("PrintManager") 
+    app.setApplicationDisplayName("PrintManager")
     path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons/printer.png')
     app.setWindowIcon(QIcon(path))
     w = Window()
     darkmode()
     w.d_writer('DEBUG:', 1, 'green')
-    log = ('boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + '\n' + ' CUPS: ' + "yes" if is_cups_running() == 1 else "no")
+    log = (' boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + '\n' + ' CUPS: ' + "yes" if is_cups_running() == 1 else "no")
     w.d_writer(log, 1)
     w.showNormal()
     sys.exit(app.exec())

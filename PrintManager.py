@@ -22,8 +22,8 @@ from libs.remove_cropmarks_module import *
 from libs.gui_crop2 import *
 
 # SMART CROP - BROKEN 
-version = '0.5'
-# -google convert
+version = '0.6'
+# -fixed preferences
 # -rewrited preferences to QSettings
 
 start_time = time.time()
@@ -926,54 +926,11 @@ class PrefDialog(QDialog):
         return self.text_link.text(), self.res_box.value(), self.btn_convertor.currentText(), self.ontop_checkbox.isChecked()    
 
 class Window(QMainWindow):
-    def save_settings(self):
-        preferences = {
-            "language": self.localization,
-            "resolution": self.resolution,
-            "convertor": self.convertor,
-            "on_top": self.ontop,
-            "printer_panel": self.printing_setting_menu.isChecked(),
-            "debug_panel": self.debug_setting_menu.isChecked(),
-            "preview_panel": True,
-            "printers": load_printers(),
-            "cups_running": is_cups_running(),
-            "arch_check": is_arch_check(),
-            "printer_presets": get_printer_presets()
-        }
-        settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
-        settings.setValue("data", preferences)  # Uložení dat jako hodnoty
-        # QMessageBox.information(self, "Uložení", "Nastavení byla uložena.")
-        self.load_settings()
-
-    def load_settings(self):
-        settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
-        preferences = settings.value("data", None)  # Načtení dat
-        print('Načítám data')
-
-        if preferences is not None:
-            # preferences = preferences[0]  # Tato řádka byla odstraněna, protože preferences není seznam
-            self.preferences = preferences  # Uložení preferences jako atribut instance
-            self.convertor = self.preferences['convertor']
-            self.resolution = self.preferences['resolution']
-            self.ontop = self.preferences['on_top']
-            self.localization = self.preferences['language']
-            # Nastavení okna podle on_top
-            # Další nastavení
-            # self.printing_setting_menu.setChecked(self.preferences.get("printer_panel", False))
-            # self.debug_setting_menu.setChecked(self.preferences.get("debug_panel", False))
-            print("Načtení", "Nastavení byla načtena.")
-        else:
-            print("Načtení", "Nastavení nebyla nalezena.")
-
-    def open_url(self):
-        url = 'http://github.com/devrosx/PrintManager/'
-        subprocess.run(['open', url])  # Pouze pro macOS
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
         self.preferences = {}
         self.load_settings()
         if self.preferences.get("on_top"):
-            print ('ontop....')
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint) 
         self.setWindowTitle("PrintManager " + version)
         self.setAcceptDrops(True)
@@ -987,23 +944,23 @@ class Window(QMainWindow):
         self.printing_setting_menu  = QAction("Printers", self)
         self.printing_setting_menu.setShortcut('Ctrl+P')
         self.printing_setting_menu.setCheckable(True)
-        self.printing_setting_menu.setChecked(True)
+        self.printing_setting_menu.setChecked(self.preferences['printer_panel'])
         self.printing_setting_menu.triggered.connect(self.togglePrintWidget)
         win_menu.addAction(self.printing_setting_menu)
         # DEBUG PANEL
         self.debug_setting_menu  = QAction("Debug", self)
         self.debug_setting_menu.setShortcut('Ctrl+D')
         self.debug_setting_menu.setCheckable(True)
-        self.debug_setting_menu.setChecked(True)
+        self.debug_setting_menu.setChecked(self.preferences['debug_panel'])
         self.debug_setting_menu.triggered.connect(self.toggleDebugWidget)
         win_menu.addAction(self.debug_setting_menu)
         # PREVIEW PANEL
-        printing_setting_menu  = QAction("Preview panel", self)
-        printing_setting_menu.setShortcut('Ctrl+I')
-        printing_setting_menu.setCheckable(True)
-        printing_setting_menu.setChecked(False)
-        printing_setting_menu.triggered.connect(self.togglePreviewWidget)
-        win_menu.addAction(printing_setting_menu)
+        self.preview_setting_menu  = QAction("Preview panel", self)
+        self.preview_setting_menu.setShortcut('Ctrl+I')
+        self.preview_setting_menu.setCheckable(True)
+        self.preview_setting_menu.setChecked(self.preferences['preview_panel'])
+        self.preview_setting_menu.triggered.connect(self.togglePreviewWidget)
+        win_menu.addAction(self.preview_setting_menu)
 
         # EDIT PAGE
         select_all = QAction("Select all", self)
@@ -1057,36 +1014,94 @@ class Window(QMainWindow):
         self.mainLayout = QGridLayout()
         self.table_reload(self.files)
         self.createPrinter_layout()
-        self.createDebug_layout()
+        self.createDebug_layout()  # Zajištění, že je volána
         self.createButtons_layout()
-        pref_preview_state = self.createPreview_layout()
+        # pref_preview_state = self.createPreview_layout()
+        self.createPreview_layout()
         # HACK to window size on boot
-        if pref_preview_state == 1:
+        if self.pref_preview_state == 0:
             self.setFixedSize(617, 650)
             self.resize(617, 650)
         else:
             self.setFixedSize(875, 650)
             self.resize(875, 650)
-
         self.mainLayout.addLayout(self.printer_layout, 0, 0, 1, 2)
         self.mainLayout.addLayout(self.debug_layout, 2, 0, 1, 2)
-        # self.mainLayout.setRowStretch(0, 2)
-        # self.mainLayout.setColumnStretch(0, 2)
         self.mainLayout.addLayout(self.preview_layout, 0, 3, 0, 3)
         self.mainLayout.addLayout(self.buttons_layout, 3, 0, 1, 2)
-        # self.setFixedSize(self.window.sizeHint())
-        # self.setFixedWidth(self.sizeHint().width())
 
         """Initiating  mainLayout """
         self.window = QWidget()
         self.window.setLayout(self.mainLayout)
         self.setCentralWidget(self.window)
-        # new code load setting    
+        # new code load setting  
+
+    def createDebug_layout(self):
+        self.debug_layout = QHBoxLayout()
+        self.gb_debug = QGroupBox("Debug")
+        self.gb_debug.setVisible(self.preferences['debug_panel'])
+        self.gb_debug.setChecked(True)
+        self.gb_debug.setTitle('')
+        self.gb_debug.setFixedHeight(90)
+        self.gb_debug.setFixedWidth(600)
+        self.gb_debug.setContentsMargins(0, 0, 0, 0)
+        self.gb_debug.setStyleSheet("border: 0px; border-radius: 0px; padding: 0px 0px 0px 0px;")
+        dbox = QVBoxLayout()
+        dbox.setContentsMargins(0, 0, 0, 0);
+        self.gb_debug.setLayout(dbox)
+        # debug
+        self.debuglist = QTextEdit(self)
+        self.debuglist.acceptRichText()
+        self.debuglist.setReadOnly(True)
+        self.debuglist.setFixedHeight(80)
+        self.debuglist.setFixedWidth(597)
+        dbox.addWidget(self.debuglist)
+        self.gb_debug.toggled.connect(self.toggleDebugWidget)
+        self.debug_layout.addWidget(self.gb_debug)
+
+    def save_settings(self):
+        preferences = {
+            "language": self.localization,
+            "resolution": self.resolution,
+            "convertor": self.convertor,
+            "on_top": self.ontop,
+            "printer_panel": self.printing_setting_menu.isChecked(),
+            "debug_panel": self.debug_setting_menu.isChecked(),
+            "preview_panel": self.preview_setting_menu.isChecked(),
+            "printers": load_printers(),
+            "cups_running": is_cups_running(),
+            "arch_check": is_arch_check(),
+            "printer_presets": get_printer_presets()
+        }
+        settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
+        settings.setValue("data", preferences)  # Uložení dat jako hodnoty
+        # print('saving...')
+        self.load_settings()
+
+    def load_settings(self):
+        settings = QSettings("Devrosx", "PrintManager_2")  # Zadejte vaše názvy
+        preferences = settings.value("data", None)  # Načtení dat
+        # print('loading...')
+
+        if preferences is not None:
+            self.preferences = preferences  # Uložení preferences jako atribut instance
+            self.convertor = self.preferences['convertor']
+            self.resolution = self.preferences['resolution']
+            self.ontop = self.preferences['on_top']
+            self.localization = self.preferences['language']
+            if self.preferences['preview_panel'] == True:
+                self.pref_preview_state = 1
+            else:
+                self.pref_preview_state = 0
+
+    def open_url(self):
+        url = 'http://github.com/devrosx/PrintManager/'
+        subprocess.run(['open', url])  # Pouze pro macOS
+  
 
     def open_dialog(self):
         # load setting first
         # default_pref = load_preferences()
-        # print('Default_pref:')
         form = PrefDialog(self.localization, self.resolution, self.convertor, self.ontop)
         form.setFixedSize(400, 180)
         try:
@@ -1094,18 +1109,6 @@ class Window(QMainWindow):
                 self.localization, self.resolution, self.convertor, self.ontop = form.getInputs()
         except Exception as e:
             print(e)
-            print('pref canceled')
-
-    
-        # printers = load_printers()
-        # settings.setValue(setting, printers)
-        # cups_check = is_cups_running()
-        # settings.setValue(setting, printers)
-        # print (cups_check)
-        # arch_check = is_arch_check()
-        # print (arch_check)
-        # printer_presets = get_printer_presets()
-        # print (printer_presets)
 
     def check_menu_items(self):
         # Zkontrolujte stav akcí a vraťte jejich hodnoty
@@ -1121,11 +1124,7 @@ class Window(QMainWindow):
 
         if close_result == QMessageBox.StandardButton.Yes:
             printer_checked, debug_checked = self.check_menu_items()
-            print(f"Printers checked: {printer_checked}, Debug checked: {debug_checked}")
-            # self.ontop = self.preferences['on_top']
-            # self.localization = self.preferences['language']
-            # self.resolution = self.preferences['resolution']
-            # self.convertor = self.preferences['convertor']
+            # print(f"Printers checked: {printer_checked}, Debug checked: {debug_checked}")
             self.save_settings()
             event.accept()
         else:
@@ -1147,7 +1146,6 @@ class Window(QMainWindow):
             event.accept()
         else:
             event.ignore()
-            # print ('Ignore')
 
     def dropEvent(self, event):
         self.d_writer("Loading files - please wait...", 0, 'green')
@@ -1160,7 +1158,6 @@ class Window(QMainWindow):
             # handle file
             if os.path.isfile(path):
                 if extension == 'pdf':
-                    # print ('Filetype: ' + str(extension))
                     self.files = pdf_parse(self, path)
                     self.d_writer(path, 0, 'green')
                     Window.table_reload(self, self.files)
@@ -1407,10 +1404,6 @@ class Window(QMainWindow):
 
         self.table.setRowCount(len(inputfile))
         for i, (Info, File, Size, Kind, Filesize, Pages, Price, Colors, Filepath) in enumerate(inputfile):
-            # if inputfile[i][3] == 'pdf':
-            #     self.table.setItem('button', 7, QTableWidgetItem(Colors))
-            #     print ('bingo')
-            # else:
             self.table.setItem(i, 1, QTableWidgetItem(File))
             self.table.setItem(i, 2, QTableWidgetItem(Size))
             self.table.setItem(i, 3, QTableWidgetItem(Kind))
@@ -1493,7 +1486,7 @@ class Window(QMainWindow):
                 row = items.row()
                 # filetype=index.sibling(items.row(),3).data()
                 # if filetype == 'pdf':
-                print(row)
+                # print(row)
                 remove_from_list(self, row)
                 del(self.files[row])
 
@@ -1599,7 +1592,10 @@ class Window(QMainWindow):
         Window.table_reload(self, self.files)
 
     def toggleDebugWidget(self):
-        self.gb_debug.setHidden(not self.gb_debug.isHidden())
+        if hasattr(self, 'gb_debug'):
+            self.gb_debug.setHidden(not self.gb_debug.isHidden())
+        else:
+            print("gb_debug not found")
 
     def togglePrintWidget(self):
         self.gb_printers.setHidden(not self.gb_printers.isHidden())
@@ -1607,8 +1603,10 @@ class Window(QMainWindow):
 
     def togglePreviewWidget(self):
         PreviewWidget = 1
+        # self.setFixedSize(875, 650)
+        # self.resize(875, 650)
         self.gb_preview.setHidden(not self.gb_preview.isHidden())
-        print(self.gb_preview.isHidden())
+        # print(self.gb_preview.isHidden())
         if self.gb_preview.isHidden() == 1:
             self.setFixedSize(617, 650)
             self.resize(617, 650)
@@ -1621,7 +1619,7 @@ class Window(QMainWindow):
                 pass
 
     def preview_window(self):
-        print('prev')
+        # print('prev')
         if not self.table.selectionModel().selectedRows():
             return
 
@@ -1720,13 +1718,9 @@ class Window(QMainWindow):
 
     def createPreview_layout(self):
         self.preview_layout = QHBoxLayout()
-        try:
-            pref_preview_state = (json_pref[0][7])
-        except Exception as e:
-            pref_preview_state = 1
         # PREVIEW GROUPBOX
         self.gb_preview = QGroupBox("Preview file")
-        self.gb_preview.setVisible(not pref_preview_state)
+        self.gb_preview.setVisible(self.preferences['preview_panel'])
         pbox = QVBoxLayout()
         # image
         self.image_label = self.ExtendedQLabel(self)
@@ -1764,34 +1758,8 @@ class Window(QMainWindow):
         pbox.addWidget(self.infotable)
         self.preview_layout.addWidget(self.gb_preview)
         self.setFixedWidth(self.sizeHint().width() + 300)
+        pref_preview_state = self.preferences['preview_panel']
         return pref_preview_state
-
-    def createDebug_layout(self):
-        self.debug_layout = QHBoxLayout()
-        try:
-            pref_debug_state = (json_pref[0][5])
-        except Exception as e:
-            pref_debug_state = 0
-        self.gb_debug = QGroupBox("Debug")
-        self.gb_debug.setVisible(not pref_debug_state)
-        self.gb_debug.setChecked(True)
-        self.gb_debug.setTitle('')
-        self.gb_debug.setFixedHeight(90)
-        self.gb_debug.setFixedWidth(600)
-        self.gb_debug.setContentsMargins(0, 0, 0, 0)
-        self.gb_debug.setStyleSheet("border: 0px; border-radius: 0px; padding: 0px 0px 0px 0px;")
-        dbox = QVBoxLayout()
-        dbox.setContentsMargins(0, 0, 0, 0);
-        self.gb_debug.setLayout(dbox)
-        # debug
-        self.debuglist = QTextEdit(self)
-        self.debuglist.acceptRichText()
-        self.debuglist.setReadOnly(True)
-        self.debuglist.setFixedHeight(80)
-        self.debuglist.setFixedWidth(597)
-        dbox.addWidget(self.debuglist)
-        self.gb_debug.toggled.connect(self.toggleDebugWidget)
-        self.debug_layout.addWidget(self.gb_debug)
 
     def createButtons_layout(self):
         self.buttons_layout = QHBoxLayout()
@@ -1932,7 +1900,7 @@ class Window(QMainWindow):
             filetype = index.sibling(items.row(), 3).data()
             pages = int(index.sibling(items.row(), 5).data())
             if filetype == 'pdf':
-                print('konverze')
+                print('conversion')
                 file_path_preview = pdf_preview_generator(file_path, generate_marks=1, page=0)
                 self.live_crop_window = LiveCropWindow(file_path_preview)
                 self.live_crop_window.show()
@@ -1960,7 +1928,6 @@ class Window(QMainWindow):
 
 
 # GET FILE PATH////////////////////FIX TODP
-# GET FILE PATH////////////////////FIX TODP
     def operate_file(self, action, debug_text, parameter=None):
         outputfiles = []
         if self.table.currentItem() == None:
@@ -1982,7 +1949,6 @@ class Window(QMainWindow):
         else:
             debugstring, outputfiles = action(outputfiles, parameter)
             self.d_writer(debug_text, 1, 'green')
-            # print (debugstring)
             if outputfiles != None:
                 # imagename
                 self.d_writer(', '.join(debugstring), 1)
@@ -1990,7 +1956,6 @@ class Window(QMainWindow):
                 Window.table_reload(self, self.files)
             if outputfiles == None:
                 self.d_writer(', '.join(debugstring), 1)
-# GET FILE PATH////////////////////FIX TODP
 # GET FILE PATH////////////////////FIX TODP
 
     def gray_pdf(self):
@@ -2085,7 +2050,6 @@ class Window(QMainWindow):
             multipage, croppage, margin = pdf_dialog.getInputs()
             debugstring, outputfile = super_crop(file_path, 72, croppage=croppage - 1, multipage=multipage, margin=margin)
             outputfiles.append(outputfile)
-            # print (outputfiles)
             self.files = pdf_parse(self, outputfiles)
             Window.table_reload(self, self.files)
             self.d_writer(debugstring, 1, 'green')
@@ -2118,11 +2082,9 @@ class Window(QMainWindow):
             index = (self.table.selectionModel().currentIndex())
             file_path = index.sibling(items.row(), 8).data()
             outputfiles.append(file_path)
-            print ('xxx' + str(file_path))
 
         try:
             outputfiles = extractfiles(file_path, cmyk=0)
-            print ('xxx' + str(outputfiles))
         except Exception as e:
             self.d_writer('Error - Importing error' + str(e), 1, 'red')
             return
@@ -2204,7 +2166,6 @@ class Window(QMainWindow):
         else:
             for items in table:
                 row = items.row()
-                # print (row)
                 index = (self.table.selectionModel().currentIndex())
                 file_path = index.sibling(items.row(), 8).data()
                 combinefiles.append(file_path)
@@ -2261,17 +2222,13 @@ class Window(QMainWindow):
     def createPrinter_layout(self):
         self.printer_layout = QHBoxLayout()
         try:
-            print ('try')
             print (self.preferences)
             # pref_l_printer = json_pref[0]['printers']
             pref_l_printer = self.preferences.get('printers', [])
-            print (pref_l_printer)
             # pref_l_printer_presets = json_pref[0]['printer_presets']
             pref_l_printer_presets = self.preferences.get("printer_presets")
-            print (pref_l_printer_presets)
             # pref_printers_state = json_pref[0]['preferences']['printer_panel']
             pref_printers_state = self.preferences.get("printer_panel")
-            print (pref_printers_state)
 
         except Exception as e:
             pref_l_printer = []
@@ -2284,8 +2241,7 @@ class Window(QMainWindow):
         self.gb_printers.setLayout(vbox)
         self.gb_printers.setFixedHeight(120)
         self.gb_printers.setFixedWidth(202)
-        self.gb_printers.setVisible(pref_printers_state)
-        
+        self.gb_printers.setVisible(self.preferences['printer_panel'])
         self.printer_tb = QComboBox(self)
         self.printer_tb.addItems(pref_l_printer)
         self.printer_tb.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -2294,7 +2250,6 @@ class Window(QMainWindow):
         # Naplnění printer_presets podle první tiskárny
         if pref_l_printer:
             first_printer = pref_l_printer[0]
-            print (pref_l_printer[0])
             self.update_printer_presets(first_printer, pref_l_printer_presets)
         # Připojení signálu pro změnu výběru v printer_tb
         self.printer_tb.currentIndexChanged.connect(self.on_printer_changed)
@@ -2386,7 +2341,6 @@ class Window(QMainWindow):
         try:
             # Získání podrobností o tiskárně
             command = f"lpoptions -p {printer_name} -l -o  {printer_presets} "
-            print (command)
             result = subprocess.run(command, shell=True, capture_output=True, text=True)
             
             if result.returncode == 0:
@@ -2554,9 +2508,9 @@ class Window(QMainWindow):
                     self.image_label_pixmap = QPixmap(filepath)
                     self.image_label.setPixmap(self.image_label_pixmap)
                 if filetype == 'pdf':
-                    print ('xxx')
-                    print (type(pages))
-                    print (pages)
+                    # print ('xxx')
+                    # print (type(pages))
+                    # print (pages)
                     if pages > 1:
                         self.move_page.show()
                         self.move_page.setMaximum(pages)

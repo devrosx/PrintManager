@@ -25,6 +25,8 @@ from libs.gui_crop2 import *
 version = '0.6'
 # -fixed preferences
 # -rewrited preferences to QSettings
+# -new debug options
+# -support locked pdf (unlock on open)
 
 start_time = time.time()
 info, name, size, extension, file_size, pages, price, colors, filepath = [[] for _ in range(9)]
@@ -234,13 +236,13 @@ def resize_this_image(original_file, percent):
     for item in original_file:
         head, ext = os.path.splitext(item)
         outputfile = head + '_' + str(percent) + ext
-        command = ["convert", item, "-resize", str(percent) + '%', outputfile]
+        command = ["magick", item, "-resize", str(percent) + '%', outputfile]
         subprocess.run(command)
         outputfiles.append(outputfile)
     return command, outputfiles
 
 def crop_image(original_file, coordinates):
-    command = ["convert", original_file, "-crop", str(coordinates[2] - coordinates[0]) + 'x' + str(coordinates[3] - coordinates[1]) + '+' + str(coordinates[0]) + '+' + str(coordinates[1]), original_file]
+    command = ["magick", original_file, "-crop", str(coordinates[2] - coordinates[0]) + 'x' + str(coordinates[3] - coordinates[1]) + '+' + str(coordinates[0]) + '+' + str(coordinates[1]), original_file]
     print(command)
     subprocess.run(command)
     return command
@@ -265,7 +267,7 @@ def rotate_this_image(original_file, angle):
     for item in original_file:
         head, ext = os.path.splitext(item)
         outputfile = head + ext
-        command = ["convert", item, "-rotate", str(angle), outputfile]
+        command = ["magick", item, "-rotate", str(angle), outputfile]
         subprocess.run(command)
         outputfiles.append(outputfile)
     return command, outputfiles
@@ -275,7 +277,7 @@ def invert_this_image(original_file):
     for item in original_file:
         head, ext = os.path.splitext(item)
         outputfile = head + ext
-        command = ["convert", item, "-channel", "RGB", "-negate", outputfile]
+        command = ["magick", item, "-channel", "RGB", "-negate", outputfile]
         subprocess.run(command)
         outputfiles.append(outputfile)
     return command, outputfiles
@@ -288,7 +290,7 @@ def gray_this_file(original_file, filetype):
         if filetype == 'pdf':
             command = ["gs", "-sDEVICE=pdfwrite", "-dProcessColorModel=/DeviceGray", "-dColorConversionStrategy=/Gray", "-dPDFUseOldCMS=false", "-dNOPAUSE", "-dQUIET", "-dBATCH", "-sOutputFile=" + outputfile, item]
         else:
-            command = ["convert", item, "-colorspace", "Gray", outputfile]
+            command = ["magick", item, "-colorspace", "Gray", outputfile]
         subprocess.run(command)
         outputfiles.append(outputfile)
     return command, outputfiles
@@ -309,7 +311,7 @@ def raster_this_file(original_file, *args):
         head, ext = os.path.splitext(item)
         outputfile = head + '_raster' + ext
         command_gs = ["gs", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOCACHE", "-sDEVICE=pdfwrite", "-sColorConversionStrategy=/LeaveColorUnchanged", "-dAutoFilterColorImages=true", "-dAutoFilterGrayImages=true", "-dDownsampleMonoImages=true", "-dDownsampleGrayImages=true", "-dDownsampleColorImages=true", "-sOutputFile=" + outputfile, original_file]
-        command = ["convert", "-density", str(resolution), "+antialias", str(item), str(outputfile)]
+        command = ["magick", "-density", str(resolution), "+antialias", str(item), str(outputfile)]
         subprocess.run(command)
         outputfiles.append(outputfile)
     return command, outputfiles
@@ -339,7 +341,7 @@ def convert_this_file(original_file, *args):
     for item in original_file:
         head, ext = os.path.splitext(item)
         outputfile = head + '.pdf'
-        command = ["convert", str(resolution), '-density', '300', str(item), str(outputfile)]
+        command = ["magick", str(resolution), '-density', '300', str(item), str(outputfile)]
         subprocess.run(command)
         outputfiles.append(outputfile)
     return command, outputfiles
@@ -541,19 +543,24 @@ def pdf_parse(self, inputs, *args):
     rows = []
     if isinstance(inputs, str):
         inputs = [inputs]
+        print(inputs)
     
     for item in inputs:
+        print(item)
         oldfilename = os.path.basename(item)
         ext_file = os.path.splitext(oldfilename)
         dirname = os.path.dirname(item) + '/'
-        
         try:
             with open(item, mode='rb') as f:
                 pdf_input = PdfReader(f, strict=False)
                 
                 if pdf_input.is_encrypted:
-                    self.d_writer('File is encrypted...', 0, 'red')
-                    continue  # Pokračujte na další soubor, pokud je šifrovaný
+                    print(f"{oldfilename} is encrypted.")
+                    try:
+                        pdf_input.decrypt('')
+                    except Exception as e:
+                        print(f"Cannot unlock PDF {oldfilename}: {e}")
+                        continue
                 
                 # Opraveno na mediaBox
                 page_size = get_pdf_size(pdf_input.pages[0].mediabox)
@@ -930,6 +937,9 @@ class Window(QMainWindow):
         super(Window, self).__init__(parent)
         self.preferences = {}
         self.load_settings()
+        self.preview_widget_open = False
+        self.drag_position = QPoint()  # Pro sledování pozice myši
+        self.widget = None  # Inicializace widgetu jako None
         if self.preferences.get("on_top"):
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint) 
         self.setWindowTitle("PrintManager " + version)
@@ -985,7 +995,7 @@ class Window(QMainWindow):
 
         # PREVIEW
         preview_menu  = QAction("Preview", self)
-        preview_menu.setShortcut('F1')
+        preview_menu.setShortcut('ALT')
         preview_menu.triggered.connect(self.preview_window)
         win_menu.addAction(preview_menu)
         # PREFERENCES
@@ -1136,19 +1146,18 @@ class Window(QMainWindow):
     def dragLeaveEvent(self, event):
         event.accept()
         self.table.setStyleSheet("QTableView {background-image:none}" )
-        self.d_writer('', 0)
 
     def dragEnterEvent(self, event):
         event.setDropAction(Qt.DropAction.MoveAction)
         if event.mimeData().hasUrls():
-            self.d_writer(event.mimeData().text(), 0)
+            # self.d_writer(event.mimeData().text(), 0)
             self.table.setStyleSheet("QTableView {border: 2px solid #00aeff;background-image: url(icons/drop.png);background-repeat: no-repeat;background-position: center center;background-color: #2c2c2c; }")
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        self.d_writer("Loading files - please wait...", 0, 'green')
+        # self.d_writer("Loading files - please wait...", 0, 'green')
         image_files = []
         office_files = []
         unknown_files = []
@@ -1159,7 +1168,7 @@ class Window(QMainWindow):
             if os.path.isfile(path):
                 if extension == 'pdf':
                     self.files = pdf_parse(self, path)
-                    self.d_writer(path, 0, 'green')
+                    # self.d_writer(path, 0, 'green')
                     Window.table_reload(self, self.files)
                 # handle images to list
                 if extension in image_ext:
@@ -1240,15 +1249,22 @@ class Window(QMainWindow):
             message = '\n'.join(message)
         # Pokud message obsahuje '\n', rozdělíme ho a použijeme HTML pro každý řádek
         message_lines = message.split('\n')
-        formatted_message = ''.join(f'<font color={color}><b>{line}</b></font><br>' for line in message_lines)
+        formatted_message = ''.join(f'<font color={color}><b>{line}</b></font>' for line in message_lines)
         
         if append:
             # Přidání formátovaného textu do debuglist
-            self.debuglist.append(formatted_message)
+            current_text = self.debuglist.document().toHtml()
+            self.debuglist.setHtml(current_text + formatted_message)
+            # Posuňte kurzor na konec textu
+            self.debuglist.moveCursor(QTextCursor.MoveOperation.End)
         else:
-            # Pokud je message prázdný, nezapíšeme prázdný řádek
-            if message.strip():  # Zkontrolujeme, zda message není prázdný
-                self.debuglist.setText(formatted_message)
+            # Smazání obsahu debuglistu
+            self.debuglist.clear()  # Čistíme obsah
+            # Přidání nového formátovaného textu
+            self.debuglist.setHtml(formatted_message)
+            
+            # Posuňte kurzor na konec textu
+            self.debuglist.moveCursor(QTextCursor.MoveOperation.End)
 
     def external_convert(self, ext, inputfile, setting):
         print ('external conv:' +str(self.convertor))
@@ -1445,7 +1461,7 @@ class Window(QMainWindow):
     @pyqtSlot()
     def on_selection_changed(self):
         self.my_info_label.setText(str(self.count_pages()) + ' pages selected')
-        self.debuglist.clear()
+        # self.debuglist.clear()
         if self.selected_file_check() == 'pdf':
             self.pdf_button.show()
             self.img_button.hide()
@@ -1619,10 +1635,9 @@ class Window(QMainWindow):
                 pass
 
     def preview_window(self):
-        # print('prev')
         if not self.table.selectionModel().selectedRows():
+            print("No rows selected")  # Debug: Žádné řádky nejsou vybrány
             return
-
         for items in sorted(self.table.selectionModel().selectedRows()):
             row = items.row()
             index = self.table.selectionModel().currentIndex()
@@ -1632,76 +1647,98 @@ class Window(QMainWindow):
             filepath = index.sibling(items.row(), 8).data()
             pages = index.sibling(items.row(), 5).data()
 
-        self.widget = QDialog()
-        self.widget.setWindowTitle(f"{filepath} / {size}")
+        # Vytvoření widgetu pouze pokud ještě neexistuje
+        if self.widget is None:
+            self.widget = QDialog()
+            self.widget.setWindowTitle(f"{filepath} / {size}")
 
-        layout = QVBoxLayout(self.widget)
+            layout = QVBoxLayout(self.widget)
 
-        self.im_p = QLabel('Image_P', self.widget)
-        self.im_p.setText('PREVIEW')
-        self.im_pixmap = QPixmap('')
+            self.im_p = QLabel('Image_P', self.widget)
+            self.im_p.setText('PREVIEW')
+            self.im_pixmap = QPixmap('')
 
-        if filetype.upper() in (name.upper() for name in image_ext):
-            self.im_pixmap = QPixmap(filepath)
-            self.im_p.setPixmap(self.im_pixmap)
+            if filetype.upper() in (name.upper() for name in image_ext):
+                self.im_pixmap = QPixmap(filepath)
+                self.im_p.setPixmap(self.im_pixmap)
 
-        if filetype == 'pdf':
-            filebytes = pdf_preview_generator(filepath, generate_marks=1, page=self.move_page.value())
-            self.im_pixmap.loadFromData(filebytes)
-            self.im_p.setPixmap(self.im_pixmap)
+            if filetype == 'pdf':
+                filebytes = pdf_preview_generator(filepath, generate_marks=1, page=self.move_page.value())
+                self.im_pixmap.loadFromData(filebytes)
+                self.im_p.setPixmap(self.im_pixmap)
 
-        screen = QApplication.primaryScreen()
-        sizeObject = screen.size()
-        res = [sizeObject.width() * 0.92, sizeObject.height() * 0.92]
+            screen = QApplication.primaryScreen()
+            sizeObject = screen.size()
+            res = [sizeObject.width() * 0.92, sizeObject.height() * 0.92]
 
-        w, h = self.im_pixmap.width(), self.im_pixmap.height()
-        self.widget.resize(w, h)
+            w, h = self.im_pixmap.width(), self.im_pixmap.height()
+            # self.widget.resize(w, h)
 
-        if w > res[0]:
-            wpercent = res[0] / float(w)
-            self.widget.resize(int(w * wpercent), int(h * wpercent))
+            if w > res[0]:
+                wpercent = res[0] / float(w)
+                self.widget.resize(int(w * wpercent), int(h * wpercent))
 
-        if h > res[1]:
-            hpercent = res[1] / float(h)
-            self.widget.resize(int(w * hpercent), int(h * hpercent))
+            if h > res[1]:
+                hpercent = res[1] / float(h)
+                self.widget.resize(int(w * hpercent), int(h * hpercent))
 
-        self.im_p.setPixmap(self.im_pixmap.scaled(self.widget.size(), Qt.AspectRatioMode.KeepAspectRatio))
-        self.im_p.setMinimumSize(1, 1)
+            # self.im_p.setPixmap(self.im_pixmap.scaled(self.widget.size(), Qt.AspectRatioMode.KeepAspectRatio))
+            # self.im_p.setMinimumSize(1, 1)
+            # self.widget.resize(self.im_pixmap.size())
+            self.labl_name = QLabel('Image_name', self.widget)
+            self.labl_name.setStyleSheet("QLabel { background-color: '#2c2c2c'; font-size: 11px; height: 16px; padding: 5px;}")
+            self.labl_name.setText(f"{filename} / page: {self.move_page.value()}")
 
-        self.labl_name = QLabel('Image_name', self.widget)
-        self.labl_name.setStyleSheet("QLabel { background-color: '#2c2c2c'; font-size: 11px; height: 16px; padding: 5px;}")
-        self.labl_name.setText(f"{filename} / page: {self.move_page.value()}")
+            layout.addWidget(self.im_p)
+            layout.addWidget(self.labl_name)
 
-        layout.addWidget(self.im_p)
-        layout.addWidget(self.labl_name)
+            # Přidání události klávesnice
+            self.widget.keyPressEvent = self.keyPressEvent
 
-        self.widget.exec()
+            # Přidání slotu pro zavření okna
+            self.widget.finished.connect(self.on_widget_closed)
 
-            # try:
-            #   sizeObject = QDesktopWidget().screenGeometry(0)  # monitor size
-            #   res = [(sizeObject.width() * 92 / 100), (sizeObject.height() * 92 / 100)]
-            #   w, h = self.im_pixmap.width(), self.im_pixmap.height()
-            #   self.widget.setFixedSize(w, h)
-            #   if w > res[0]:
-            #       # print ('zmensuju sirka je veci')
-            #       wpercent = (res[0] / float(w))
-            #       # print (wpercent)
-            #       self.widget.setFixedSize(w * wpercent, h * wpercent)
-            #   if h > res[1]:
-            #       # print ('zmensuju vyska je veci')
-            #       wpercent = (res[1] / float(h))
-            #       # print (wpercent)
-            #       self.widget.setFixedSize(w * wpercent, h * wpercent)
-            #   # print ('photo size:' + str(w) + 'x' + str(h) + '/ monitor size:' + str(res[0]) + 'x' + str(res[1]))
-            #   self.im_p.setPixmap(self.im_pixmap.scaled(self.widget.size(), Qt.AspectRatioMode.KeepAspectRatio))
-            #   self.im_p.setMinimumSize(1, 1)
-            #   self.labl_name = QLabel('Image_name', self.widget)
-            #   self.labl_name.setStyleSheet("QLabel { background-color: '#2c2c2c'; font-size: 11px; height: 16px; padding: 5,5,5,5;}")
-            #   self.labl_name.setText(filename + ' / page: ' + str(self.move_page.value()))
-            #   # self.labl_name.setFixedHeight(30)
-            #   self.widget.exec()
-            # except:
-            #   print('err')
+            # Přidání událostí myši pro přetahování
+            self.im_p.mousePressEvent = self.start_drag
+            self.im_p.mouseMoveEvent = self.drag_move
+            self.im_p.mouseReleaseEvent = self.stop_drag
+            self.widget.resizeEvent = self.on_resize
+            self.widget.show()  # Otevření widgetu
+            self.widget.setFocus()  # Nastavení fokusu na widget
+            self.preview_widget_open = True  # Nastavení stavu na otevřené
+        else:
+            self.widget.raise_()  # Přivedení okna na popředí, pokud už je otevřené
+
+    def on_resize(self, event):
+        print ('hyyybu')
+        # Změna velikosti obrázku podle velikosti okna
+        # if self.im_pixmap:
+        #     scaled_pixmap = self.im_pixmap.scaled(self.widget.size(), Qt.AspectRatioMode.KeepAspectRatio)
+        #     self.im_p.setPixmap(scaled_pixmap)
+        # event.accept()
+
+
+    def start_drag(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_position = event.globalPosition().toPoint() - self.widget.frameGeometry().topLeft()
+            event.accept()
+
+    def drag_move(self, event):
+        if event.buttons() == Qt.MouseButton.LeftButton:
+            self.widget.move(event.globalPosition().toPoint() - self.drag_position)
+            event.accept()
+
+    def stop_drag(self, event):
+        pass  # Můžete zde přidat další logiku, pokud je potřeba
+
+    def close_preview_window(self):
+        if self.widget:
+            self.widget.close()  # Zavření widgetu
+
+    def on_widget_closed(self):
+        self.widget = None  # Nastavení widgetu na None
+        self.preview_widget_open = False  # Nastavení stavu na zavřené
+
 
     class ExtendedQLabel(QLabel):
         def __init__(self, parent):
@@ -1891,6 +1928,18 @@ class Window(QMainWindow):
         self.my_info_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.buttons_layout.addWidget(self.my_info_label)
         self.my_info_label.hide()
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key.Key_Delete:
+            self.deleteClicked()
+        elif e.key() == 16777251:  # Kód pro F1
+            if self.preview_widget_open:
+                self.close_preview_window()
+            else:
+                self.preview_window()
+        else:
+            super().keyPressEvent(e)
+
 
     def create_crop_window(self):
         for items in sorted(self.table.selectionModel().selectedRows()):
@@ -2565,16 +2614,6 @@ class Window(QMainWindow):
     def connect_signal(self):
         self.move_page.valueChanged.connect(self.move_page_changed)
 
-    def keyPressEvent(self, e):
-        if e.key() == Qt.Key.Key_Delete:
-            self.deleteClicked()
-        elif e.key() == Qt.Key.Key_F1:
-            self.preview_window()
-        elif e.key() == Qt.Key.Key_Space:
-            print('space')
-        else:
-            super().keyPressEvent(e)
- 
     def deleteClicked(self):
         rows_ = [] 
         for items in sorted(self.table.selectionModel().selectedRows()):
@@ -2593,7 +2632,6 @@ class Window(QMainWindow):
         if soubory:
             self.files = pdf_parse(self, soubory)
             self.table_reload(self.files)
-            self.d_writer('Načteno: ' + ', '.join(soubory), 0, 'green')  # Opraveno pro správné zobrazení názvů souborů
 
     def select_all_action(self):
         self.table.clearSelection()
@@ -2622,7 +2660,7 @@ if __name__ == '__main__':
     w = Window()
     darkmode()
     w.d_writer('DEBUG:', 1, 'green')
-    log = (' boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + '\n' + ' CUPS: ' + "yes" if is_cups_running() == 1 else "no")
+    log = ('boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + '\n' + ' CUPS: ' + "yes" if is_cups_running() == 1 else "no")
     w.d_writer(log, 1)
     w.showNormal()
     sys.exit(app.exec())

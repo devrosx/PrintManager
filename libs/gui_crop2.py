@@ -8,27 +8,34 @@ from PyQt6.QtCore import *
 class LiveCropWindow(QDialog):
     def __init__(self, input_file):
         super().__init__()
-        # Crop button
-        self.move(5, 5)
+        self.setWindowTitle(input_file)
+        # Inicializace proměnných
         self.defined_crop = False
         self.crop = QPushButton('Crop', self)
         self.crop.clicked.connect(self.crop_image)
         self.begin = QPoint()
         self.end = QPoint()
         self.handle_offsets = (QPoint(8, 8), QPoint(-1, 8), QPoint(8, -1), QPoint(-1, -1))
-        
-        # Check if input_file is str or list
+
+        # Kontrola typu input_file
         if isinstance(input_file, str):
             res, self.w, self.h, self.wpercent, self.hpercent, self.percent = self.get_sizes(input_file)
         else:
             im_pixmap = QPixmap()
             im_pixmap.loadFromData(input_file)
             res, self.w, self.h, self.wpercent, self.hpercent, self.percent = self.get_sizes(im_pixmap)
-
+        # Nastavení velikosti okna
         self.setFixedSize(int(self.wpercent * self.w), int(self.hpercent * self.h))
         print(f'New size: {int(self.wpercent * self.w)}x{int(self.hpercent * self.h)}')
         print('Show window')
+
+        # Umístění tlačítka "Crop" do pravého dolního rohu s odsazením 5,5
+        button_width = self.crop.sizeHint().width()  # Získání šířky tlačítka
+        button_height = self.crop.sizeHint().height()  # Získání výšky tlačítka
+        self.crop.move(self.width() - button_width - 5, self.height() - button_height - 5)
+
         self.show()
+
 
     def get_sizes(self, input_file):
         self.pixmap = QPixmap(input_file)
@@ -87,16 +94,16 @@ class LiveCropWindow(QDialog):
             self.begin = event.position().toPoint()
             self.end = event.position().toPoint()
             self.update()
-        elif event.buttons() == Qt.MouseButton.RightButton and self.defined_crop:
+        elif event.buttons() == Qt.MouseButton.LeftButton and self.defined_crop:
             self.defined_crop = False
             print('Right click')
             self.begin = event.position().toPoint()
             self.end = event.position().toPoint()    
             self.update()
-        else:
-            print('Todo')
-            self.defined_crop = False
-            self.update()
+        # else:
+        #     print('Todo')
+        #     self.defined_crop = False
+        #     self.update()
 
     def mouseMoveEvent(self, event):
         self.end = event.position().toPoint()

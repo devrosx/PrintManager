@@ -17,18 +17,26 @@ def authenticate_google_drive():
     # The file token.json stores the user's access and refresh tokens.
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+    
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            # check token renew
-            print ('need new token')
+            try:
+                creds.refresh(Request())
+                print('Token refreshed successfully.')
+            except Exception as e:
+                print('Token refresh failed, re-authenticating:', e)
+                os.remove(token_path)  # Odstranit starý token
+                flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
+                creds = flow.run_local_server(port=0)
         else:
             flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             creds = flow.run_local_server(port=0)
+        
         # Save the credentials for the next run
         with open(token_path, 'w') as token:
             token.write(creds.to_json())
+    
     return build('drive', 'v3', credentials=creds)
 
 def upload_and_convert_to_gdoc(service, file_path):

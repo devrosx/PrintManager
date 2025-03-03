@@ -1,5 +1,5 @@
 # PrintManager
-PrintManager for Macosx (written in Python and PyQt5, with some handy features).  My goal is to create tool with usefull graphic/printing comandline functions. Patches and ideas are welcomed.
+PrintManager for Macosx (written in Python and PyQt6, with some handy features).  My goal is to create tool with usefull graphic/printing comandline functions. Patches and ideas are welcomed.
 
 ![alt text](https://raw.githubusercontent.com/devrosx/PrintManager/master/wiki/screenshot.png)
 
@@ -47,6 +47,12 @@ I'm a newbie with python and PyQt5 :)
 - ...
 
 # Updates:
+0.6
+- BUGFIXES
+- preferences
+- updated debugtext table (scroling)
+- support for encrypted PDF
+
 0.4
 - MAJOR REWRITE
 - google convert test version (WIP)

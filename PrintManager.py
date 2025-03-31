@@ -1,4 +1,4 @@
-#!/usr/local/opt/python@3.12/bin/python3.12
+#!/usr/local/opt/python@3.13/bin/python3.13
 import sys
 import os
 import fnmatch
@@ -112,12 +112,10 @@ def load_printers():
 
 def handle_exception(e):
     if isinstance(e, FileNotFoundError):
-        warning_message = f"Chyba: Soubor nebyl nalezen: {str(e)}"
+        self.d_writer(f"Chyba: Soubor nebyl nalezen: {str(e)}", 1, 'red')
     else:
-        warning_message = f"Nastala neočekávaná chyba: {str(e)}"
-    # print(warning_message)
-    QMessageBox.about(None, "Warning", warning_message)  # Zde můžete předat instanci okna, pokud ji máte
-    # self.d_writer(warning_message, 0, 'red')
+        self.d_writer(f"Nastala neočekávaná chyba: {str(e)}", 1, 'red')
+    self.d_writer(warning_message, 1, 'red')
 
 def fix_filename(item, _format=None, app=None):
     oldfilename = os.path.basename(item)
@@ -134,40 +132,22 @@ def fix_filename(item, _format=None, app=None):
 
     # Zkontrolujeme, zda je soubor otevřený nebo zda máme oprávnění
     if not os.access(dirname, os.W_OK):
-        show_warning("Není povolen zápis do adresáře.")
+        self.d_writer("Není povolen zápis do adresáře.", 1, 'red')
         return None
-    
-    # if os.path.exists(new_file_path):
-    #     show_warning("Soubor s novým názvem již existuje.")
-    #     return None
-
     try:
-        # Otestujeme, zda můžeme soubor otevřít v režimu zápisu
         with open(old_file_path, 'a'):
             pass
     except IOError:
-        show_warning("Zápis do souboru není povolen.")
+        self.d_writer("Není povolen zápis do souboru.", 1, 'red')
         return None
-
     try:
         # Pokusíme se přejmenovat soubor
         os.rename(old_file_path, new_file_path)
     except PermissionError:
-        show_warning("Není povolen zápis do souboru.")
+        self.d_writer("Není povolen zápis do souboru.", 1, 'red')
         return None
 
     return new_file_path
-
-def show_warning(message):
-    # Vytvoření výstražného okna
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Icon.Warning)
-    msg.setText(message)
-    msg.setWindowTitle("Výstraha")
-    msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-    msg.exec()
-
-
 
 def humansize(size):
     for unit in ['B', 'KB', 'MB', 'GB']:
@@ -346,6 +326,45 @@ def convert_this_file(original_file, *args):
         outputfiles.append(outputfile)
     return command, outputfiles
 
+
+def smart_stitch_this_file(original_file, *args):
+    outputfiles = []
+    head, ext = os.path.splitext(original_file[0])
+    outputfile = head +'_stitched' + '.jpg'
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    python_path = sys.executable
+    command = [
+    python_path,
+    script_directory + '/libs/stitcher.py',
+    '--mode', '1',
+    *original_file,  # Přidá všechny prvky original_file jako samostatné argumenty
+    '--output', outputfile]
+    print (command)
+    subprocess.run(command)
+    outputfiles.append(outputfile)
+    return command, outputfiles
+
+def smart_stitch_this_file_adv(original_file, *args):
+    outputfiles = []
+    head, ext = os.path.splitext(original_file[0])
+    outputfile = head +'_stitched' + '.jpg'
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    python_path = sys.executable
+    command = [
+    python_path,
+    script_directory + '/libs/stitcher_detailed.py', *original_file,
+    '--match_conf', '0.2',
+    '--conf_thresh', '0.2',
+    '--features', 'sift',
+    ] 
+        # '--warp', 'affine'
+
+    print (command)
+    subprocess.run(command)
+    outputfiles.append(outputfile)
+    return command, outputfiles
+
+
 def smart_cut_this_file(original_file, *args):
     smartcut_files = []
     outputfiles = []
@@ -446,19 +465,17 @@ def tablemaker(inputs):
     html += '</table>'
     return html
 
-def print_this_file(outputfiles, tiskarna_ok, lp_two_sided, orientation, copies, fit_to_size, collate, colors, printer_presets):
+def print_this_file(self, outputfiles, tiskarna_ok, lp_two_sided, orientation, copies, fit_to_size, collate, colors, printer_presets):
     # https://www.cups.org/doc/options.html
     # COLATE
     print (printer_presets)
-    if printer_preset == "Default Setting":
+    if printer_presets == "Default Setting":
         p_presets = ''
     else:
         p_presets = ('-o preset="' + printer_presets +  '"')
     if collate == 1:
-        print('collate ON')
         collate = ('-o collate=true')
     else: 
-        print('collate OFF')
         collate = ('')
     # COLORS 
     if colors == 'Auto':
@@ -490,6 +507,7 @@ def print_this_file(outputfiles, tiskarna_ok, lp_two_sided, orientation, copies,
         subprocess.run(["/usr/bin/open", user_path + "/Library/Printers/" + str(tiskarna_ok) + ".app"])
     except:
         print('printer not found')
+        self.d_writer('Printer not found', 0, 'red')
     return command
 
 def get_pdf_size(pdf_input):
@@ -795,23 +813,22 @@ def darkmode():
 class TableWidgetDragRows(QTableWidget):
     openFileDialogRequested = pyqtSignal()
     def __init__(self, *args, **kwargs):
-        QTableWidget.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
-        self.viewport().setAcceptDrops(True)
         self.setDragDropOverwriteMode(False)
-        # self.setDropIndicatorShown(True)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        # self.setDragDropMode(QAbstractItemView.InternalMove)
-        # self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setSortingEnabled(True)
+
     def mousePressEvent(self, event):
         if self.rowCount() == 0:
             self.openFileDialogRequested.emit()
         else:
             super().mousePressEvent(event)
+
     def dragLeaveEvent(self, event):
         event.accept()
 
@@ -1249,7 +1266,7 @@ class Window(QMainWindow):
             message = '\n'.join(message)
         # Pokud message obsahuje '\n', rozdělíme ho a použijeme HTML pro každý řádek
         message_lines = message.split('\n')
-        formatted_message = ''.join(f'<font color={color}><b>{line}</b></font>' for line in message_lines)
+        formatted_message = ' '.join(f'<font color={color}><b>{line}</b></font>' for line in message_lines)
         
         if append:
             # Přidání formátovaného textu do debuglist
@@ -1508,48 +1525,48 @@ class Window(QMainWindow):
 
     def contextMenuEvent(self, pos):
         file_paths = []
-        if not self.table.selectionModel().selectedRows():
-            print('mic')
-            return  # Oprava: přidání návratu, pokud nejsou vybrány žádné řádky
-        else:
-            for items in sorted(self.table.selectionModel().selectedRows()):
-                index = (self.table.selectionModel().currentIndex())
-                row = items.row()
-                file_path = index.sibling(row, 8).data()
-                file_paths.append(file_path)
-            menu = QMenu()
-            openAction = menu.addAction('Open')
-            revealAction = menu.addAction('Reveal in finder')
-            printAction = menu.addAction('Print')
-            previewAction = menu.addAction('Preview')
-            fix_nameAction = menu.addAction('Remove special characters from filename')
-            sort_images = menu.addAction('Sort portrait and landscape')
-            action = menu.exec(self.mapToGlobal(pos))
-            menu.hide()
-            if action == openAction:
-                revealfile(file_paths, '')
-            if action == revealAction:
-                revealfile(file_path, '-R')
-            if action == fix_nameAction:
-                self.deleteClicked()
-                for items in file_paths:
-                    newname = fix_filename(items)
-                    if newname.lower().endswith == '.pdf':
-                        self.files = pdf_parse(self, [newname])
-                        Window.table_reload(self, self.files)
-                    else:
-                        self.files = img_parse(self, [newname])
-                        Window.table_reload(self, self.files)
-                        self.d_writer('Renamed: ' + str(newname), 1, 'green')
-            if action == sort_images:
-                self.indetify_orientation(items)
-            if action == printAction:
-                index = (self.table.selectionModel().currentIndex())
-                row = self.table.currentRow()
-                file_path = index.sibling(row, 8).data()
-                self.table_print()
-            if action == previewAction:
-                self.preview_window()
+        # if not self.table.selectionModel().selectedRows():
+        #     print('mic')
+        #     return  # Oprava: přidání návratu, pokud nejsou vybrány žádné řádky
+        # else:
+        for items in sorted(self.table.selectionModel().selectedRows()):
+            index = (self.table.selectionModel().currentIndex())
+            row = items.row()
+            file_path = index.sibling(row, 8).data()
+            file_paths.append(file_path)
+        menu = QMenu()
+        openAction = menu.addAction('Open')
+        revealAction = menu.addAction('Reveal in finder')
+        printAction = menu.addAction('Print')
+        previewAction = menu.addAction('Preview')
+        fix_nameAction = menu.addAction('Remove special characters from filename')
+        sort_images = menu.addAction('Sort portrait and landscape')
+        action = menu.exec(self.mapToGlobal(pos))
+        menu.hide()
+        if action == openAction:
+            revealfile(file_paths, '')
+        if action == revealAction:
+            revealfile(file_path, '-R')
+        if action == fix_nameAction:
+            self.deleteClicked()
+            for items in file_paths:
+                newname = fix_filename(items)
+                if newname.lower().endswith == '.pdf':
+                    self.files = pdf_parse(self, [newname])
+                    Window.table_reload(self, self.files)
+                else:
+                    self.files = img_parse(self, [newname])
+                    Window.table_reload(self, self.files)
+                    self.d_writer('Renamed: ' + str(newname), 1, 'green')
+        if action == sort_images:
+            self.indetify_orientation(items)
+        if action == printAction:
+            index = (self.table.selectionModel().currentIndex())
+            row = self.table.currentRow()
+            file_path = index.sibling(row, 8).data()
+            self.table_print()
+        if action == previewAction:
+            self.preview_window()
 
     # def keyPressEvent(self, event):
     #     if event.key() == 32:
@@ -1710,7 +1727,7 @@ class Window(QMainWindow):
             self.widget.raise_()  # Přivedení okna na popředí, pokud už je otevřené
 
     def on_resize(self, event):
-        print ('hyyybu')
+        print ('TODO')
         # Změna velikosti obrázku podle velikosti okna
         # if self.im_pixmap:
         #     scaled_pixmap = self.im_pixmap.scaled(self.widget.size(), Qt.AspectRatioMode.KeepAspectRatio)
@@ -1878,6 +1895,8 @@ class Window(QMainWindow):
         other_menu = QMenu('Other', self)
         menu.addMenu(other_menu)
         convert_menu.addAction('SmartCrop', lambda: self.operate_file(smart_cut_this_file, 'Images(s) croped', default_pref[1]))
+        convert_menu.addAction('StitchImages', lambda: self.operate_file(smart_stitch_this_file, 'Images(s) Stitched'))
+        convert_menu.addAction('StitchImages_advanced', lambda: self.operate_file(smart_stitch_this_file_adv, 'Images(s) Stitched'))
 
         colors_menu.addAction('To CMYK')
         colors_menu.addAction('To Grayscale', self.gray_pdf)
@@ -1979,32 +1998,44 @@ class Window(QMainWindow):
 # GET FILE PATH////////////////////FIX TODP
     def operate_file(self, action, debug_text, parameter=None):
         outputfiles = []
-        if self.table.currentItem() == None:
+        
+        # Kontrola, zda jsou vybrány soubory
+        if self.table.currentItem() is None:
             self.d_writer('Error - No files selected', 1, 'red')
             return
+        
+        # Získání vybraných souborů
         for items in sorted(self.table.selectionModel().selectedRows()):
             row = items.row()
-            index = (self.table.selectionModel().currentIndex())
+            index = self.table.selectionModel().currentIndex()
             file_path = index.sibling(items.row(), 8).data()
             outputfiles.append(file_path)
+        
+        # Kontrola typu souboru
         if self.selected_file_check() == 'pdf':
-            debugstring, outputfiles = action(outputfiles, parameter)
-            self.d_writer(debug_text, 1, 'green')
-            self.d_writer(', '.join(debugstring), 1)
-            if outputfiles != None:
+            try:
+                debugstring, outputfiles = action(outputfiles, parameter)
+                self.d_writer(debug_text, 1, 'green')
                 self.d_writer(', '.join(debugstring), 1)
-                self.files = pdf_parse(self, outputfiles)
-                Window.table_reload(self, self.files)
+                
+                if outputfiles is not None:
+                    self.files = pdf_parse(self, outputfiles)
+                    Window.table_reload(self, self.files)
+            except Exception as e:
+                self.d_writer(f'Chyba při zpracování PDF: {e}', 1, 'red')
         else:
-            debugstring, outputfiles = action(outputfiles, parameter)
-            self.d_writer(debug_text, 1, 'green')
-            if outputfiles != None:
-                # imagename
-                self.d_writer(', '.join(debugstring), 1)
-                self.files = img_parse(self, outputfiles)
-                Window.table_reload(self, self.files)
-            if outputfiles == None:
-                self.d_writer(', '.join(debugstring), 1)
+            try:
+                debugstring, outputfiles = action(outputfiles, parameter)
+                self.d_writer(debug_text, 1, 'green')
+                
+                if outputfiles is not None:
+                    self.d_writer(', '.join(debugstring), 1)
+                    self.files = img_parse(self, outputfiles)
+                    Window.table_reload(self, self.files)
+                else:
+                    self.d_writer(', '.join(debugstring), 1)
+            except Exception as e:
+                self.d_writer(f'Chyba při zpracování obrázků: {e}', 1, 'red')
 # GET FILE PATH////////////////////FIX TODP
 
     def gray_pdf(self):
@@ -2486,8 +2517,8 @@ class Window(QMainWindow):
             file_path = index.sibling(items.row(), 8).data()
             outputfiles.append(file_path)
             tiskarna_ok = self.printer_tb.currentText()
-        debugstring = print_this_file(outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.fit_to_size.isChecked(), self.btn_collate.isChecked(), self.btn_colors.currentText(), self.printer_presets.currentText())
-        self.d_writer('Printing setting:', 0, 'green')
+        debugstring = print_this_file(self, outputfiles, tiskarna_ok, self.lp_two_sided.isChecked(), self.btn_orientation.isChecked(), str(self.copies.value()), self.fit_to_size.isChecked(), self.btn_collate.isChecked(), self.btn_colors.currentText(), self.printer_presets.currentText())
+        self.d_writer('Printing setting: ', 0, 'green')
         self.d_writer(debugstring, 1, 'white')
 
 # def print_this_file(outputfiles, printer, lp_two_sided, orientation, copies, p_size, fit_to_size, collate, colors):
@@ -2628,7 +2659,7 @@ class Window(QMainWindow):
     def openFileNamesDialog(self):
         options = QFileDialog.Option.DontUseNativeDialog  # Přidání této možnosti pro platformní nezávislost
         desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-        soubory, _ = QFileDialog.getOpenFileNames(self, "Vyberte soubory", desktop_path,"PDF Files (*.pdf);;Všechny soubory (*)", options=options)
+        soubory, _ = QFileDialog.getOpenFileNames(self, "Vyberte soubory", desktop_path,"Všechny soubory (*)", options=options)
         if soubory:
             self.files = pdf_parse(self, soubory)
             self.table_reload(self.files)
@@ -2659,7 +2690,7 @@ if __name__ == '__main__':
     app.setWindowIcon(QIcon(path))
     w = Window()
     darkmode()
-    w.d_writer('DEBUG:', 1, 'green')
+    w.d_writer('DEBUG:', 0, 'green')
     log = ('boot time: ' + str((time.time() - start_time))[:5] + ' seconds' + '\n' + ' CUPS: ' + "yes" if is_cups_running() == 1 else "no")
     w.d_writer(log, 1)
     w.showNormal()

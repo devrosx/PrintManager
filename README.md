@@ -52,6 +52,7 @@ I'm a newbie with python and PyQt5 :)
 - preferences
 - updated debugtext table (scroling)
 - support for encrypted PDF
+- added two options to merge overlaping images (CS2)
 
 0.4
 - MAJOR REWRITE
